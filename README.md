@@ -417,6 +417,19 @@ There is no Docker/CI config in this repo by default. For deployment:
 5. Build the client (`cd client && npm run build`) and serve `client/dist` behind the same origin as the API **or** configure CORS and a production API base URL.
 6. Ensure WebSocket/Socket.IO (`/socket.io`) reaches the Node server for live chat.
 
+### Deploy frontend on Vercel
+
+1. Create a Vercel project from this repo.
+2. Set **Root Directory** to `client` (recommended), **or** leave the repo root and use the root `vercel.json`.
+3. Add environment variables:
+   - `VITE_API_URL=https://ecolelaracine.online`
+   - `VITE_SOCKET_URL=https://ecolelaracine.online`
+4. Redeploy after changing env (Vite bakes them into the build).
+
+`vercel.json` includes an SPA rewrite so routes like `/login`, `/campus/...`, and `/about` load `index.html` instead of returning **404 NOT_FOUND**. Without that rewrite, refreshing or opening a deep link on Vercel fails.
+
+On the API server, set `CLIENT_URL` to your Vercel domain (e.g. `https://your-app.vercel.app`) so CORS allows the frontend.
+
 ---
 
 ## License
