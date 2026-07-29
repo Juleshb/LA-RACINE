@@ -1,0 +1,182 @@
+export const PERMISSIONS = {
+  DASHBOARD: 'dashboard',
+  STUDENTS: 'students',
+  TEACHERS: 'teachers',
+  CLASSES: 'classes',
+  COURSES: 'courses',
+  MARKS: 'marks',
+  ATTENDANCE: 'attendance',
+  FEES: 'fees',
+  SCHOOL: 'school',
+  USERS: 'users',
+  CAMPUSES: 'campuses',
+  ACADEMIC_YEAR: 'academic_year',
+  LIBRARY: 'library',
+  E_LIBRARY: 'e_library',
+  E_LEARNING: 'e_learning',
+  TIMETABLE: 'timetable',
+  HOMEWORK: 'homework',
+  EXTRACURRICULAR: 'extracurricular',
+  TRANSPORT: 'transport',
+  COMMUNICATION: 'communication',
+  REGISTRATION: 'registration',
+  ONLINE_CLASSES: 'online_classes',
+  REPORTS: 'reports',
+  WEBSITE: 'website',
+};
+
+export const ROLE_LABELS = {
+  SCHOOL_MANAGER: 'School Manager',
+  TEACHER: 'Teacher',
+  PARENT: 'Parent',
+  STUDENT: 'Student',
+  HEAD_OF_STUDIES: 'Head of Studies',
+  HEAD_OF_DISCIPLINE: 'Head of Discipline',
+  SECRETARY: 'Secretary (Admin)',
+  ACCOUNTANT: 'Accountant',
+  LIBRARIAN: 'Librarian',
+};
+
+const CAMPUS_ADMIN = [
+  PERMISSIONS.DASHBOARD,
+  PERMISSIONS.STUDENTS,
+  PERMISSIONS.TEACHERS,
+  PERMISSIONS.CLASSES,
+  PERMISSIONS.COURSES,
+  PERMISSIONS.MARKS,
+  PERMISSIONS.ATTENDANCE,
+  PERMISSIONS.FEES,
+  PERMISSIONS.SCHOOL,
+  PERMISSIONS.ACADEMIC_YEAR,
+  PERMISSIONS.LIBRARY,
+  PERMISSIONS.E_LIBRARY,
+  PERMISSIONS.E_LEARNING,
+  PERMISSIONS.TIMETABLE,
+  PERMISSIONS.HOMEWORK,
+  PERMISSIONS.ONLINE_CLASSES,
+  PERMISSIONS.EXTRACURRICULAR,
+  PERMISSIONS.TRANSPORT,
+  PERMISSIONS.COMMUNICATION,
+  PERMISSIONS.REPORTS,
+  PERMISSIONS.WEBSITE,
+];
+
+// SCHOOL_MANAGER keeps exclusive control of users and campuses
+export const ROLE_PERMISSIONS = {
+  SCHOOL_MANAGER: Object.values(PERMISSIONS),
+  SECRETARY: CAMPUS_ADMIN,
+  HEAD_OF_STUDIES: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.STUDENTS,
+    PERMISSIONS.TEACHERS,
+    PERMISSIONS.CLASSES,
+    PERMISSIONS.COURSES,
+    PERMISSIONS.MARKS,
+    PERMISSIONS.ATTENDANCE,
+    PERMISSIONS.SCHOOL,
+    PERMISSIONS.TIMETABLE,
+    PERMISSIONS.HOMEWORK,
+    PERMISSIONS.ONLINE_CLASSES,
+    PERMISSIONS.E_LIBRARY,
+    PERMISSIONS.E_LEARNING,
+    PERMISSIONS.EXTRACURRICULAR,
+    PERMISSIONS.TRANSPORT,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+    PERMISSIONS.WEBSITE,
+  ],
+  HEAD_OF_DISCIPLINE: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.STUDENTS,
+    PERMISSIONS.CLASSES,
+    PERMISSIONS.ATTENDANCE,
+    PERMISSIONS.SCHOOL,
+    PERMISSIONS.EXTRACURRICULAR,
+    PERMISSIONS.TRANSPORT,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+    PERMISSIONS.WEBSITE,
+  ],
+  ACCOUNTANT: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.FEES,
+    PERMISSIONS.STUDENTS,
+    PERMISSIONS.SCHOOL,
+    PERMISSIONS.TRANSPORT,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+  ],
+  LIBRARIAN: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.LIBRARY,
+    PERMISSIONS.E_LIBRARY,
+    PERMISSIONS.REPORTS,
+  ],
+  TEACHER: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.STUDENTS,
+    PERMISSIONS.CLASSES,
+    PERMISSIONS.COURSES,
+    PERMISSIONS.MARKS,
+    PERMISSIONS.ATTENDANCE,
+    PERMISSIONS.TIMETABLE,
+    PERMISSIONS.HOMEWORK,
+    PERMISSIONS.ONLINE_CLASSES,
+    PERMISSIONS.E_LIBRARY,
+    PERMISSIONS.E_LEARNING,
+    PERMISSIONS.EXTRACURRICULAR,
+    PERMISSIONS.TRANSPORT,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+  ],
+  PARENT: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.REGISTRATION,
+    PERMISSIONS.ATTENDANCE,
+    PERMISSIONS.MARKS,
+    PERMISSIONS.FEES,
+    PERMISSIONS.TIMETABLE,
+    PERMISSIONS.HOMEWORK,
+    PERMISSIONS.E_LEARNING,
+    PERMISSIONS.ONLINE_CLASSES,
+    PERMISSIONS.EXTRACURRICULAR,
+    PERMISSIONS.TRANSPORT,
+    PERMISSIONS.COMMUNICATION,
+  ],
+  STUDENT: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.HOMEWORK,
+    PERMISSIONS.ONLINE_CLASSES,
+    PERMISSIONS.E_LIBRARY,
+    PERMISSIONS.E_LEARNING,
+  ],
+};
+
+export function hasPermission(role, permission) {
+  const perms = ROLE_PERMISSIONS[role] || [];
+  return perms.includes(permission);
+}
+
+export function authorizeRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied for your role' });
+    }
+    next();
+  };
+}
+
+export function authorizePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!hasPermission(req.user.role, permission)) {
+      return res.status(403).json({ error: 'You do not have permission for this action' });
+    }
+    next();
+  };
+}

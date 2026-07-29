@@ -1,0 +1,5 @@
+{
+  "watch": ["src", "prisma/schema.prisma"],
+  "ext": "js,json,prisma",
+  "exec": "npx prisma generate && node src/index.js"
+}
