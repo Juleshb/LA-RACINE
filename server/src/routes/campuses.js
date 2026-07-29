@@ -81,16 +81,59 @@ router.post('/', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
 
 router.put('/:id', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
   try {
-    const { code, ...data } = req.body;
+    const existing = await prisma.campus.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Campus not found' });
+
+    const {
+      name,
+      code,
+      city,
+      district,
+      province,
+      country,
+      address,
+      phone,
+      email,
+      isActive,
+    } = req.body;
+
+    if (name !== undefined && !String(name).trim()) {
+      return res.status(400).json({ error: 'Campus name is required' });
+    }
+    if (code !== undefined && !String(code).trim()) {
+      return res.status(400).json({ error: 'Campus code is required' });
+    }
+    if (city !== undefined && !String(city).trim()) {
+      return res.status(400).json({ error: 'City is required' });
+    }
+    if (district !== undefined && !String(district).trim()) {
+      return res.status(400).json({ error: 'District is required' });
+    }
+
+    const data = {};
+    if (name !== undefined) data.name = String(name).trim();
+    if (code !== undefined) data.code = String(code).trim().toUpperCase();
+    if (city !== undefined) data.city = String(city).trim();
+    if (district !== undefined) data.district = String(district).trim();
+    if (province !== undefined) data.province = String(province).trim() || 'WESTERN';
+    if (country !== undefined) data.country = String(country).trim() || 'RWANDA';
+    if (address !== undefined) data.address = address ? String(address).trim() : null;
+    if (phone !== undefined) data.phone = phone ? String(phone).trim() : null;
+    if (email !== undefined) data.email = email ? String(email).trim() : null;
+    if (typeof isActive === 'boolean') data.isActive = isActive;
+
     const campus = await prisma.campus.update({
       where: { id: req.params.id },
-      data: {
-        ...data,
-        ...(code ? { code: code.toUpperCase() } : {}),
+      data,
+      include: {
+        _count: { select: { users: true, students: true, teachers: true, classes: true } },
       },
     });
     res.json(campus);
   } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'A campus with this code already exists' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
