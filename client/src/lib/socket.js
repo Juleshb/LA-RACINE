@@ -1,11 +1,13 @@
 import { io as createSocket } from 'socket.io-client';
+import { getSocketUrl } from './config';
 
 let socket = null;
 
 export function getSupportSocket() {
   if (socket) return socket;
 
-  const url = import.meta.env.VITE_SOCKET_URL || undefined; // same origin via Vite proxy
+  // Same origin (Vite proxy) when unset; otherwise VITE_SOCKET_URL or VITE_API_URL
+  const url = getSocketUrl();
   socket = createSocket(url || '/', {
     path: '/socket.io',
     transports: ['websocket', 'polling'],

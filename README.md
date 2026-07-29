@@ -252,7 +252,43 @@ Vite proxies `/api` and `/socket.io` to the backend.
 | `SMTP_USER` | SMTP account for email | — |
 | `SMTP_PASS` | SMTP password / app password | — |
 
-The client talks to `/api` on the same origin in development (Vite proxy). No `VITE_*` API URL is required for local dev.
+The client talks to `/api` on the same origin in development (Vite proxy). For production (or a remote API), set `VITE_API_URL` in `client/.env` / `client/.env.production` — see [Client env](#client-env-vite).
+
+---
+
+## Client env (Vite)
+
+Only variables prefixed with `VITE_` are available in the browser.
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `VITE_API_URL` | Backend origin (no `/api` suffix, no trailing slash) | `https://ecolelaracine.online` |
+| `VITE_SOCKET_URL` | Socket.IO origin (optional; defaults to `VITE_API_URL`) | `https://ecolelaracine.online` |
+
+**Local development** — leave them empty (or omit). Vite proxies `/api` and `/socket.io` to `http://localhost:5001`.
+
+```bash
+# client/.env.local (optional)
+VITE_API_URL=
+```
+
+**Production frontend** pointing at the live API:
+
+```bash
+# client/.env.production
+VITE_API_URL=https://ecolelaracine.online
+VITE_SOCKET_URL=https://ecolelaracine.online
+```
+
+Then build:
+
+```bash
+cd client && npm run build
+```
+
+Also set server `CLIENT_URL` to your **frontend** origin so CORS and bulletin links work.
+
+Templates: `client/.env.example`, `client/.env.production.example`.
 
 ---
 

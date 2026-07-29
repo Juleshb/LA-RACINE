@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, ShieldCheck, Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
+import { getApiBase } from '../lib/config';
 
-const API_BASE = '/api';
+const API_BASE = getApiBase();
 
 export default function VerifyBulletin() {
   const { token } = useParams();
