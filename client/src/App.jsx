@@ -36,6 +36,7 @@ import ParentMyRegistrations from './pages/ParentMyRegistrations';
 import ParentRegistrationDetail from './pages/ParentRegistrationDetail';
 import ParentChildAccounts from './pages/ParentChildAccounts';
 import ResetPassword from './pages/ResetPassword';
+import SetNewPassword from './pages/SetNewPassword';
 import StudentRegistration from './pages/StudentRegistration';
 import StudentDetail from './pages/StudentDetail';
 import VerifyBulletin from './pages/VerifyBulletin';
@@ -54,6 +55,7 @@ import PublicEvents from './pages/public/PublicEvents';
 import PublicGallery from './pages/public/PublicGallery';
 import PublicAnnouncements from './pages/public/PublicAnnouncements';
 import PublicAdmissions from './pages/public/PublicAdmissions';
+import PublicOnlineRegistration from './pages/public/PublicOnlineRegistration';
 import PublicContact from './pages/public/PublicContact';
 
 export default function App() {
@@ -73,6 +75,7 @@ export default function App() {
         <Route path="events" element={<PublicEvents />} />
         <Route path="gallery" element={<PublicGallery />} />
         <Route path="admissions" element={<PublicAdmissions />} />
+        <Route path="admissions/apply" element={<PublicOnlineRegistration />} />
         <Route path="contact" element={<PublicContact />} />
       </Route>
 
@@ -82,6 +85,7 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/set-new-password" element={<SetNewPassword />} />
         <Route path="app" element={<HomeRedirect />} />
         <Route path="profile" element={<ProfileShell />} />
         <Route path="campuses" element={<Campuses />} />

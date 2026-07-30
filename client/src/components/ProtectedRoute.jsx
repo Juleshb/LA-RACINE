@@ -1,9 +1,10 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../config/permissions';
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -14,6 +15,9 @@ export function ProtectedRoute() {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (user.mustChangePassword && location.pathname !== '/set-new-password') {
+    return <Navigate to="/set-new-password" replace />;
+  }
   return <Outlet />;
 }
 
@@ -26,7 +30,10 @@ export function PublicRoute() {
       </div>
     );
   }
-  if (user) return <Navigate to="/app" replace />;
+  if (user) {
+    if (user.mustChangePassword) return <Navigate to="/set-new-password" replace />;
+    return <Navigate to="/app" replace />;
+  }
   return <Outlet />;
 }
 

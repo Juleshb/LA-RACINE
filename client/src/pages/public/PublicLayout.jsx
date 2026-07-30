@@ -230,7 +230,7 @@ function PublicShell() {
               </select>
             </label>
             <Link to="/login" className="ps-btn ps-btn-ghost ps-nav-desktop-only">{nav.portal || 'Portal'}</Link>
-            <Link to="/admissions" className="ps-btn ps-btn-primary ps-nav-desktop-only">{nav.apply || 'Apply'}</Link>
+            <Link to="/admissions/apply" className="ps-btn ps-btn-primary ps-nav-desktop-only">{nav.apply || 'Apply'}</Link>
             <button
               type="button"
               className="ps-menu-btn"
@@ -274,7 +274,7 @@ function PublicShell() {
             <Link to="/contact">{contactLabel}</Link>
             <div className="ps-mobile-quick-actions">
               <Link to="/login" className="ps-btn ps-btn-ghost">{nav.mobilePortal || nav.portal || 'Portal'}</Link>
-              <Link to="/admissions" className="ps-btn ps-btn-primary">{nav.apply || 'Apply'}</Link>
+              <Link to="/admissions/apply" className="ps-btn ps-btn-primary">{nav.apply || 'Apply'}</Link>
             </div>
           </div>
         )}

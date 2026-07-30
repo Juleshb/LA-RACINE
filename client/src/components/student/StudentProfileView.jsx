@@ -171,10 +171,12 @@ export default function StudentProfileView({
               className="student-profile-input"
               type="password"
               required
-              minLength={6}
+              minLength={8}
+              autoComplete="new-password"
               value={passwordForm.newPassword}
               onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
             />
+            <p className="text-xs text-gray-500 mt-1">At least 8 characters with uppercase, lowercase, a number, and a special character.</p>
           </div>
           <div>
             <label className="student-profile-label">Confirm password</label>
@@ -182,7 +184,8 @@ export default function StudentProfileView({
               className="student-profile-input"
               type="password"
               required
-              minLength={6}
+              minLength={8}
+              autoComplete="new-password"
               value={passwordForm.confirmPassword}
               onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
             />

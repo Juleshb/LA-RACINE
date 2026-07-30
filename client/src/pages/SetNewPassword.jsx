@@ -1,26 +1,25 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { KeyRound } from 'lucide-react';
-import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { api, setActiveCampus } from '../lib/api';
+import { getLoginRedirect } from '../config/permissions';
 import Logo from '../components/Logo';
 import { PASSWORD_POLICY_HINT, passwordStrengthLabel, validateStrongPassword } from '../lib/passwordPolicy';
 
-export default function ResetPassword() {
+/** Forced password change after temporary password login. */
+export default function SetNewPassword() {
+  const { user, refreshUser, logout, defaultCampusId } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [token, setToken] = useState(searchParams.get('token') || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
   const strength = passwordStrengthLabel(password);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     if (password !== confirm) {
       setError('Passwords do not match');
       return;
@@ -32,9 +31,10 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await api.resetPassword(token, password, confirm);
-      setSuccess('Password reset successfully. You can now sign in.');
-      setTimeout(() => navigate('/login'), 2000);
+      await api.changePassword('', password, confirm);
+      const data = await refreshUser();
+      if (data.defaultCampusId) setActiveCampus(data.defaultCampusId);
+      navigate(getLoginRedirect(data.user, data.defaultCampusId || defaultCampusId), { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -42,26 +42,30 @@ export default function ResetPassword() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+        <div className="card max-w-md w-full text-center">
+          <p className="text-gray-600 mb-4">Please sign in first.</p>
+          <Link to="/login" className="btn-primary inline-flex">Sign in</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8"><Logo size="lg" showMotto /></div>
         <div className="card">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">Set new password</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-1">Create a new password</h2>
           <p className="text-gray-500 mb-6 text-sm">
-            Choose a strong password for your École La RACINE account.
+            You signed in with a temporary password. Choose a strong password to continue.
           </p>
 
           {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">{error}</div>}
-          {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{success}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!searchParams.get('token') && (
-              <div>
-                <label className="label">Reset token</label>
-                <input className="input" required value={token} onChange={(e) => setToken(e.target.value)} placeholder="Paste token from email link" />
-              </div>
-            )}
             <div>
               <label className="label">New password</label>
               <input
@@ -92,13 +96,17 @@ export default function ResetPassword() {
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
               <KeyRound className="w-4 h-4" />
-              {loading ? 'Saving…' : 'Save new password'}
+              {loading ? 'Saving…' : 'Save and continue'}
             </button>
           </form>
 
-          <p className="text-sm text-gray-400 mt-4 text-center">
-            <Link to="/login" className="text-brand-600 hover:underline">Back to sign in</Link>
-          </p>
+          <button
+            type="button"
+            className="mt-4 text-sm text-gray-500 hover:text-red-600 w-full text-center"
+            onClick={() => { logout(); navigate('/login'); }}
+          >
+            Sign out
+          </button>
         </div>
       </div>
     </div>

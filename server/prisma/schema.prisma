@@ -90,6 +90,8 @@ model User {
   parentId           String?             @unique
   parent             Parent?             @relation(fields: [parentId], references: [id])
   preferredLanguage  String?             @default("en")
+  mustChangePassword Boolean             @default(false)
+  phone              String?
   passwordResetTokens PasswordResetToken[]
   broadcastsCreated   CommunicationBroadcast[] @relation("BroadcastCreator")
   messagesSent        CommunicationMessage[] @relation("MessageSender")
@@ -101,12 +103,14 @@ model User {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token              String   @unique
+  temporaryPassword  String?
+  emailSent          Boolean  @default(false)
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
 }
 
 model Parent {

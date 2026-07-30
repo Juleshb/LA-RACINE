@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Check, FileUp, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Check, FileUp, X, CheckCircle2 } from 'lucide-react';
 import { api } from '../lib/api';
-import { useCampus } from '../context/CampusContext';
+import { useCampusOptional } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import {
   FORM_SECTIONS, EMPTY_FORM,
@@ -50,22 +50,57 @@ function SectionHeader({ section }) {
   );
 }
 
-export default function StudentRegistration({ isParent = false }) {
+export default function StudentRegistration({ isParent = false, isPublic = false }) {
   const navigate = useNavigate();
-  const { campusId } = useCampus();
+  const campusCtx = useCampusOptional();
   const { user } = useAuth();
+  const contextCampusId = campusCtx?.campusId || null;
+
+  const [publicCampusId, setPublicCampusId] = useState('');
+  const [campuses, setCampuses] = useState([]);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [academicYears, setAcademicYears] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsLoading, setOptionsLoading] = useState(!isPublic);
+  const [success, setSuccess] = useState(null);
+  const [honeypot, setHoneypot] = useState('');
+
+  const campusId = isPublic ? publicCampusId : contextCampusId;
+
+  useEffect(() => {
+    if (!isPublic) return undefined;
+    let active = true;
+    api.getPublicSchool()
+      .then((data) => {
+        if (!active) return;
+        const list = data.campuses || [];
+        setCampuses(list);
+        if (list.length === 1) setPublicCampusId(list[0].id);
+      })
+      .catch((err) => setError(err.message));
+    return () => { active = false; };
+  }, [isPublic]);
 
   useEffect(() => {
     let active = true;
+    if (isPublic && !campusId) {
+      setAcademicYears([]);
+      setClasses([]);
+      setOptionsLoading(false);
+      return undefined;
+    }
+    if (!campusId && !isPublic) return undefined;
+
     setOptionsLoading(true);
-    api[isParent ? 'getParentRegistrationOptions' : 'getRegistrationOptions']()
+    setError('');
+    const loader = isPublic
+      ? api.getPublicRegistrationOptions(campusId)
+      : api[isParent ? 'getParentRegistrationOptions' : 'getRegistrationOptions']();
+
+    loader
       .then((data) => {
         if (!active) return;
         setAcademicYears(data.academicYears || []);
@@ -92,7 +127,7 @@ export default function StudentRegistration({ isParent = false }) {
       .catch((err) => setError(err.message))
       .finally(() => { if (active) setOptionsLoading(false); });
     return () => { active = false; };
-  }, [campusId, isParent, user]);
+  }, [campusId, isParent, isPublic, user]);
 
   const classesForYear = (yearId) => classes.filter((c) => c.academicYearId === yearId);
 
@@ -130,6 +165,10 @@ export default function StudentRegistration({ isParent = false }) {
 
   const validateStep = (stepIndex = step) => {
     setError('');
+    if (isPublic && !campusId) {
+      setError('Please select a campus before continuing.');
+      return false;
+    }
     if (stepIndex === 0) {
       if (!form.lastName || !form.postName || !form.dateOfBirth || !form.nationality) {
         setError('Nom, Post-Nom, date de naissance et nationalité sont obligatoires.');
@@ -200,14 +239,21 @@ export default function StudentRegistration({ isParent = false }) {
     setSaving(true);
     setError('');
     try {
-      const student = isParent
-        ? await api.submitParentRegistration(form)
-        : await api.registerStudent(form);
-      if (isParent) {
+      if (isPublic) {
+        const result = await api.submitPublicRegistration({
+          ...form,
+          campusId,
+          website: honeypot,
+        });
+        setSuccess(result);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (isParent) {
+        const student = await api.submitParentRegistration(form);
         navigate(`/campus/${campusId}/my-registrations`, {
           state: { message: student.message || 'Registration submitted for school review.' },
         });
       } else {
+        const student = await api.registerStudent(form);
         navigate(`/campus/${campusId}/students/${student.id}`);
       }
     } catch (err) {
@@ -218,19 +264,97 @@ export default function StudentRegistration({ isParent = false }) {
   };
 
   const section = FORM_SECTIONS[step];
+  const selectedCampus = campuses.find((c) => c.id === publicCampusId);
+
+  if (success) {
+    return (
+      <div className={`max-w-2xl mx-auto ${isPublic ? 'py-4' : ''}`}>
+        <div className="card text-center p-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 text-brand-700 mb-4">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Application submitted</h1>
+          <p className="text-gray-600 mt-2">{success.message}</p>
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-left space-y-2">
+            <p className="text-sm text-gray-600">Student reference</p>
+            <p className="text-2xl font-mono font-bold text-brand-800 tracking-wide">{success.studentId}</p>
+            <p className="text-sm text-gray-700">
+              {[success.firstName, success.postName, success.lastName].filter(Boolean).join(' ')}
+            </p>
+            {success.campus?.name && (
+              <p className="text-sm text-gray-600">Campus: <strong>{success.campus.name}</strong></p>
+            )}
+            {success.class?.name && (
+              <p className="text-sm text-gray-600">Class: <strong>{success.class.name}</strong></p>
+            )}
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
+              Status: Pending school review. Save this reference number — the office may ask for it when you follow up.
+            </p>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3 justify-center">
+            <Link to="/admissions" className="btn-secondary">Back to admissions</Link>
+            <Link to="/contact" className="btn-primary">Contact the school</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">
-          {isParent ? 'Register your child' : 'Fiche d\'inscription scolaire'}
-        </h1>
-        <p className="text-gray-500 mt-1">
-          {isParent
-            ? 'Complete all sections and submit — the school will review and approve or reject your application.'
-            : 'Registration Form 2025-2026 · Ifishi yo kwiyandikisha ku ishuri'}
-        </p>
-      </div>
+    <div className="max-w-4xl mx-auto relative">
+      {!isPublic && (
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">
+            {isParent
+              ? 'Register your child'
+              : 'Fiche d\'inscription scolaire'}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {isParent
+              ? 'Complete all sections and submit — the school will review and approve or reject your application.'
+              : 'Registration Form 2025-2026 · Ifishi yo kwiyandikisha ku ishuri'}
+          </p>
+        </div>
+      )}
+
+      {isPublic && (
+        <div className="card mb-6 p-5 border-brand-100 bg-brand-50/40">
+          <Label required>Campus / Campus / Ishuri</Label>
+          <select
+            className="input mt-1"
+            value={publicCampusId}
+            onChange={(e) => {
+              setPublicCampusId(e.target.value);
+              setForm({ ...EMPTY_FORM });
+              setStep(0);
+              setSuccess(null);
+            }}
+          >
+            <option value="">Select a campus…</option>
+            {campuses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.city ? ` — ${c.city}` : ''}
+              </option>
+            ))}
+          </select>
+          {selectedCampus && (
+            <p className="text-xs text-gray-500 mt-2">
+              Applying to <strong>{selectedCampus.name}</strong>
+              {selectedCampus.city ? ` (${selectedCampus.city})` : ''}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Honeypot for public bots */}
+      {isPublic && (
+        <div className="absolute -left-[9999px] opacity-0 h-0 overflow-hidden" aria-hidden>
+          <label>
+            Website
+            <input tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+          </label>
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="flex gap-1 mb-8 overflow-x-auto pb-2">
@@ -252,7 +376,18 @@ export default function StudentRegistration({ isParent = false }) {
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">{error}</div>
       )}
 
+      {isPublic && !campusId && (
+        <div className="card p-6 text-sm text-gray-600">
+          Select a campus above to load classes and continue the application.
+        </div>
+      )}
+
+      {(campusId || !isPublic) && (
       <div className="card">
+        {optionsLoading ? (
+          <div className="py-12 text-center text-sm text-gray-500">Loading form options…</div>
+        ) : (
+        <>
         <SectionHeader section={section} />
 
         {/* I. Child details */}
@@ -541,11 +676,20 @@ export default function StudentRegistration({ isParent = false }) {
           ) : (
             <button type="button" onClick={submit} disabled={saving} className="btn-primary flex items-center gap-2">
               <Check className="w-4 h-4" />
-              {saving ? 'Submitting...' : (isParent ? 'Submit for school review' : 'Soumettre l\'inscription')}
+              {saving
+                ? 'Submitting...'
+                : isPublic
+                  ? 'Submit application'
+                  : isParent
+                    ? 'Submit for school review'
+                    : 'Soumettre l\'inscription'}
             </button>
           )}
         </div>
+        </>
+        )}
       </div>
+      )}
     </div>
   );
 }

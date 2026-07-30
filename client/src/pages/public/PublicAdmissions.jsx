@@ -26,7 +26,10 @@ export default function PublicAdmissions() {
           ))}
         </div>
         <div className="ps-cta-row" style={{ marginTop: '2.5rem' }}>
-          <Link to="/contact" className="ps-btn ps-btn-primary">{c.ctaContact}</Link>
+          <Link to="/admissions/apply" className="ps-btn ps-btn-primary">
+            {c.ctaApply || 'Apply online'}
+          </Link>
+          <Link to="/contact" className="ps-btn ps-btn-ghost">{c.ctaContact}</Link>
           <Link to="/login" className="ps-btn ps-btn-ghost">{c.ctaPortal}</Link>
         </div>
       </section>

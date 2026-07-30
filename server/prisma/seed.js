@@ -288,7 +288,7 @@ async function seedInteractiveHomework(prisma, { campus, year }) {
   });
 }
 
-async function createUser({ email, password, firstName, lastName, role, campusId, teacherId, studentId, parentId }) {
+async function createUser({ email, password, firstName, lastName, role, campusId, teacherId, studentId, parentId, phone }) {
   const normalizedEmail = email.toLowerCase();
   const hashedPassword = await bcrypt.hash(password, 10);
   const data = {
@@ -296,6 +296,7 @@ async function createUser({ email, password, firstName, lastName, role, campusId
     firstName,
     lastName,
     role,
+    phone: phone || null,
     campusId: role === 'SCHOOL_MANAGER' ? null : campusId,
     teacherId,
     studentId,
@@ -307,6 +308,7 @@ async function createUser({ email, password, firstName, lastName, role, campusId
       firstName,
       lastName,
       role,
+      phone: phone || null,
       campusId: role === 'SCHOOL_MANAGER' ? null : campusId,
       teacherId,
       studentId,
@@ -582,14 +584,14 @@ async function main() {
 
   const defaultPassword = 'password123';
 
-  await createUser({ email: 'manager@laracineschool.rw', password: defaultPassword, firstName: 'Admin', lastName: 'Manager', role: 'SCHOOL_MANAGER' });
-  await createUser({ email: 'head.studies@laracineschool.rw', password: defaultPassword, firstName: 'Fabrice', lastName: 'Habimana', role: 'HEAD_OF_STUDIES', campusId: campus.id });
-  await createUser({ email: 'head.discipline@laracineschool.rw', password: defaultPassword, firstName: 'Claude', lastName: 'Mugisha', role: 'HEAD_OF_DISCIPLINE', campusId: campus.id });
-  await createUser({ email: 'secretary@laracineschool.rw', password: defaultPassword, firstName: 'Divine', lastName: 'Keza', role: 'SECRETARY', campusId: campus.id });
-  await createUser({ email: 'accountant@laracineschool.rw', password: defaultPassword, firstName: 'Eric', lastName: 'Nshimiyimana', role: 'ACCOUNTANT', campusId: campus.id });
-  await createUser({ email: 'librarian@laracineschool.rw', password: defaultPassword, firstName: 'Sandrine', lastName: 'Mukeshimana', role: 'LIBRARIAN', campusId: campus.id });
-  await createUser({ email: 'teacher@laracineschool.rw', password: defaultPassword, firstName: 'Jean Baptiste', lastName: 'N.', role: 'TEACHER', campusId: campus.id, teacherId: teachers[0].id });
-  await createUser({ email: 'parent@laracineschool.rw', password: defaultPassword, firstName: 'Grace', lastName: 'Mukamana', role: 'PARENT', campusId: campus.id, parentId: parent1.id });
+  await createUser({ email: 'manager@laracineschool.rw', password: defaultPassword, firstName: 'Admin', lastName: 'Manager', role: 'SCHOOL_MANAGER', phone: '0789000001' });
+  await createUser({ email: 'head.studies@laracineschool.rw', password: defaultPassword, firstName: 'Fabrice', lastName: 'Habimana', role: 'HEAD_OF_STUDIES', campusId: campus.id, phone: '0789000002' });
+  await createUser({ email: 'head.discipline@laracineschool.rw', password: defaultPassword, firstName: 'Claude', lastName: 'Mugisha', role: 'HEAD_OF_DISCIPLINE', campusId: campus.id, phone: '0789000003' });
+  await createUser({ email: 'secretary@laracineschool.rw', password: defaultPassword, firstName: 'Divine', lastName: 'Keza', role: 'SECRETARY', campusId: campus.id, phone: '0789000004' });
+  await createUser({ email: 'accountant@laracineschool.rw', password: defaultPassword, firstName: 'Eric', lastName: 'Nshimiyimana', role: 'ACCOUNTANT', campusId: campus.id, phone: '0789000005' });
+  await createUser({ email: 'librarian@laracineschool.rw', password: defaultPassword, firstName: 'Sandrine', lastName: 'Mukeshimana', role: 'LIBRARIAN', campusId: campus.id, phone: '0789000006' });
+  await createUser({ email: 'teacher@laracineschool.rw', password: defaultPassword, firstName: 'Jean Baptiste', lastName: 'N.', role: 'TEACHER', campusId: campus.id, teacherId: teachers[0].id, phone: '0788000101' });
+  await createUser({ email: 'parent@laracineschool.rw', password: defaultPassword, firstName: 'Grace', lastName: 'Mukamana', role: 'PARENT', campusId: campus.id, parentId: parent1.id, phone: '0788111001' });
   if (alice) {
     await createUser({ email: 'student@laracineschool.rw', password: defaultPassword, firstName: 'Alice', lastName: 'Mukamana', role: 'STUDENT', campusId: campus.id, studentId: alice.id });
   }

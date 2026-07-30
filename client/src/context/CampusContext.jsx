@@ -70,3 +70,7 @@ export function useCampus() {
   if (!ctx) throw new Error('useCampus must be used within CampusProvider');
   return ctx;
 }
+
+export function useCampusOptional() {
+  return useContext(CampusContext);
+}

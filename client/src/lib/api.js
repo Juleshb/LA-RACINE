@@ -54,6 +54,10 @@ async function request(endpoint, options = {}) {
 export const api = {
   getPublicSchool: () => request('/public/school'),
   getPublicSite: (locale = 'en') => request(`/public/site?locale=${encodeURIComponent(locale)}`),
+  getPublicRegistrationOptions: (campusId) =>
+    request(`/public/registration/options?campusId=${encodeURIComponent(campusId)}`),
+  submitPublicRegistration: (data) =>
+    request('/public/registration', { method: 'POST', body: JSON.stringify(data) }),
 
   getWebsiteMeta: () => request('/website/meta'),
   getWebsiteStats: () => request('/website/stats'),
@@ -70,12 +74,18 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   forgotPassword: (email) =>
     request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
-  resetPassword: (token, password) =>
-    request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+  resetPassword: (token, password, confirmPassword) =>
+    request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password, confirmPassword }),
+    }),
   getMe: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
-  changePassword: (currentPassword, newPassword) =>
-    request('/auth/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) }),
+  changePassword: (currentPassword, newPassword, confirmPassword) =>
+    request('/auth/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    }),
   getRoles: () => request('/auth/roles'),
 
   getCampuses: () => request('/campuses'),
@@ -96,10 +106,14 @@ export const api = {
   getUsers: (campusId) => request(campusId ? `/users?campusId=${campusId}` : '/users'),
   getParents: (campusId) => request(campusId ? `/users/parents?campusId=${campusId}` : '/users/parents'),
   createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   toggleUserStatus: (id, isActive) =>
     request(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
   resetUserPassword: (id, password) =>
     request(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) }),
+  sendUserPasswordReset: (id) =>
+    request(`/users/${id}/send-password-reset`, { method: 'POST', body: JSON.stringify({}) }),
+  getUserPasswordReset: (id) => request(`/users/${id}/password-reset`),
   deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
 
   getSchool: () => request('/school'),

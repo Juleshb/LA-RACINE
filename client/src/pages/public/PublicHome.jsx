@@ -45,7 +45,7 @@ export default function PublicHome() {
           <h1 className="ps-hero-brand">{brand}</h1>
           <p className="ps-hero-line">{c.heroLine}</p>
           <div className="ps-hero-actions">
-            <Link to="/admissions" className="ps-btn ps-btn-primary">{c.heroCtaPrimary}</Link>
+            <Link to="/admissions/apply" className="ps-btn ps-btn-primary">{c.heroCtaPrimary}</Link>
             <Link to="/locations" className="ps-btn ps-btn-light">{c.heroCtaSecondary}</Link>
           </div>
         </div>

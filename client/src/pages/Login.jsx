@@ -1,24 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
-import { ROLE_LABELS, getLoginRedirect } from '../config/permissions';
+import { getLoginRedirect } from '../config/permissions';
 import { setActiveCampus, api } from '../lib/api';
-import Logo, { MottoBanner } from '../components/Logo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-
-const demoAccounts = [
-  { email: 'manager@laracineschool.rw', role: 'SCHOOL_MANAGER' },
-  { email: 'head.studies@laracineschool.rw', role: 'HEAD_OF_STUDIES' },
-  { email: 'head.discipline@laracineschool.rw', role: 'HEAD_OF_DISCIPLINE' },
-  { email: 'secretary@laracineschool.rw', role: 'SECRETARY' },
-  { email: 'accountant@laracineschool.rw', role: 'ACCOUNTANT' },
-  { email: 'librarian@laracineschool.rw', role: 'LIBRARIAN' },
-  { email: 'teacher@laracineschool.rw', role: 'TEACHER' },
-  { email: 'parent@laracineschool.rw', role: 'PARENT' },
-  { email: 'student@laracineschool.rw', role: 'STUDENT' },
-];
 
 export default function Login() {
   const { login } = useAuth();
@@ -26,12 +13,32 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
   const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotError, setForgotError] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [panelKey, setPanelKey] = useState(0);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return undefined;
+    const targetId = showForgot ? (forgotSent ? null : 'forgot-email') : 'login-email';
+    if (!targetId) return undefined;
+    const el = document.getElementById(targetId);
+    if (!el) return undefined;
+    const timer = window.setTimeout(() => el.focus(), 220);
+    return () => window.clearTimeout(timer);
+  }, [showForgot, forgotSent, mounted, panelKey]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,6 +46,10 @@ export default function Login() {
     setLoading(true);
     try {
       const data = await login(email, password);
+      if (data.user?.mustChangePassword) {
+        navigate('/set-new-password', { replace: true });
+        return;
+      }
       if (data.defaultCampusId) setActiveCampus(data.defaultCampusId);
       navigate(getLoginRedirect(data.user, data.defaultCampusId));
     } catch (err) {
@@ -51,128 +62,219 @@ export default function Login() {
   const handleForgot = async (e) => {
     e.preventDefault();
     setForgotMessage('');
-    setResetToken('');
+    setForgotError(false);
+    setForgotLoading(true);
     try {
       const result = await api.forgotPassword(forgotEmail);
       setForgotMessage(result.message);
-      if (result.resetToken) {
-        setResetToken(result.resetToken);
-      }
+      setForgotSent(true);
+      if (forgotEmail) setEmail(forgotEmail);
     } catch (err) {
+      setForgotError(true);
+      setForgotSent(false);
       setForgotMessage(err.message);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
-  const quickLogin = (accountEmail) => {
-    setEmail(accountEmail);
-    setPassword('password123');
+  const openForgot = () => {
+    setForgotEmail(email);
+    setForgotMessage('');
+    setForgotError(false);
+    setForgotSent(false);
+    setShowForgot(true);
+    setPanelKey((k) => k + 1);
+  };
+
+  const closeForgot = () => {
+    setShowForgot(false);
+    setForgotMessage('');
+    setForgotError(false);
+    setForgotSent(false);
+    setPanelKey((k) => k + 1);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 bg-white border-r border-gray-200">
-        <Logo size="xl" showMotto />
-        <p className="text-center text-gray-500 mt-8 max-w-sm leading-relaxed">
-          {t('app.login.tagline')}
-        </p>
-        <div className="mt-10 grid grid-cols-2 gap-2 w-full max-w-sm">
-          {Object.values(ROLE_LABELS).map((label) => (
-            <div key={label} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-center text-gray-600">
-              {label}
-            </div>
-          ))}
+    <div className={`login-page ${mounted ? 'login-page-ready' : ''}`}>
+      <section className="login-visual">
+        <div className="login-visual-glow login-visual-glow-a" />
+        <div className="login-visual-glow login-visual-glow-b" />
+        <div className="login-visual-grain" />
+        <div className="login-visual-inner">
+          <p className="login-motto">{t('app.login.motto')}</p>
+          <img src="/logo.png" alt="" className="login-visual-logo" />
+          <h1 className="login-brand">École La RACINE</h1>
+          <p className="login-tagline">{t('app.login.tagline')}</p>
         </div>
-      </div>
+      </section>
 
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 flex justify-center">
-            <Logo size="lg" showMotto />
-          </div>
+      <section className="login-panel">
+        <div className="login-panel-top">
+          <Link to="/" className="login-back-link">
+            <ArrowLeft className="w-4 h-4" aria-hidden />
+            {t('app.login.backWebsite')}
+          </Link>
+          <LanguageSwitcher tone="app" />
+        </div>
 
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <Link to="/" className="text-sm text-brand-700 hover:underline">{t('app.login.backWebsite')}</Link>
-            <LanguageSwitcher tone="app" />
-          </div>
+        <div className="login-mobile-brand lg:hidden">
+          <img src="/logo.png" alt="École La RACINE" className="login-mobile-logo" />
+          <p className="login-brand login-brand-mobile">École La RACINE</p>
+        </div>
 
-          <div className="card">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-1">{t('app.login.signIn')}</h2>
-            <p className="text-gray-500 mb-6 text-sm">{t('app.login.accessAccount')}</p>
+        <div className="login-form-shell">
+          {!showForgot ? (
+            <div className="login-form-pane login-form-pane-active" key={`signin-${panelKey}`}>
+              <header className="login-form-header">
+                <h2>{t('app.login.signIn')}</h2>
+                <p>{t('app.login.accessAccount')}</p>
+              </header>
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            {!showForgot ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="label">{t('app.login.email')}</label>
-                  <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@laracineschool.rw" />
+              {error && (
+                <div className="login-alert login-alert-error" role="alert">
+                  {error}
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="label mb-0">{t('app.login.password')}</label>
-                    <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-brand-600 hover:underline">
+              )}
+
+              <form onSubmit={handleSubmit} className="login-form" noValidate>
+                <div className="login-field">
+                  <label htmlFor="login-email">{t('app.login.email')}</label>
+                  <div className="login-input-wrap">
+                    <Mail className="login-input-icon" aria-hidden />
+                    <input
+                      id="login-email"
+                      className="login-input"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@laracineschool.rw"
+                    />
+                  </div>
+                </div>
+
+                <div className="login-field">
+                  <div className="login-field-row">
+                    <label htmlFor="login-password">{t('app.login.password')}</label>
+                    <button type="button" className="login-text-btn" onClick={openForgot}>
                       {t('app.login.forgot')}
                     </button>
                   </div>
-                  <input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-                </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 mt-2">
-                  <LogIn className="w-4 h-4" />
-                  {loading ? t('app.login.signingIn') : t('app.login.signInBtn')}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleForgot} className="space-y-4">
-                <p className="text-sm text-gray-500">{t('app.login.forgotHint')}</p>
-                <div>
-                  <label className="label">{t('app.login.email')}</label>
-                  <input className="input" type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
-                </div>
-                {forgotMessage && (
-                  <div className="p-3 bg-brand-50 border border-brand-200 text-brand-700 rounded-lg text-sm">
-                    {forgotMessage}
-                    {resetToken && (
-                      <p className="mt-2">
-                        <Link to={`/reset-password?token=${resetToken}`} className="underline font-medium">
-                          {t('app.login.resetLink')}
-                        </Link>
-                      </p>
-                    )}
+                  <div className="login-input-wrap">
+                    <input
+                      id="login-password"
+                      className="login-input login-input-password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="login-eye-btn"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <button type="submit" className="btn-primary flex-1">{t('app.login.sendReset')}</button>
-                  <button type="button" onClick={() => setShowForgot(false)} className="btn-secondary">{t('app.login.back')}</button>
                 </div>
-              </form>
-            )}
-          </div>
 
-          <div className="mt-6">
-            <MottoBanner className="mb-4" />
-            <p className="text-xs text-gray-400 mb-3 text-center">
-              Demo accounts · password: <span className="text-brand-600 font-medium">password123</span>
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  onClick={() => quickLogin(acc.email)}
-                  className="text-left px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-xs hover:border-brand-400 hover:bg-brand-50 transition-colors"
-                >
-                  <span className="text-brand-700 block font-medium">{ROLE_LABELS[acc.role]}</span>
-                  <span className="text-gray-400 truncate block mt-0.5">{acc.email}</span>
+                <button type="submit" disabled={loading} className="login-submit">
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      {t('app.login.signingIn')}
+                    </>
+                  ) : (
+                    <>
+                      {t('app.login.signInBtn')}
+                      <ArrowRight className="w-4 h-4 login-submit-arrow" aria-hidden />
+                    </>
+                  )}
                 </button>
-              ))}
+              </form>
             </div>
-          </div>
+          ) : (
+            <div className="login-form-pane login-form-pane-active" key={`forgot-${panelKey}-${forgotSent ? 'sent' : 'form'}`}>
+              <button type="button" className="login-forgot-back" onClick={closeForgot}>
+                <ArrowLeft className="w-4 h-4" aria-hidden />
+                {t('app.login.back')}
+              </button>
+
+              {!forgotSent ? (
+                <>
+                  <header className="login-form-header">
+                    <h2>{t('app.login.resetTitle')}</h2>
+                    <p>{t('app.login.forgotHint')}</p>
+                  </header>
+
+                  {forgotMessage && forgotError && (
+                    <div className="login-alert login-alert-error" role="alert">
+                      {forgotMessage}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleForgot} className="login-form">
+                    <div className="login-field">
+                      <label htmlFor="forgot-email">{t('app.login.email')}</label>
+                      <div className="login-input-wrap">
+                        <Mail className="login-input-icon" aria-hidden />
+                        <input
+                          id="forgot-email"
+                          className="login-input"
+                          type="email"
+                          autoComplete="email"
+                          required
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="you@laracineschool.rw"
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={forgotLoading} className="login-submit">
+                      {forgotLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                          {t('app.login.sendingReset')}
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" aria-hidden />
+                          {t('app.login.sendReset')}
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="login-forgot-success">
+                  <div className="login-forgot-success-icon" aria-hidden>
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <header className="login-form-header">
+                    <h2>{t('app.login.resetSentTitle')}</h2>
+                    <p>{forgotMessage || t('app.login.resetSentBody')}</p>
+                  </header>
+                  <p className="login-forgot-email-chip">{forgotEmail}</p>
+                  <p className="login-forgot-next">{t('app.login.resetSentNext')}</p>
+                  <button type="button" className="login-submit" onClick={closeForgot}>
+                    {t('app.login.backToSignIn')}
+                    <ArrowRight className="w-4 h-4 login-submit-arrow" aria-hidden />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+
+        <p className="login-footer-motto">Discipline · Intelligence · Innovation</p>
+      </section>
     </div>
   );
 }

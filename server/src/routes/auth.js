@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { signToken, userSelect } from '../lib/auth.js';
 import { authenticate } from '../middleware/auth.js';
 import { ROLE_LABELS, ROLE_PERMISSIONS } from '../config/permissions.js';
+import { issuePasswordReset } from '../lib/passwordReset.js';
+import { validateStrongPassword, PASSWORD_POLICY_HINT } from '../lib/passwordPolicy.js';
 
 const ALLOWED_LANGUAGES = ['en', 'rw', 'sw', 'fr'];
 
@@ -129,25 +130,23 @@ router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    // Always return a generic message to avoid email enumeration
+    const genericMessage = 'If that email exists, a temporary password has been sent. Check your inbox and set a new strong password.';
+
     if (!user || !user.isActive) {
-      return res.json({ message: 'If that email exists, a reset link has been sent.' });
+      return res.json({ message: genericMessage });
     }
 
-    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+    const result = await issuePasswordReset(user, { initiatedBy: 'forgot-password' });
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    if (!result.emailSent) {
+      return res.status(500).json({
+        error: result.emailError || 'Could not send the reset email. Please contact the school office.',
+      });
+    }
 
-    await prisma.passwordResetToken.create({
-      data: { userId: user.id, token, expiresAt },
-    });
-
-    res.json({
-      message: 'If that email exists, a reset link has been sent.',
-      resetToken: token,
-      expiresAt,
-    });
+    res.json({ message: genericMessage });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -155,12 +154,17 @@ router.post('/forgot-password', async (req, res) => {
 
 router.post('/reset-password', async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const { token, password, confirmPassword } = req.body;
     if (!token || !password) {
       return res.status(400).json({ error: 'Token and new password are required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    const strength = validateStrongPassword(password);
+    if (!strength.ok) {
+      return res.status(400).json({ error: strength.error });
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({
@@ -176,12 +180,12 @@ router.post('/reset-password', async (req, res) => {
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetToken.userId },
-        data: { password: hashed },
+        data: { password: hashed, mustChangePassword: false },
       }),
       prisma.passwordResetToken.delete({ where: { id: resetToken.id } }),
     ]);
 
-    res.json({ message: 'Password reset successfully' });
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -205,7 +209,7 @@ router.patch('/me', authenticate, async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, isActive: true, parentId: true },
+      select: { id: true, isActive: true, parentId: true, role: true, teacherId: true },
     });
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'User not found or inactive' });
@@ -230,15 +234,30 @@ router.patch('/me', authenticate, async (req, res) => {
       data.preferredLanguage = value;
     }
 
+    if (phone !== undefined && user.role !== 'STUDENT') {
+      const value = String(phone).trim();
+      if (!value || value.length < 8) {
+        return res.status(400).json({ error: 'Phone number is required (at least 8 characters)' });
+      }
+      data.phone = value;
+    }
+
     if (Object.keys(data).length) {
       await prisma.user.update({ where: { id: user.id }, data });
     }
 
-    if (phone !== undefined && user.parentId) {
+    if (phone !== undefined && user.parentId && data.phone) {
       await prisma.parent.update({
         where: { id: user.parentId },
-        data: { phone: String(phone).trim() },
+        data: { phone: data.phone },
       });
+    }
+
+    if (phone !== undefined && user.teacherId && data.phone) {
+      await prisma.teacher.update({
+        where: { id: user.teacherId },
+        data: { phone: data.phone },
+      }).catch(() => {});
     }
 
     const response = await buildMeResponse(user.id);
@@ -250,12 +269,17 @@ router.patch('/me', authenticate, async (req, res) => {
 
 router.patch('/me/password', authenticate, async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    const strength = validateStrongPassword(newPassword);
+    if (!strength.ok) {
+      return res.status(400).json({ error: strength.error });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -263,18 +287,30 @@ router.patch('/me/password', authenticate, async (req, res) => {
       return res.status(401).json({ error: 'User not found or inactive' });
     }
 
-    const valid = await bcrypt.compare(currentPassword, user.password);
-    if (!valid) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
+    // Temporary / forced reset: skip current password check
+    if (!user.mustChangePassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashed },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashed, mustChangePassword: false },
+      }),
+      prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+    ]);
 
-    res.json({ message: 'Password updated successfully' });
+    res.json({
+      message: 'Password updated successfully',
+      policy: PASSWORD_POLICY_HINT,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
