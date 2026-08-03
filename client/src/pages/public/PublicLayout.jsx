@@ -133,10 +133,12 @@ function MobileGroup({ title, items, open, onToggle }) {
 function PublicShell() {
   const { school, motto, campuses, page, locale, setLocale, locales } = usePublicSite();
   const nav = page('nav');
+  const home = page('home');
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(null);
   const [mobileGroup, setMobileGroup] = useState(null);
+  const [enrollOpen, setEnrollOpen] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
@@ -176,6 +178,7 @@ function PublicShell() {
   const contactLabel = labelFor(nav, locale, 'contact');
   const schoolGroupLabel = labelFor(nav, locale, 'menuSchool', 'school');
   const lifeGroupLabel = labelFor(nav, locale, 'menuLife', 'life');
+  const showEnroll = enrollOpen && location.pathname !== '/admissions/apply';
 
   return (
     <div className="public-site" lang={locale}>
@@ -333,6 +336,19 @@ function PublicShell() {
           © {new Date().getFullYear()} {school?.name || 'École La RACINE'}. {nav.copyrightSuffix || 'All rights reserved.'}
         </div>
       </footer>
+
+      {showEnroll && (home.enrollTitle || home.enrollBody || home.enrollCta) && (
+        <aside className="ps-enroll" aria-label="Admissions">
+          <button type="button" className="ps-enroll-close" aria-label="Dismiss" onClick={() => setEnrollOpen(false)}>
+            <AppIcon name="close" className="w-4 h-4" />
+          </button>
+          {home.enrollTitle && <p className="ps-enroll-kicker">{home.enrollTitle}</p>}
+          {home.enrollBody && <p className="ps-enroll-body">{home.enrollBody}</p>}
+          {home.enrollCta && (
+            <Link to="/admissions/apply" className="ps-btn ps-btn-primary">{home.enrollCta}</Link>
+          )}
+        </aside>
+      )}
 
       <SupportChatWidget />
     </div>

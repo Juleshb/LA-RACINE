@@ -178,7 +178,8 @@ export default function StudentDetail() {
           {
             title: 'III. École de provenance',
             rows: [
-              ['Année', student.previousSchoolYear],
+              ['École', student.previousSchoolName || '—'],
+              ['Année', student.previousSchoolYear || '—'],
               ['Classe', student.previousClass || '—'],
             ],
           },

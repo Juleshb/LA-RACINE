@@ -63,7 +63,7 @@ export function resolveBulletinConfig(stored, grade) {
     const base = BULLETIN_PRESETS[stored.preset];
     return { ...base, terms: stored.terms || DEFAULT_TERMS };
   }
-  const nurseryGrades = ['CRECHE', 'N1', 'N2', 'N3'];
+  const nurseryGrades = ['CRECHE', 'N1', 'N2', 'N3', 'TOP'];
   const preset = nurseryGrades.includes(grade) ? BULLETIN_PRESETS.NURSERY : BULLETIN_PRESETS.STANDARD;
   return { ...preset, terms: DEFAULT_TERMS };
 }

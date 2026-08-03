@@ -127,12 +127,69 @@ router.post('/', async (req, res) => {
     if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot create classes' });
     }
+
+    const name = String(req.body.name || '').trim();
+    let grade = String(req.body.grade || '').trim().toUpperCase();
+    const section = String(req.body.section || '').trim().toUpperCase();
+    const teacherId = req.body.teacherId || null;
+
+    if (!name || !grade || !section) {
+      return res.status(400).json({ error: 'Class name, grade (niveau), and section are required' });
+    }
+
+    // "Top Class" is its own level — don't reuse N3 (often already taken)
+    if (/^top\s*class$/i.test(name) && (grade === 'N3' || grade === 'NURSERY 3')) {
+      grade = 'TOP';
+    }
+
+    const duplicate = await prisma.class.findFirst({
+      where: {
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+        grade,
+        section,
+      },
+      select: { id: true, name: true, grade: true, section: true },
+    });
+    if (duplicate) {
+      const used = await prisma.class.findMany({
+        where: { campusId: req.campusId, academicYearId: req.academicYearId, grade },
+        select: { section: true },
+      });
+      const usedSections = new Set(used.map((c) => c.section));
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const suggested = [...alphabet].find((letter) => !usedSections.has(letter)) || 'Z';
+      return res.status(409).json({
+        error: `A class with niveau ${grade} and section ${section} already exists (“${duplicate.name}”). `
+          + `Each niveau+section can only exist once per school year. `
+          + `Try section ${suggested}, or edit the existing class.`,
+        existingClassId: duplicate.id,
+        existingClassName: duplicate.name,
+        suggestedSection: suggested,
+      });
+    }
+
     const cls = await prisma.class.create({
-      data: { ...req.body, campusId: req.campusId, academicYearId: req.academicYearId },
+      data: {
+        name,
+        grade,
+        section,
+        teacherId,
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+        bulletinConfig: ['CRECHE', 'N1', 'N2', 'N3', 'TOP'].includes(grade)
+          ? { preset: 'NURSERY' }
+          : { preset: 'STANDARD' },
+      },
       include: { teacher: true },
     });
     res.status(201).json(cls);
   } catch (error) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({
+        error: 'A class with this niveau and section already exists for this school year. Use a different section or edit the existing class.',
+      });
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -148,7 +205,37 @@ router.put('/:id', async (req, res) => {
     });
     if (!existing) return res.status(404).json({ error: 'Class not found' });
 
-    const { campusId: _, academicYearId: __, ...data } = req.body;
+    const { campusId: _c, academicYearId: _y, ...raw } = req.body;
+    const data = { ...raw };
+    if (data.name != null) data.name = String(data.name).trim();
+    if (data.grade != null) data.grade = String(data.grade).trim().toUpperCase();
+    if (data.section != null) data.section = String(data.section).trim().toUpperCase();
+    if (data.teacherId === '') data.teacherId = null;
+
+    if (data.name && /^top\s*class$/i.test(data.name) && (data.grade === 'N3' || data.grade === 'NURSERY 3')) {
+      data.grade = 'TOP';
+    }
+
+    const nextGrade = data.grade ?? existing.grade;
+    const nextSection = data.section ?? existing.section;
+    const conflict = await prisma.class.findFirst({
+      where: {
+        campusId: existing.campusId,
+        academicYearId: existing.academicYearId,
+        grade: nextGrade,
+        section: nextSection,
+        NOT: { id: existing.id },
+      },
+      select: { id: true, name: true },
+    });
+    if (conflict) {
+      return res.status(409).json({
+        error: `Another class already uses niveau ${nextGrade} section ${nextSection} (“${conflict.name}”). Choose a different section.`,
+        existingClassId: conflict.id,
+        existingClassName: conflict.name,
+      });
+    }
+
     const cls = await prisma.class.update({
       where: { id: req.params.id },
       data,
@@ -156,6 +243,11 @@ router.put('/:id', async (req, res) => {
     });
     res.json(cls);
   } catch (error) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({
+        error: 'A class with this niveau and section already exists for this school year.',
+      });
+    }
     res.status(500).json({ error: error.message });
   }
 });

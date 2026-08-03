@@ -208,10 +208,13 @@ export default function StudentRegistration({ isParent = false, isPublic = false
       }
     }
     if (stepIndex === 8) {
-      const types = form.documents.map((d) => d.docType);
-      if (!types.includes('BIRTH_CERTIFICATE') || !types.includes('PHOTO')) {
-        setError('Acte de naissance et photo sont obligatoires.');
-        return false;
+      // Documents required only for parent / public online applications
+      if (isParent || isPublic) {
+        const types = form.documents.map((d) => d.docType);
+        if (!types.includes('BIRTH_CERTIFICATE') || !types.includes('PHOTO')) {
+          setError('Acte de naissance et photo sont obligatoires.');
+          return false;
+        }
       }
     }
     return true;
@@ -452,52 +455,86 @@ export default function StudentRegistration({ isParent = false, isPublic = false
           </div>
         )}
 
-        {/* III. Previous school */}
+        {/* III. Previous school / école de provenance */}
         {step === 2 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
-              <Label>Année Scolaire / School year</Label>
-              <select
+              <Label>École de provenance / School comes from</Label>
+              <input
                 className="input"
-                value={form.previousAcademicYearId}
-                disabled={optionsLoading}
-                onChange={(e) => {
-                  const year = academicYears.find((y) => y.id === e.target.value);
-                  setForm((f) => ({
-                    ...f,
-                    previousAcademicYearId: e.target.value,
-                    previousClassId: '',
-                    previousSchoolYear: year?.name || '',
-                    previousClass: '',
-                  }));
-                }}
-              >
-                <option value="">{optionsLoading ? 'Chargement…' : '—'}</option>
-                {academicYears.map((y) => (
-                  <option key={y.id} value={y.id}>{y.name}{y.isActive ? ' (active)' : ''}</option>
-                ))}
-              </select>
+                value={form.previousSchoolName}
+                onChange={(e) => set('previousSchoolName', e.target.value)}
+                placeholder="Nom de l'école précédente / Previous school name"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank if the child is joining La Racine for the first time with no previous school.
+              </p>
             </div>
-            <div>
-              <Label>Classe / Class</Label>
-              <select
-                className="input"
-                value={form.previousClassId}
-                disabled={!form.previousAcademicYearId || optionsLoading}
-                onChange={(e) => {
-                  const cls = previousYearClasses.find((c) => c.id === e.target.value);
-                  setForm((f) => ({
-                    ...f,
-                    previousClassId: e.target.value,
-                    previousClass: cls ? classLabel(cls) : '',
-                  }));
-                }}
-              >
-                <option value="">—</option>
-                {previousYearClasses.map((c) => (
-                  <option key={c.id} value={c.id}>{classLabel(c)}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Année scolaire précédente (à La Racine, si applicable)</Label>
+                <select
+                  className="input"
+                  value={form.previousAcademicYearId}
+                  disabled={optionsLoading}
+                  onChange={(e) => {
+                    const year = academicYears.find((y) => y.id === e.target.value);
+                    setForm((f) => ({
+                      ...f,
+                      previousAcademicYearId: e.target.value,
+                      previousClassId: '',
+                      previousSchoolYear: year?.name || '',
+                      previousClass: '',
+                    }));
+                  }}
+                >
+                  <option value="">{optionsLoading ? 'Chargement…' : '—'}</option>
+                  {academicYears.map((y) => (
+                    <option key={y.id} value={y.id}>{y.name}{y.isActive ? ' (active)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Classe précédente (à La Racine, si applicable)</Label>
+                <select
+                  className="input"
+                  value={form.previousClassId}
+                  disabled={!form.previousAcademicYearId || optionsLoading}
+                  onChange={(e) => {
+                    const cls = previousYearClasses.find((c) => c.id === e.target.value);
+                    setForm((f) => ({
+                      ...f,
+                      previousClassId: e.target.value,
+                      previousClass: cls ? classLabel(cls) : '',
+                    }));
+                  }}
+                >
+                  <option value="">—</option>
+                  {previousYearClasses.map((c) => (
+                    <option key={c.id} value={c.id}>{classLabel(c)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Année scolaire (texte libre)</Label>
+                <input
+                  className="input"
+                  value={form.previousSchoolYear}
+                  onChange={(e) => set('previousSchoolYear', e.target.value)}
+                  placeholder="ex. 2024-2025"
+                />
+              </div>
+              <div>
+                <Label>Classe / niveau précédent (texte libre)</Label>
+                <input
+                  className="input"
+                  value={form.previousClass}
+                  onChange={(e) => set('previousClass', e.target.value)}
+                  placeholder="ex. Primary 4 / P4"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -630,15 +667,17 @@ export default function StudentRegistration({ isParent = false, isPublic = false
         {step === 8 && (
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Téléchargez les pièces jointes requises. Acte de naissance et photo sont obligatoires.
-              {' '}Max {MAX_FILE_SIZE_MB} MB par fichier (PDF ou image).
+              {(isParent || isPublic)
+                ? `Téléchargez les pièces jointes requises. Acte de naissance et photo sont obligatoires. Max ${MAX_FILE_SIZE_MB} MB par fichier (PDF ou image).`
+                : `Pièces jointes optionnelles pour l'inscription admin. Vous pouvez les ajouter plus tard. Max ${MAX_FILE_SIZE_MB} MB par fichier (PDF ou image).`}
             </p>
             {DOCUMENT_TYPES.map((dt) => {
+              const required = (isParent || isPublic) && dt.required;
               const uploaded = form.documents.find((d) => d.docType === dt.value);
               return (
                 <div key={dt.value} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                   <div>
-                    <p className="font-medium text-sm">{dt.label}{dt.required && <span className="text-red-500 ml-1">*</span>}</p>
+                    <p className="font-medium text-sm">{dt.label}{required && <span className="text-red-500 ml-1">*</span>}</p>
                     {uploaded && (
                       <p className="text-xs text-gray-400 mt-1">
                         Selected: {uploaded.fileName}

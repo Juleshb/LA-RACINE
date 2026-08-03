@@ -159,6 +159,7 @@ export const GRADE_LABELS = {
   N1: '1ère année Maternelle / Nursery 1',
   N2: '2ème année Maternelle / Nursery 2',
   N3: '3ème année Maternelle / Nursery 3',
+  TOP: 'Top Class',
   P1: '1ère année Primaire / Primary 1',
   P2: '2ème année Primaire / Primary 2',
   P3: '3ème année Primaire / Primary 3',
@@ -168,7 +169,7 @@ export const GRADE_LABELS = {
 };
 
 const PRIMARY_GRADES = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
-const NURSERY_GRADES = ['CRECHE', 'N1', 'N2', 'N3'];
+const NURSERY_GRADES = ['CRECHE', 'N1', 'N2', 'N3', 'TOP'];
 
 export function buildAllCurricula() {
   const curricula = {};

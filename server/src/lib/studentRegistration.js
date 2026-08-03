@@ -6,12 +6,32 @@ import prisma from './prisma.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/students');
 
+/**
+ * Next school student code for a campus + academic year.
+ * Uses max existing numeric suffix (not row count) so deletions / gaps never collide.
+ */
 export async function generateStudentId(campusId, academicYearId) {
   const year = new Date().getFullYear();
-  const count = await prisma.student.count({
-    where: { campusId, academicYearId },
+  const prefix = `LRS-${year}-`;
+
+  const existing = await prisma.student.findMany({
+    where: {
+      campusId,
+      academicYearId,
+      studentId: { startsWith: prefix },
+    },
+    select: { studentId: true },
   });
-  return `LRS-${year}-${String(count + 1).padStart(3, '0')}`;
+
+  let max = 0;
+  for (const row of existing) {
+    const match = String(row.studentId || '').match(/^LRS-\d{4}-(\d+)$/i);
+    if (!match) continue;
+    const n = Number.parseInt(match[1], 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+
+  return `${prefix}${String(max + 1).padStart(3, '0')}`;
 }
 
 export function parseDate(value) {
@@ -61,6 +81,7 @@ export function buildStudentData(body, campusId, academicYearId, studentId) {
     village: fields.village || null,
     emergencyContactName: fields.emergencyContactName || null,
     emergencyContactPhone: fields.emergencyContactPhone || null,
+    previousSchoolName: fields.previousSchoolName || null,
     previousSchoolYear: fields.previousSchoolYear || null,
     previousClass: fields.previousClass || null,
     registrationYear: fields.registrationYear || null,

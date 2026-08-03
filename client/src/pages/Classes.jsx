@@ -122,8 +122,18 @@ export default function Classes() {
               required
               placeholder={t('pageBody.classes.namePlaceholder')}
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => {
+                const name = e.target.value;
+                const next = { ...form, name };
+                if (/^top\s*class$/i.test(name.trim()) && (!form.grade || form.grade === 'N3')) {
+                  next.grade = 'TOP';
+                }
+                setForm(next);
+              }}
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Top Class uses niveau <strong>TOP</strong> (not N3). Niveau + section must be unique per year.
+            </p>
           </div>
           <div>
             <label className="label">{t('ui.homeroomTeacher')}</label>

@@ -287,8 +287,29 @@ export async function getWebsiteStats() {
   };
 }
 
+function deepMergeObjects(base, overlay) {
+  if (!base || typeof base !== 'object' || Array.isArray(base)) return overlay;
+  if (!overlay || typeof overlay !== 'object' || Array.isArray(overlay)) return overlay ?? base;
+  const out = { ...base, ...overlay };
+  for (const key of Object.keys(overlay)) {
+    const b = base[key];
+    const o = overlay[key];
+    if (
+      b
+      && o
+      && typeof b === 'object'
+      && typeof o === 'object'
+      && !Array.isArray(b)
+      && !Array.isArray(o)
+    ) {
+      out[key] = deepMergeObjects(b, o);
+    }
+  }
+  return out;
+}
+
 function mergePageData(defaultData, currentData) {
   if (!defaultData || typeof defaultData !== 'object' || Array.isArray(defaultData)) return currentData;
   if (!currentData || typeof currentData !== 'object' || Array.isArray(currentData)) return defaultData;
-  return { ...defaultData, ...currentData };
+  return deepMergeObjects(defaultData, currentData);
 }

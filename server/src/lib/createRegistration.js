@@ -5,7 +5,7 @@ import {
   saveDocuments,
 } from './studentRegistration.js';
 
-export function validateRegistrationPayload(body) {
+export function validateRegistrationPayload(body, { requireDocuments = true } = {}) {
   const {
     documents,
     classId,
@@ -35,11 +35,13 @@ export function validateRegistrationPayload(body) {
     return { error: 'Payment method is required' };
   }
 
-  const requiredDocs = ['BIRTH_CERTIFICATE', 'PHOTO'];
-  const uploadedTypes = (documents || []).map((d) => d.docType);
-  const missingDocs = requiredDocs.filter((t) => !uploadedTypes.includes(t));
-  if (missingDocs.length) {
-    return { error: 'Birth certificate and photo are required attachments' };
+  if (requireDocuments) {
+    const requiredDocs = ['BIRTH_CERTIFICATE', 'PHOTO'];
+    const uploadedTypes = (documents || []).map((d) => d.docType);
+    const missingDocs = requiredDocs.filter((t) => !uploadedTypes.includes(t));
+    if (missingDocs.length) {
+      return { error: 'Birth certificate and photo are required attachments' };
+    }
   }
 
   return {
@@ -55,9 +57,10 @@ export async function createStudentRegistration({
   body,
   parentId = null,
   parentSubmitted = false,
+  requireDocuments = parentSubmitted,
   studentInclude,
 }) {
-  const validated = validateRegistrationPayload(body);
+  const validated = validateRegistrationPayload(body, { requireDocuments });
   if (validated.error) {
     const err = new Error(validated.error);
     err.status = 400;
@@ -84,7 +87,6 @@ export async function createStudentRegistration({
     throw err;
   }
 
-  const studentId = await generateStudentId(campusId, academicYear.id);
   const registrationFields = {
     ...rest,
     classId,
@@ -93,21 +95,39 @@ export async function createStudentRegistration({
     registrationStatus: 'PENDING',
   };
 
-  const data = buildStudentData(
-    registrationFields,
-    campusId,
-    academicYear.id,
-    studentId,
-  );
+  let student;
+  let studentId;
+  const maxAttempts = 6;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    studentId = await generateStudentId(campusId, academicYear.id);
+    const data = buildStudentData(
+      registrationFields,
+      campusId,
+      academicYear.id,
+      studentId,
+    );
 
-  const student = await prisma.student.create({
-    data: {
-      ...data,
-      parentId,
-      parentSubmitted,
-    },
-    include: studentInclude,
-  });
+    try {
+      student = await prisma.student.create({
+        data: {
+          ...data,
+          parentId,
+          parentSubmitted,
+        },
+        include: studentInclude,
+      });
+      break;
+    } catch (error) {
+      const target = error?.meta?.target;
+      const hitsStudentId = Array.isArray(target)
+        ? target.includes('studentId')
+        : String(target || '').includes('studentId');
+      const isUnique = error?.code === 'P2002' && hitsStudentId;
+      if (!isUnique || attempt === maxAttempts - 1) {
+        throw error;
+      }
+    }
+  }
 
   const savedDocs = await saveDocuments(student.id, studentId, documents);
 

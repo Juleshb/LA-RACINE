@@ -248,6 +248,7 @@ model Student {
   emergencyContactPhone String?
 
   // Previous school
+  previousSchoolName   String?
   previousSchoolYear   String?
   previousClass        String?
 

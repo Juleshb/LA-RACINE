@@ -53,9 +53,85 @@ const defaults = {
     home: {
       heroImageUrl: HERO,
       heroVideoUrl: HERO_VIDEO,
-      heroLine: 'A bilingual school in Rubavu where discipline, intelligence, and innovation shape every learner.',
-      heroCtaPrimary: 'Start admissions',
-      heroCtaSecondary: 'Visit our campuses',
+      heroEyebrow: 'Bilingual school · Rubavu & Gisenyi',
+      heroTitle: 'Shaping bright futures through quality education',
+      heroLine: 'A calm, rigorous bilingual education where discipline, intelligence, and innovation shape every learner.',
+      heroCtaPrimary: 'Apply now',
+      heroCtaSecondary: 'Why La Racine',
+      heroSlides: [
+        {
+          eyebrow: 'Bilingual school · Rubavu',
+          title: 'Shaping bright futures through quality education',
+          body: 'A world-class bilingual education in English and French — from early years through primary.',
+          ctaPrimary: 'Apply now',
+          ctaPrimaryTo: '/admissions/apply',
+          ctaSecondary: 'Why La Racine',
+          ctaSecondaryTo: '/about',
+          imageUrl: HERO,
+        },
+        {
+          eyebrow: 'Rubavu & Gisenyi',
+          title: 'Nurturing excellence across our campuses',
+          body: 'Modern classrooms and dedicated teachers helping every student reach their full potential.',
+          ctaPrimary: 'Our campuses',
+          ctaPrimaryTo: '/locations',
+          ctaSecondary: 'Contact us',
+          ctaSecondaryTo: '/contact',
+          imageUrl: CLASSROOM,
+        },
+        {
+          eyebrow: 'Nursery to primary',
+          title: 'Learning that is clear, calm, and ambitious',
+          body: 'Structured programs that prepare children for the next stage of life — with families as partners.',
+          ctaPrimary: 'Our programs',
+          ctaPrimaryTo: '/academics',
+          ctaSecondary: 'Student life',
+          ctaSecondaryTo: '/gallery',
+          imageUrl: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=2400&q=80',
+        },
+      ],
+      stats: { campuses: 2, students: '400+', languages: '2', focus: '100%' },
+      statCampusesLabel: 'Campuses in Rubavu',
+      statStudentsLabel: 'Students growing with us',
+      statLanguagesLabel: 'Languages of instruction',
+      statFocusLabel: 'Commitment to every child',
+      programsLabel: 'Our educational programs',
+      programsTitle: 'Excellence at every stage',
+      programsLead: 'From early childhood to primary, programs designed to unlock every student’s potential.',
+      programsExplore: 'Explore program',
+      programs: [
+        {
+          tag: 'Early years',
+          title: 'Nursery',
+          body: 'A safe, stimulating environment where young minds begin through play-based learning and bilingual immersion.',
+          points: ['Play-based learning', 'Bilingual immersion from day one'],
+          imageUrl: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1200&q=80',
+          to: '/academics',
+          cta: 'Explore Nursery',
+        },
+        {
+          tag: 'Foundation years',
+          title: 'Primary',
+          body: 'Strong foundations in literacy, numeracy, and critical thinking — with clear assessment and bulletin reporting.',
+          points: ['Core academics & languages', 'Critical thinking & creativity'],
+          imageUrl: CLASSROOM,
+          to: '/academics',
+          cta: 'Explore Primary',
+        },
+        {
+          tag: 'Growing minds',
+          title: 'Beyond the desk',
+          body: 'Homework, library, and activities that stretch talent outside the timetable — so children grow as whole people.',
+          points: ['Homework & e-learning', 'Clubs and school life'],
+          imageUrl: HERO,
+          to: '/academics',
+          cta: 'Explore learning life',
+        },
+      ],
+      newsLabel: 'Latest updates',
+      newsTitle: "What's happening at our school",
+      newsLead: 'Stay informed with the latest news, events, and achievements from our campuses.',
+      newsAll: 'View all news',
       whoLabel: 'Who we are',
       whoTitle: 'Rooted in Rubavu. Growing confident minds.',
       whoLead: 'École La RACINE serves families across Gisenyi and Rubavu with a calm, rigorous learning culture — from early years through primary.',
@@ -63,6 +139,18 @@ const defaults = {
       whoCtaAcademics: 'Academic life',
       whoImageUrl: CLASSROOM,
       whoImageAlt: 'Students learning together in a bright classroom',
+      whyLabel: 'Our commitment',
+      whyTitle: 'Why families choose La Racine',
+      whyLead: 'Education that nurtures academic excellence and character — preparing students for a confident future.',
+      whyCaption: 'Among Rubavu’s trusted bilingual schools',
+      whyChoose: [
+        { title: 'Guiding hearts', body: 'Pastoral care and clear values help children feel safe, respected, and ready to learn.' },
+        { title: 'Shaping minds', body: 'Ambitious teaching, bilingual confidence, and transparent progress for every learner.' },
+        { title: 'Bilingual excellence', body: 'French and English woven through the school day — opening doors at home and beyond.' },
+        { title: 'Discipline & well-being', body: 'We never compromise on structure, kindness, and a calm learning environment.' },
+        { title: 'Healthy routines', body: 'School life that supports concentration, friendship, and healthy habits.' },
+        { title: 'Exceptional care', body: 'We treat parents as partners — with clear communication through the family portal.' },
+      ],
       promiseLabel: 'Our promise',
       promiseTitle: 'Discipline · Intelligence · Innovation',
       promiseLead: 'Three values guide teaching, pastoral care, and every partnership with parents — so children leave ready for the next stage of life.',
@@ -71,12 +159,39 @@ const defaults = {
         { title: 'Intelligence', body: 'Curiosity, reading, reasoning, and bilingual confidence across the school day.' },
         { title: 'Innovation', body: 'Modern tools, creative projects, and teachers who keep improving how children learn.' },
       ],
-      nextLabel: 'Next step',
+      galleryLabel: 'Capturing moments',
+      galleryTitle: 'School life gallery',
+      galleryLead: 'The vibrant life at La Racine — learning, activities, and memorable campus moments.',
+      galleryAll: 'Open full gallery',
+      voicesLabel: 'What they say',
+      voicesTitle: 'Voices of our community',
+      voicesLead: 'Hear from parents and students about their experience at La Racine.',
+      testimonials: [
+        {
+          quote: 'La Racine gives our child clear routines and warm teachers. We always know how learning is going through the portal.',
+          name: 'Parent family',
+          role: 'Primary · Rubavu',
+        },
+        {
+          quote: 'The bilingual classroom helped our daughter speak with confidence in both French and English.',
+          name: 'Parent family',
+          role: 'Nursery · Gisenyi',
+        },
+        {
+          quote: 'Discipline here is kind but firm. Children feel safe, and teachers take every learner seriously.',
+          name: 'Parent family',
+          role: 'School community',
+        },
+      ],
+      nextLabel: 'Begin your child’s journey',
       nextTitle: 'Ready to join La Racine?',
-      nextLead: 'Tour a campus, speak with admissions, or open the family portal to begin registration.',
-      nextCtaAdmissions: 'Admissions guide',
-      nextCtaContact: 'Talk to us',
+      nextLead: 'Admissions are open across our Rubavu campuses. Apply online in minutes, or contact the school to visit.',
+      nextCtaAdmissions: 'Apply now',
+      nextCtaContact: 'Book a visit',
       nextCtaPortal: 'Family portal',
+      enrollTitle: 'Admissions are open',
+      enrollBody: 'Applications for the new academic year are being accepted.',
+      enrollCta: 'Apply now',
     },
     about: {
       label: 'About',
@@ -169,9 +284,75 @@ const defaults = {
     home: {
       heroImageUrl: HERO,
       heroVideoUrl: HERO_VIDEO,
-      heroLine: 'Une école bilingue à Rubavu où la discipline, l’intelligence et l’innovation forment chaque élève.',
-      heroCtaPrimary: 'Commencer les admissions',
-      heroCtaSecondary: 'Visiter nos campus',
+      heroEyebrow: 'École bilingue · Rubavu & Gisenyi',
+      heroTitle: 'Former des avenirs brillants par une éducation de qualité',
+      heroLine: 'Une éducation bilingue calme et exigeante où la discipline, l’intelligence et l’innovation forment chaque élève.',
+      heroCtaPrimary: 'Postuler',
+      heroCtaSecondary: 'Pourquoi La Racine',
+      heroSlides: [
+        {
+          eyebrow: 'École bilingue · Rubavu',
+          title: 'Former des avenirs brillants par une éducation de qualité',
+          body: 'Une éducation bilingue en français et en anglais — de la maternelle au primaire.',
+          ctaPrimary: 'Postuler',
+          ctaPrimaryTo: '/admissions/apply',
+          ctaSecondary: 'Pourquoi La Racine',
+          ctaSecondaryTo: '/about',
+          imageUrl: HERO,
+        },
+        {
+          eyebrow: 'Rubavu & Gisenyi',
+          title: 'L’excellence sur nos campus',
+          body: 'Des classes modernes et des enseignants dédiés pour que chaque élève atteigne son potentiel.',
+          ctaPrimary: 'Nos campus',
+          ctaPrimaryTo: '/locations',
+          ctaSecondary: 'Nous contacter',
+          ctaSecondaryTo: '/contact',
+          imageUrl: CLASSROOM,
+        },
+      ],
+      stats: { campuses: 2, students: '400+', languages: '2', focus: '100%' },
+      statCampusesLabel: 'Campus à Rubavu',
+      statStudentsLabel: 'Élèves qui grandissent avec nous',
+      statLanguagesLabel: 'Langues d’enseignement',
+      statFocusLabel: 'Engagement pour chaque enfant',
+      programsLabel: 'Nos programmes',
+      programsTitle: 'L’excellence à chaque étape',
+      programsLead: 'De la petite enfance au primaire, des programmes conçus pour révéler le potentiel de chaque élève.',
+      programsExplore: 'Découvrir le programme',
+      programs: [
+        {
+          tag: 'Petite enfance',
+          title: 'Maternelle',
+          body: 'Un environnement sûr et stimulant où les jeunes esprits commencent par le jeu et l’immersion bilingue.',
+          points: ['Apprentissage par le jeu', 'Immersion bilingue dès le premier jour'],
+          imageUrl: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1200&q=80',
+          to: '/academics',
+          cta: 'Découvrir la maternelle',
+        },
+        {
+          tag: 'Fondations',
+          title: 'Primaire',
+          body: 'Des bases solides en lecture, calcul et pensée critique — avec un suivi clair et des bulletins.',
+          points: ['Savoirs fondamentaux & langues', 'Créativité et raisonnement'],
+          imageUrl: CLASSROOM,
+          to: '/academics',
+          cta: 'Découvrir le primaire',
+        },
+        {
+          tag: 'Esprit en croissance',
+          title: 'Au-delà de la classe',
+          body: 'Devoirs, bibliothèque et activités qui étendent les talents hors de l’emploi du temps.',
+          points: ['Devoirs & e-learning', 'Clubs et vie scolaire'],
+          imageUrl: HERO,
+          to: '/academics',
+          cta: 'Découvrir la vie scolaire',
+        },
+      ],
+      newsLabel: 'Actualités',
+      newsTitle: 'Ce qui se passe à l’école',
+      newsLead: 'Restez informés des dernières nouvelles, événements et réussites de nos campus.',
+      newsAll: 'Toutes les actualités',
       whoLabel: 'Qui nous sommes',
       whoTitle: 'Enracinés à Rubavu. Des esprits confiants.',
       whoLead: 'École La RACINE accompagne les familles de Gisenyi et Rubavu avec une culture d’apprentissage calme et exigeante — de la maternelle au primaire.',
@@ -179,6 +360,18 @@ const defaults = {
       whoCtaAcademics: 'Vie scolaire',
       whoImageUrl: CLASSROOM,
       whoImageAlt: 'Élèves apprenant ensemble dans une classe lumineuse',
+      whyLabel: 'Notre engagement',
+      whyTitle: 'Pourquoi les familles choisissent La Racine',
+      whyLead: 'Une éducation qui nourrit l’excellence académique et le caractère — pour un avenir confiant.',
+      whyCaption: 'Une école bilingue de confiance à Rubavu',
+      whyChoose: [
+        { title: 'Guider les cœurs', body: 'Un accompagnement pastoral et des valeurs claires pour que chaque enfant se sente en sécurité.' },
+        { title: 'Former les esprits', body: 'Un enseignement ambitieux, une confiance bilingue et une progression transparente.' },
+        { title: 'Excellence bilingue', body: 'Le français et l’anglais tissent la journée scolaire — ouvrant des portes ici et ailleurs.' },
+        { title: 'Discipline & bien-être', body: 'Nous ne transigeons pas sur la structure, la bienveillance et un climat calme.' },
+        { title: 'Routines saines', body: 'Une vie scolaire qui soutient la concentration, l’amitié et de bonnes habitudes.' },
+        { title: 'Soin exceptionnel', body: 'Les parents sont des partenaires — avec une communication claire via le portail famille.' },
+      ],
       promiseLabel: 'Notre engagement',
       promiseTitle: 'Discipline · Intelligence · Innovation',
       promiseLead: 'Trois valeurs guident l’enseignement, l’accompagnement et le partenariat avec les parents — pour que chaque enfant soit prêt pour la suite.',
@@ -187,12 +380,39 @@ const defaults = {
         { title: 'Intelligence', body: 'Curiosité, lecture, raisonnement et confiance bilingue tout au long de la journée.' },
         { title: 'Innovation', body: 'Outils modernes, projets créatifs et enseignants qui améliorent sans cesse les apprentissages.' },
       ],
-      nextLabel: 'Prochaine étape',
+      galleryLabel: 'Instants capturés',
+      galleryTitle: 'Galerie de la vie scolaire',
+      galleryLead: 'La vie vibrante à La Racine — apprentissages, activités et moments mémorables.',
+      galleryAll: 'Ouvrir la galerie',
+      voicesLabel: 'Ils en parlent',
+      voicesTitle: 'Voix de notre communauté',
+      voicesLead: 'Écoutez parents et élèves parler de leur expérience à La Racine.',
+      testimonials: [
+        {
+          quote: 'La Racine offre à notre enfant des routines claires et des enseignants bienveillants. Le portail nous tient informés.',
+          name: 'Famille parent',
+          role: 'Primaire · Rubavu',
+        },
+        {
+          quote: 'La classe bilingue a aidé notre fille à parler avec confiance en français et en anglais.',
+          name: 'Famille parent',
+          role: 'Maternelle · Gisenyi',
+        },
+        {
+          quote: 'La discipline est ferme et bienveillante. Les enfants se sentent en sécurité.',
+          name: 'Famille parent',
+          role: 'Communauté scolaire',
+        },
+      ],
+      nextLabel: 'Commencez le parcours de votre enfant',
       nextTitle: 'Prêt à rejoindre La Racine ?',
-      nextLead: 'Visitez un campus, parlez aux admissions, ou ouvrez le portail famille pour commencer l’inscription.',
-      nextCtaAdmissions: 'Guide des admissions',
-      nextCtaContact: 'Nous contacter',
+      nextLead: 'Les admissions sont ouvertes sur nos campus de Rubavu. Postulez en ligne en quelques minutes, ou contactez l’école pour une visite.',
+      nextCtaAdmissions: 'Postuler',
+      nextCtaContact: 'Réserver une visite',
       nextCtaPortal: 'Portail famille',
+      enrollTitle: 'Admissions ouvertes',
+      enrollBody: 'Les candidatures pour la nouvelle année scolaire sont acceptées.',
+      enrollCta: 'Postuler',
     },
     about: {
       label: 'À propos',
@@ -499,9 +719,34 @@ export function getPageLabel(slug) {
 }
 
 export function getDefaultPageData(slug, locale) {
-  const loc = defaults[locale] || defaults.en;
-  const data = loc?.[slug] || defaults.en[slug] || getExtraPageDefault(slug, locale);
-  return structuredClone(data);
+  const enData = defaults.en?.[slug];
+  const locData = (defaults[locale] || defaults.en)?.[slug];
+  const extra = () => getExtraPageDefault(slug, locale);
+
+  if (!enData && !locData) return structuredClone(extra());
+  if (locale === 'en' || !enData) return structuredClone(locData || enData || extra());
+  if (!locData) return structuredClone(enData);
+
+  // Incomplete locales (sw/rw) inherit missing home keys from English
+  const merge = (base, overlay) => {
+    if (!base || typeof base !== 'object' || Array.isArray(base)) return overlay;
+    if (!overlay || typeof overlay !== 'object' || Array.isArray(overlay)) return overlay ?? base;
+    const out = { ...base, ...overlay };
+    for (const key of Object.keys(overlay)) {
+      const b = base[key];
+      const o = overlay[key];
+      if (
+        b && o
+        && typeof b === 'object' && typeof o === 'object'
+        && !Array.isArray(b) && !Array.isArray(o)
+      ) {
+        out[key] = merge(b, o);
+      }
+    }
+    return out;
+  };
+
+  return structuredClone(merge(enData, locData));
 }
 
 function getExtraPageDefault(slug, locale) {

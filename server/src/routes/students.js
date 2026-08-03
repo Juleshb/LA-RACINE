@@ -153,6 +153,7 @@ router.post('/register', async (req, res) => {
       campusId: req.campusId,
       body: req.body,
       parentSubmitted: false,
+      requireDocuments: false,
       studentInclude,
     });
 

@@ -26,6 +26,7 @@ import { api } from '../lib/api';
 import PageHeader from '../components/PageHeader';
 import { useCampus } from '../context/CampusContext';
 import { useTranslation } from '../context/LanguageContext';
+import HomeEditor from './cms/HomeEditor';
 
 const LOCALES = [
   { code: 'en', label: 'English', short: 'EN' },
@@ -117,7 +118,7 @@ function WebsiteDashboard({ stats, loading, onOpenPage, campusBase }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-brand-100 bg-gradient-to-r from-brand-600 to-emerald-700 p-5 text-white shadow-sm">
+      <div className="rounded-2xl border border-brand-100 bg-gradient-to-r from-brand-600 to-sky-700 p-5 text-white shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">Website CMS</p>
@@ -1667,6 +1668,7 @@ export default function WebsiteCms() {
   const isEvents = slug === 'events';
   const isAnnouncements = slug === 'announcements';
   const isGallery = slug === 'gallery';
+  const isHome = slug === 'home';
   const currentPageCoverage = (stats?.pageCoverage || []).find((p) => p.slug === slug);
   const localeStatus = Object.fromEntries(
     (currentPageCoverage?.locales || []).map((item) => [item.code, item]),
@@ -1891,6 +1893,8 @@ export default function WebsiteCms() {
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="w-7 h-7 animate-spin text-brand-600" />
                 </div>
+              ) : isHome ? (
+                <HomeEditor data={data} onChange={setEditorData} />
               ) : isNews ? (
                 <NewsEditor data={data} onChange={setEditorData} />
               ) : isEvents ? (

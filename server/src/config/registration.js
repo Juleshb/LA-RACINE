@@ -8,6 +8,7 @@ export const CLASS_LEVELS = [
   { value: 'N1', label: '1ère année Maternelle / Nursery 1', labelFr: '1ère année Maternelle', labelEn: 'Nursery 1', labelRw: 'N1' },
   { value: 'N2', label: '2ème année Maternelle / Nursery 2', labelFr: '2ème année Maternelle', labelEn: 'Nursery 2', labelRw: 'N2' },
   { value: 'N3', label: '3ème année Maternelle / Nursery 3', labelFr: '3ème année Maternelle', labelEn: 'Nursery 3', labelRw: 'N3' },
+  { value: 'TOP', label: 'Top Class', labelFr: 'Top Class', labelEn: 'Top Class', labelRw: 'Top Class' },
   { value: 'P1', label: '1ère année Primaire / Primary 1', labelFr: '1ère année Primaire', labelEn: 'Primary 1', labelRw: 'P1' },
   { value: 'P2', label: '2ème année Primaire / Primary 2', labelFr: '2ème année Primaire', labelEn: 'Primary 2', labelRw: 'P2' },
   { value: 'P3', label: '3ème année Primaire / Primary 3', labelFr: '3ème année Primaire', labelEn: 'Primary 3', labelRw: 'P3' },
