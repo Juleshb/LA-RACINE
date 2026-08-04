@@ -7,6 +7,7 @@ import { ROLE_LABELS, ROLE_PERMISSIONS, isManagerRole } from '../config/permissi
 import { issuePasswordReset } from '../lib/passwordReset.js';
 import { validateStrongPassword, PASSWORD_POLICY_HINT } from '../lib/passwordPolicy.js';
 import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
+import { isOtpEnabled } from '../lib/appSettings.js';
 
 const ALLOWED_LANGUAGES = ['en', 'rw', 'sw', 'fr'];
 
@@ -122,6 +123,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (!(await isOtpEnabled())) {
+      return res.json(await issueLoginSession(user));
+    }
+
     const otp = await createAndSendOtp({
       userId: user.id,
       email: user.email,
@@ -143,6 +148,9 @@ router.post('/login', async (req, res) => {
 
 router.post('/login/verify-otp', async (req, res) => {
   try {
+    if (!(await isOtpEnabled())) {
+      return res.status(400).json({ error: 'OTP login is currently disabled. Sign in with email and password.' });
+    }
     const { challengeId, code } = req.body;
     if (!challengeId || !code) {
       return res.status(400).json({ error: 'Verification code is required' });
@@ -170,6 +178,9 @@ router.post('/login/verify-otp', async (req, res) => {
 
 router.post('/login/resend-otp', async (req, res) => {
   try {
+    if (!(await isOtpEnabled())) {
+      return res.status(400).json({ error: 'OTP login is currently disabled. Sign in with email and password.' });
+    }
     const { challengeId } = req.body;
     if (!challengeId) {
       return res.status(400).json({ error: 'Challenge id is required' });

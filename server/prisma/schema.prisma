@@ -119,6 +119,15 @@ model AuthOtpChallenge {
   @@index([expiresAt])
 }
 
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+  createdAt DateTime @default(now())
+}
+
 model PasswordResetToken {
   id                 String   @id @default(uuid())
   userId             String

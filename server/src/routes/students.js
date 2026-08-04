@@ -19,6 +19,7 @@ import {
 import { createStudentRegistration } from '../lib/createRegistration.js';
 import { studentDuplicateKey, buildDuplicateIndex } from '../lib/studentDuplicate.js';
 import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
+import { isOtpEnabled } from '../lib/appSettings.js';
 
 const router = Router();
 const serverRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -747,6 +748,17 @@ router.post('/:id/request-delete-otp', async (req, res) => {
     });
     if (!existing) return res.status(404).json({ error: 'Student not found' });
 
+    const studentLabel = `${existing.lastName || ''} ${existing.firstName || ''}`.trim()
+      || existing.studentId
+      || existing.id;
+
+    if (!(await isOtpEnabled())) {
+      return res.json({
+        requiresOtp: false,
+        studentName: studentLabel,
+      });
+    }
+
     const actor = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: { id: true, email: true, firstName: true },
@@ -754,10 +766,6 @@ router.post('/:id/request-delete-otp', async (req, res) => {
     if (!actor?.email) {
       return res.status(400).json({ error: 'Your account has no email for OTP verification' });
     }
-
-    const studentLabel = `${existing.lastName || ''} ${existing.firstName || ''}`.trim()
-      || existing.studentId
-      || existing.id;
 
     const otp = await createAndSendOtp({
       userId: actor.id,
@@ -785,18 +793,20 @@ router.delete('/:id', async (req, res) => {
     if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete student records' });
     }
+    const otpOn = await isOtpEnabled();
     const { challengeId, code } = req.body || {};
-    if (!challengeId || !code) {
-      return res.status(400).json({ error: 'OTP verification is required to delete a student' });
+    if (otpOn) {
+      if (!challengeId || !code) {
+        return res.status(400).json({ error: 'OTP verification is required to delete a student' });
+      }
+      await verifyOtpChallenge({
+        challengeId,
+        code,
+        purpose: OTP_PURPOSE.DELETE_STUDENT,
+        userId: req.user.id,
+        metaMatch: { studentId: req.params.id },
+      });
     }
-
-    await verifyOtpChallenge({
-      challengeId,
-      code,
-      purpose: OTP_PURPOSE.DELETE_STUDENT,
-      userId: req.user.id,
-      metaMatch: { studentId: req.params.id },
-    });
 
     const scope = await studentScopeWhere(req);
     const existing = await prisma.student.findFirst({

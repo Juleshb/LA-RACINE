@@ -127,6 +127,9 @@ export const api = {
 
   getSchool: () => request('/school'),
   updateSchool: (id, data) => request(`/school/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getSecuritySettings: () => request('/settings/security'),
+  updateSecuritySettings: (data) =>
+    request('/settings/security', { method: 'PUT', body: JSON.stringify(data) }),
 
   getStudents: (params = {}) => {
     const q = new URLSearchParams();

@@ -36,6 +36,7 @@ import verifyRoutes from './routes/verify.js';
 import publicRoutes from './routes/public.js';
 import websiteRoutes from './routes/website.js';
 import contactRoutes from './routes/contact.js';
+import settingsRoutes from './routes/settings.js';
 import { requireAcademicYear } from './middleware/academicYear.js';
 import { initRealtime } from './lib/realtime.js';
 import { ensureCalendarUploadsDir } from './lib/calendarFiles.js';
@@ -70,6 +71,7 @@ app.use(authenticate);
 app.use('/api/campuses', campusRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/school', schoolRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/website', websiteRoutes);
 
 app.use(requireCampus);

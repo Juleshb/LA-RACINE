@@ -32,6 +32,7 @@ export default function Students() {
   const [filterSource, setFilterSource] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteRequiresOtp, setDeleteRequiresOtp] = useState(true);
   const [deleteChallengeId, setDeleteChallengeId] = useState('');
   const [deleteEmailMasked, setDeleteEmailMasked] = useState('');
   const [deleteCode, setDeleteCode] = useState('');
@@ -59,6 +60,7 @@ export default function Students() {
 
   const closeDeleteModal = () => {
     setDeleteTarget(null);
+    setDeleteRequiresOtp(true);
     setDeleteChallengeId('');
     setDeleteEmailMasked('');
     setDeleteCode('');
@@ -69,6 +71,7 @@ export default function Students() {
 
   const openDeleteModal = async (student) => {
     setDeleteTarget(student);
+    setDeleteRequiresOtp(true);
     setDeleteChallengeId('');
     setDeleteEmailMasked('');
     setDeleteCode('');
@@ -76,8 +79,11 @@ export default function Students() {
     setDeleteSending(true);
     try {
       const data = await api.requestDeleteStudentOtp(student.id);
-      setDeleteChallengeId(data.challengeId);
-      setDeleteEmailMasked(data.emailMasked || '');
+      setDeleteRequiresOtp(data.requiresOtp !== false);
+      if (data.requiresOtp !== false) {
+        setDeleteChallengeId(data.challengeId);
+        setDeleteEmailMasked(data.emailMasked || '');
+      }
     } catch (err) {
       setDeleteError(err.message);
     } finally {
@@ -85,16 +91,16 @@ export default function Students() {
     }
   };
 
-  const confirmDeleteWithOtp = async (e) => {
+  const confirmDelete = async (e) => {
     e.preventDefault();
-    if (!deleteTarget || !deleteChallengeId) return;
+    if (!deleteTarget) return;
+    if (deleteRequiresOtp && !deleteChallengeId) return;
     setDeleteError('');
     setDeleteLoading(true);
     try {
-      await api.deleteStudent(deleteTarget.id, {
-        challengeId: deleteChallengeId,
-        code: deleteCode.trim(),
-      });
+      await api.deleteStudent(deleteTarget.id, deleteRequiresOtp
+        ? { challengeId: deleteChallengeId, code: deleteCode.trim() }
+        : {});
       closeDeleteModal();
       loadStudents();
     } catch (err) {
@@ -110,7 +116,8 @@ export default function Students() {
     setDeleteSending(true);
     try {
       const data = await api.requestDeleteStudentOtp(deleteTarget.id);
-      setDeleteChallengeId(data.challengeId);
+      setDeleteRequiresOtp(data.requiresOtp !== false);
+      setDeleteChallengeId(data.challengeId || '');
       setDeleteEmailMasked(data.emailMasked || '');
       setDeleteCode('');
     } catch (err) {
@@ -263,7 +270,13 @@ export default function Students() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Confirm deletion</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Delete <strong>{deleteName || deleteTarget.studentId}</strong>? Enter the OTP sent to your email.
+                  {deleteRequiresOtp
+                    ? (
+                      <>Delete <strong>{deleteName || deleteTarget.studentId}</strong>? Enter the OTP sent to your email.</>
+                    )
+                    : (
+                      <>Delete <strong>{deleteName || deleteTarget.studentId}</strong>? This cannot be undone.</>
+                    )}
                 </p>
               </div>
               <button type="button" className="p-1 text-gray-400 hover:text-gray-600" onClick={closeDeleteModal} aria-label="Close">
@@ -271,49 +284,55 @@ export default function Students() {
               </button>
             </div>
 
-            <form onSubmit={confirmDeleteWithOtp} className="space-y-4 px-5 py-4">
-              {deleteSending && !deleteChallengeId ? (
-                <p className="flex items-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Sending verification code…
-                </p>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  Code sent to <strong>{deleteEmailMasked || 'your email'}</strong>
-                </p>
+            <form onSubmit={confirmDelete} className="space-y-4 px-5 py-4">
+              {deleteRequiresOtp && (
+                deleteSending && !deleteChallengeId ? (
+                  <p className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Sending verification code…
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    Code sent to <strong>{deleteEmailMasked || 'your email'}</strong>
+                  </p>
+                )
               )}
 
               {deleteError && (
                 <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</div>
               )}
 
-              <div>
-                <label htmlFor="delete-otp" className="mb-1 block text-sm font-medium text-gray-700">
-                  Verification code
-                </label>
-                <input
-                  id="delete-otp"
-                  className="input w-full tracking-widest"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  required
-                  value={deleteCode}
-                  onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000000"
-                  disabled={!deleteChallengeId || deleteSending}
-                />
-              </div>
+              {deleteRequiresOtp && (
+                <div>
+                  <label htmlFor="delete-otp" className="mb-1 block text-sm font-medium text-gray-700">
+                    Verification code
+                  </label>
+                  <input
+                    id="delete-otp"
+                    className="input w-full tracking-widest"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    required
+                    value={deleteCode}
+                    onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    disabled={!deleteChallengeId || deleteSending}
+                  />
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <button
-                  type="button"
-                  className="text-sm text-brand-600 hover:underline disabled:opacity-50"
-                  onClick={resendDeleteOtp}
-                  disabled={deleteSending || deleteLoading}
-                >
-                  {deleteSending ? 'Sending…' : 'Resend code'}
-                </button>
+                {deleteRequiresOtp ? (
+                  <button
+                    type="button"
+                    className="text-sm text-brand-600 hover:underline disabled:opacity-50"
+                    onClick={resendDeleteOtp}
+                    disabled={deleteSending || deleteLoading}
+                  >
+                    {deleteSending ? 'Sending…' : 'Resend code'}
+                  </button>
+                ) : <span />}
                 <div className="flex gap-2">
                   <button type="button" className="btn-secondary" onClick={closeDeleteModal} disabled={deleteLoading}>
                     Cancel
@@ -321,7 +340,11 @@ export default function Students() {
                   <button
                     type="submit"
                     className="btn-primary bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                    disabled={deleteLoading || !deleteChallengeId || deleteCode.length < 6}
+                    disabled={
+                      deleteLoading
+                      || deleteSending
+                      || (deleteRequiresOtp && (!deleteChallengeId || deleteCode.length < 6))
+                    }
                   >
                     {deleteLoading ? (
                       <span className="inline-flex items-center gap-2">

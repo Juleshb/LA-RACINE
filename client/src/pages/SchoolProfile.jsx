@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Save, School, Mail, CreditCard } from 'lucide-react';
+import { Save, School, Mail, CreditCard, Shield } from 'lucide-react';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
 
 export default function SchoolProfile() {
   const { t } = useTranslation();
+  const { isManager } = useAuth();
   const [school, setSchool] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [otpEnabled, setOtpEnabled] = useState(true);
+  const [otpSaving, setOtpSaving] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
   const successMessage = t('staffDash.schoolProfile.saveSuccess');
 
   useEffect(() => {
@@ -17,6 +22,13 @@ export default function SchoolProfile() {
       setForm(data);
     }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!isManager) return;
+    api.getSecuritySettings()
+      .then((data) => setOtpEnabled(Boolean(data.otpEnabled)))
+      .catch(console.error);
+  }, [isManager]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -50,6 +62,24 @@ export default function SchoolProfile() {
     }
   };
 
+  const handleOtpToggle = async (nextEnabled) => {
+    setOtpSaving(true);
+    setOtpMessage('');
+    try {
+      const data = await api.updateSecuritySettings({ otpEnabled: nextEnabled });
+      setOtpEnabled(Boolean(data.otpEnabled));
+      setOtpMessage(
+        data.otpEnabled
+          ? 'OTP enabled — required for login and student deletion.'
+          : 'OTP stopped — login and student deletion no longer require a code.',
+      );
+    } catch (err) {
+      setOtpMessage(err.message);
+    } finally {
+      setOtpSaving(false);
+    }
+  };
+
   if (!school) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -76,6 +106,49 @@ export default function SchoolProfile() {
       {message && (
         <div className={`mb-6 p-4 rounded-lg text-sm ${isSuccess ? 'bg-brand-50 text-brand-600' : 'bg-red-600/20 text-red-400'}`}>
           {message}
+        </div>
+      )}
+
+      {isManager && (
+        <div className="card mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-brand-600 mt-0.5" />
+              <div>
+                <h2 className="text-lg font-semibold">Email OTP security</h2>
+                <p className="text-sm text-gray-500 mt-1 max-w-xl">
+                  When enabled, users must enter an email OTP to sign in and to delete a student.
+                  When stopped, password login and student deletion work without OTP.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${otpEnabled ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {otpEnabled ? 'OTP required' : 'OTP stopped'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={otpEnabled}
+                disabled={otpSaving}
+                onClick={() => handleOtpToggle(!otpEnabled)}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50 ${
+                  otpEnabled ? 'bg-brand-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                    otpEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+          {otpMessage && (
+            <p className={`mt-3 text-sm ${otpMessage.includes('failed') || otpMessage.includes('error') || otpMessage.includes('denied') ? 'text-red-600' : 'text-gray-600'}`}>
+              {otpSaving ? 'Saving…' : otpMessage}
+            </p>
+          )}
         </div>
       )}
 
@@ -160,15 +233,23 @@ export default function SchoolProfile() {
               </button>
             </div>
             <div className="space-y-4">
-              {(form.bankAccounts || []).map((acc, i) => (
-                <div key={i} className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              {(form.bankAccounts || []).map((acc, index) => (
+                <div key={index} className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">{t('staffDash.schoolProfile.bankName')}</label>
-                    <input className="input" value={acc.bankName} onChange={(e) => handleBankChange(i, 'bankName', e.target.value)} />
+                    <input
+                      className="input"
+                      value={acc.bankName || ''}
+                      onChange={(e) => handleBankChange(index, 'bankName', e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="label">{t('staffDash.schoolProfile.accountNumber')}</label>
-                    <input className="input" value={acc.accountNumber} onChange={(e) => handleBankChange(i, 'accountNumber', e.target.value)} />
+                    <input
+                      className="input"
+                      value={acc.accountNumber || ''}
+                      onChange={(e) => handleBankChange(index, 'accountNumber', e.target.value)}
+                    />
                   </div>
                 </div>
               ))}
