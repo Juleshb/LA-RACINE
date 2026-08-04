@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { groupCoursesByCategory, formatGradingScale } from '../lib/curriculum';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import BulletinLayoutPanel from '../components/bulletin/BulletinLayoutPanel';
 import FormModeModal from '../components/form/FormModeModal';
@@ -83,6 +84,7 @@ export default function Courses() {
   const [curriculumDomains, setCurriculumDomains] = useState([]);
   const [classId, setClassId] = useState('');
   const [courses, setCourses] = useState([]);
+  const [search, setSearch] = useState('');
   const [formMode, setFormMode] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -105,12 +107,23 @@ export default function Courses() {
   const isEditing = formMode === 'edit';
   const selectedClass = classes.find((c) => c.id === classId);
   const template = templates.find((t) => t.grade === selectedClass?.grade);
-  const grouped = groupCoursesByCategory(courses);
-  const grandTotal = courses.reduce((sum, c) => sum + (c.totalMax || 0), 0);
+  const filteredCourses = useMemo(
+    () => courses.filter((c) => matchesSearch(
+      search,
+      c.name,
+      c.code,
+      c.category,
+      c.teacher?.name,
+    )),
+    [courses, search],
+  );
+  const grouped = groupCoursesByCategory(filteredCourses);
+  const allGrouped = useMemo(() => groupCoursesByCategory(courses), [courses]);
+  const grandTotal = filteredCourses.reduce((sum, c) => sum + (c.totalMax || 0), 0);
   const editingCourse = courses.find((c) => c.id === editingId);
   const domainOptions = useMemo(
-    () => buildDomainOptions(curriculumDomains, grouped),
-    [curriculumDomains, grouped],
+    () => buildDomainOptions(curriculumDomains, allGrouped),
+    [curriculumDomains, allGrouped],
   );
 
   const selectedDomain = useMemo(() => {
@@ -138,6 +151,7 @@ export default function Courses() {
   useEffect(() => {
     loadCourses();
     setMessage('');
+    setSearch('');
     closeForm();
   }, [classId]);
 
@@ -401,6 +415,14 @@ export default function Courses() {
               ))}
             </select>
           </div>
+          <div className="min-w-[220px] flex-1 max-w-md">
+            <label className="label">{t('ui.search')}</label>
+            <ListSearch
+              value={search}
+              onChange={setSearch}
+              placeholder={`${t('ui.search')} subject, code, domain, teacher…`}
+            />
+          </div>
           {selectedClass && template && (
             <div className="flex flex-wrap gap-2 pb-1">
               <span className="layout-flow-chip layout-flow-chip-lg">{t('pages.courses.studentsChip', { count: selectedClass._count?.students || 0 })}</span>
@@ -468,23 +490,31 @@ export default function Courses() {
       </FormModeModal>
 
       <div className="card p-0 overflow-hidden">
-        {courses.length === 0 ? (
+        {filteredCourses.length === 0 ? (
           <div className="empty-state py-16">
             <div className="empty-state-icon"><BookMarked className="w-6 h-6" /></div>
-            <p className="text-gray-600 font-medium">{t('pages.courses.emptyNoCourses', { className: selectedClass?.name || t('ui.thisCampus') })}</p>
-            <p className="text-sm text-gray-400 mt-1 mb-4">{t('pages.courses.emptyNoCoursesHint')}</p>
-            <div className="flex gap-3 justify-center flex-wrap">
-              {template && (
-                <button onClick={handleApplyCurriculum} disabled={applying} className="btn-primary inline-flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  Load {selectedClass?.grade} bulletin
-                </button>
-              )}
-              <button onClick={() => openCreateForm('custom')} className="btn-secondary inline-flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Add custom
-              </button>
-            </div>
+            <p className="text-gray-600 font-medium">
+              {courses.length > 0 && search.trim()
+                ? t('ui.noSearchResults')
+                : t('pages.courses.emptyNoCourses', { className: selectedClass?.name || t('ui.thisCampus') })}
+            </p>
+            {!(courses.length > 0 && search.trim()) && (
+              <>
+                <p className="text-sm text-gray-400 mt-1 mb-4">{t('pages.courses.emptyNoCoursesHint')}</p>
+                <div className="flex gap-3 justify-center flex-wrap">
+                  {template && (
+                    <button onClick={handleApplyCurriculum} disabled={applying} className="btn-primary inline-flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Load {selectedClass?.grade} bulletin
+                    </button>
+                  )}
+                  <button onClick={() => openCreateForm('custom')} className="btn-secondary inline-flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Add custom
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div>

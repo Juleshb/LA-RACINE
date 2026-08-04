@@ -13,6 +13,7 @@ function getCampusId() {
 async function request(endpoint, options = {}) {
   const token = getToken();
   const campusId = getCampusId();
+  const { headers: customHeaders = {}, ...restOptions } = options;
   const needsCampus = !endpoint.startsWith('/auth')
     && !endpoint.startsWith('/campuses')
     && !endpoint.startsWith('/users')
@@ -25,15 +26,27 @@ async function request(endpoint, options = {}) {
   const needsYear = needsCampus
     && !endpoint.startsWith('/academic-years');
 
+  // Merge headers AFTER base auth/campus headers. Spreading `...options` last
+  // used to overwrite Authorization and caused false "Session expired" on import.
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(needsCampus && campusId ? { 'X-Campus-Id': campusId } : {}),
+    ...(needsYear && getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
+    ...customHeaders,
+  };
+
+  // Allow callers to drop year context (e.g. fetch another campus's active year)
+  if (
+    Object.prototype.hasOwnProperty.call(customHeaders, 'X-Academic-Year-Id')
+    && (customHeaders['X-Academic-Year-Id'] == null || customHeaders['X-Academic-Year-Id'] === '')
+  ) {
+    delete headers['X-Academic-Year-Id'];
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(needsCampus && campusId ? { 'X-Campus-Id': campusId } : {}),
-      ...(needsYear && getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
-      ...options.headers,
-    },
-    ...options,
+    ...restOptions,
+    headers,
   });
 
   if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/forgot')) {
@@ -106,6 +119,9 @@ export const api = {
     request(`/campuses/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 
   getAcademicYears: () => request('/academic-years'),
+  /** Fetch years for a specific campus (managers importing across A/B). */
+  getAcademicYearsForCampus: (campusId) =>
+    request('/academic-years', { headers: { 'X-Campus-Id': campusId } }),
   getActiveAcademicYear: () => request('/academic-years/active'),
   createAcademicYear: (data) => request('/academic-years', { method: 'POST', body: JSON.stringify(data) }),
   startNewAcademicYear: (data) => request('/academic-years/start-new', { method: 'POST', body: JSON.stringify(data) }),
@@ -213,6 +229,18 @@ export const api = {
     if (params.allYears) q.set('allYears', '1');
     const qs = q.toString();
     return request(qs ? `/classes?${qs}` : '/classes');
+  },
+  getClassesForCampus: (campusId, params = {}) => {
+    const q = new URLSearchParams();
+    if (params.allYears) q.set('allYears', '1');
+    const qs = q.toString();
+    return request(qs ? `/classes?${qs}` : '/classes', {
+      headers: {
+        'X-Campus-Id': campusId,
+        // Drop current campus year so server uses this campus's active year
+        'X-Academic-Year-Id': '',
+      },
+    });
   },
   getClass: (id) => request(`/classes/${id}`),
   getBulletinPresets: () => request('/classes/bulletin-presets'),

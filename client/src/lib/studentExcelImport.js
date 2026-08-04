@@ -228,11 +228,77 @@ export function classLabelToGrade(label) {
   return null;
 }
 
-/** Extract section A/B from "LA RACINE (A)" */
-export function parseInscritSection(value) {
+/**
+ * Extract campus letter from form "Inscrit à :" values like "LA RACINE (A)" / "LA RACINE (B)".
+ * These map to campuses (e.g. LRSA / LRSB), not class sections.
+ */
+export function parseInscritCampusLetter(value) {
   const raw = cellStr(value);
-  const m = raw.match(/\(([A-Za-z0-9]+)\)/);
-  return m ? m[1].toUpperCase() : '';
+  if (!raw) return '';
+  const paren = raw.match(/\(([A-Za-z0-9]+)\)\s*$/);
+  if (paren) return paren[1].toUpperCase();
+  const trailing = raw.match(/(?:^|[\s\-_/])([A-Za-z])\s*$/);
+  if (trailing) return trailing[1].toUpperCase();
+  return '';
+}
+
+/** @deprecated Use parseInscritCampusLetter — A/B in "Inscrit à" means campus, not class section. */
+export function parseInscritSection(value) {
+  return parseInscritCampusLetter(value);
+}
+
+/**
+ * Resolve campus from "Inscrit à : LA RACINE (A|B)" against school campuses.
+ * Prefers exact name match, then (A)/(B) markers in name/code, then ordered A/B fallback.
+ */
+export function resolveCampusFromInscrit(inscritA, campuses = [], defaultCampusId = null) {
+  const list = (campuses || []).filter((c) => c && c.isActive !== false);
+  const needle = normalizeHeader(inscritA);
+  const letter = parseInscritCampusLetter(inscritA);
+
+  if (needle) {
+    const exact = list.find((c) => normalizeHeader(c.name) === needle || normalizeHeader(c.code) === needle);
+    if (exact) return exact;
+  }
+
+  if (letter) {
+    const byName = list.find((c) => {
+      const n = normalizeHeader(c.name);
+      return n.includes(`(${letter.toLowerCase()})`)
+        || n.endsWith(` ${letter.toLowerCase()}`)
+        || n.includes(`campus ${letter.toLowerCase()}`)
+        || /\bracine\s*\(?\s*[ab]\s*\)?\b/.test(n) && n.includes(`(${letter.toLowerCase()})`);
+    });
+    if (byName) return byName;
+
+    // Codes like LRSA / LRSB / LRS-A — require letter as a campus marker, not any trailing letter
+    const byCode = list.find((c) => {
+      const code = String(c.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!code) return false;
+      if (code === letter || code === `LRS${letter}` || code === `LARACINE${letter}`) return true;
+      return /(?:LRS|CAMPUS|RACINE)?[_\-]?([AB])$/.test(code) && code.endsWith(letter);
+    });
+    if (byCode) return byCode;
+
+    if (list.length >= 1) {
+      const sorted = [...list].sort((a, b) => String(a.code || a.name).localeCompare(String(b.code || b.name)));
+      const idx = letter.charCodeAt(0) - 'A'.charCodeAt(0);
+      if (idx >= 0 && idx < sorted.length) return sorted[idx];
+    }
+  }
+
+  if (needle) {
+    const fuzzy = list.find((c) => {
+      const n = normalizeHeader(c.name);
+      return n.includes(needle) || needle.includes(n);
+    });
+    if (fuzzy) return fuzzy;
+  }
+
+  if (defaultCampusId) {
+    return list.find((c) => c.id === defaultCampusId) || null;
+  }
+  return null;
 }
 
 function buildHeaderIndex(headers) {
@@ -279,29 +345,48 @@ function buildHeaderIndex(headers) {
   return index;
 }
 
-function resolveAcademicYearId(name, academicYears) {
+function resolveAcademicYearId(name, academicYears, campusId = null) {
   const needle = normalizeHeader(name).replace(/[/\s]+/g, '-');
   if (!needle) return null;
-  const hit = academicYears.find((y) => normalizeHeader(y.name).replace(/[/\s]+/g, '-') === needle);
+  const pool = campusId
+    ? academicYears.filter((y) => !y.campusId || y.campusId === campusId)
+    : academicYears;
+  const hit = pool.find((y) => normalizeHeader(y.name).replace(/[/\s]+/g, '-') === needle);
   return hit?.id || null;
 }
 
-function resolveClassId({ classLabel, inscritA, academicYearId }, classes) {
+/** Prefer campus-local year; if missing, reuse same-named year from another campus (server will clone it). */
+function resolveAcademicYearForImport(name, academicYears, campusId = null) {
+  const localId = resolveAcademicYearId(name, academicYears, campusId);
+  if (localId) return { academicYearId: localId, yearBorrowed: false };
+
+  const anyId = resolveAcademicYearId(name, academicYears, null);
+  if (anyId) return { academicYearId: anyId, yearBorrowed: true };
+
+  return { academicYearId: null, yearBorrowed: false };
+}
+
+function resolveClassId({ classLabel, academicYearId, campusId }, classes) {
   const grade = classLabelToGrade(classLabel);
-  const section = parseInscritSection(inscritA) || 'A';
-  const pool = academicYearId
-    ? classes.filter((c) => c.academicYearId === academicYearId)
-    : classes;
+  // Class section is independent of campus A/B ("Inscrit à"); prefer section A then any grade match.
+  const preferredSection = 'A';
+  const pool = classes.filter((c) => {
+    if (campusId && c.campusId && c.campusId !== campusId) return false;
+    if (academicYearId && c.academicYearId && c.academicYearId !== academicYearId) return false;
+    return true;
+  });
 
   if (grade) {
     const byGradeSection = pool.find(
       (c) => String(c.grade).toUpperCase() === grade
-        && String(c.section || '').toUpperCase() === section,
+        && String(c.section || '').toUpperCase() === preferredSection,
     );
-    if (byGradeSection) return { classId: byGradeSection.id, grade, section };
+    if (byGradeSection) {
+      return { classId: byGradeSection.id, grade, section: byGradeSection.section || preferredSection };
+    }
 
     const byGrade = pool.find((c) => String(c.grade).toUpperCase() === grade);
-    if (byGrade) return { classId: byGrade.id, grade, section: byGrade.section || section };
+    if (byGrade) return { classId: byGrade.id, grade, section: byGrade.section || preferredSection };
   }
 
   const needle = normalizeHeader(classLabel);
@@ -310,11 +395,11 @@ function resolveClassId({ classLabel, inscritA, academicYearId }, classes) {
     return {
       classId: exact.id,
       grade: exact.grade || grade,
-      section: exact.section || section,
+      section: exact.section || preferredSection,
     };
   }
 
-  return { classId: null, grade, section };
+  return { classId: null, grade, section: preferredSection };
 }
 
 function looksLikeSchoolYear(value) {
@@ -333,8 +418,14 @@ export async function downloadStudentImportTemplate() {
 
 /**
  * Parse Google Forms "Fiche d'inscription" export into registration payloads.
+ * Uses column "Inscrit à :" (LA RACINE A / B) to pick the target campus.
  */
-export function parseStudentImportFile(fileBuffer, { academicYears = [], classes = [] } = {}) {
+export function parseStudentImportFile(fileBuffer, {
+  academicYears = [],
+  classes = [],
+  campuses = [],
+  defaultCampusId = null,
+} = {}) {
   const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true });
   const sheetName = workbook.SheetNames.find((n) => /r[eé]ponse|formulaire|student|inscription/i.test(n))
     || workbook.SheetNames[0];
@@ -372,11 +463,37 @@ export function parseStudentImportFile(fileBuffer, { academicYears = [], classes
     const academicYearName = cellStr(get(rowArr, 'academicYearName'));
     const classLabel = cellStr(get(rowArr, 'classLabel'));
     const inscritA = cellStr(get(rowArr, 'inscritA'));
-    const academicYearId = resolveAcademicYearId(academicYearName, academicYears);
-    const resolved = resolveClassId({ classLabel, inscritA, academicYearId }, classes);
+    const campus = resolveCampusFromInscrit(inscritA, campuses, defaultCampusId);
+    if (!campus?.id) {
+      errors.push({
+        row: excelRow,
+        error: inscritA
+          ? `Unknown campus "${inscritA}" — create campuses LA RACINE A / B (or codes ending in A/B) first`
+          : 'Missing "Inscrit à :" (LA RACINE A or B) — cannot choose campus',
+      });
+      continue;
+    }
+
+    const { academicYearId, yearBorrowed } = resolveAcademicYearForImport(
+      academicYearName,
+      academicYears,
+      campus.id,
+    );
+
+    // If year must be cloned onto this campus, don't attach another campus's class id
+    const resolved = yearBorrowed
+      ? {
+        classId: null,
+        grade: classLabelToGrade(classLabel),
+        section: 'A',
+      }
+      : resolveClassId({ classLabel, academicYearId, campusId: campus.id }, classes);
 
     if (!academicYearId) {
-      errors.push({ row: excelRow, error: `Unknown academic year "${academicYearName || '(empty)'}" — create it in Academic Years first` });
+      errors.push({
+        row: excelRow,
+        error: `Unknown academic year "${academicYearName || '(empty)'}" — create it in Academic Years first (for campus A or B)`,
+      });
       continue;
     }
     if (!resolved.classId && !resolved.grade) {
@@ -395,8 +512,15 @@ export function parseStudentImportFile(fileBuffer, { academicYears = [], classes
 
     const tuberculosisRaw = get(rowArr, 'tuberculosis');
     const generalAllergiesRaw = cellStr(get(rowArr, 'generalAllergies'));
+    const campusLetter = parseInscritCampusLetter(inscritA);
     const payload = {
       __row: excelRow,
+      campusId: campus.id,
+      campusCode: campus.code || '',
+      campusName: campus.name || '',
+      campusLetter: campusLetter || '',
+      inscritA,
+      yearBorrowed: Boolean(yearBorrowed),
       lastName,
       postName,
       firstName,

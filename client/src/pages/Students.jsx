@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Plus, Trash2, Eye, FileText, FileSpreadsheet, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import StudentExcelImportModal from '../components/StudentExcelImportModal';
 
@@ -30,6 +31,7 @@ export default function Students() {
   const [filterClass, setFilterClass] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteRequiresOtp, setDeleteRequiresOtp] = useState(true);
@@ -52,11 +54,26 @@ export default function Students() {
 
   useEffect(() => { loadStudents(); }, [filterClass, filterStatus]);
 
-  const displayed = filterSource === 'PARENT'
-    ? students.filter((s) => s.parentSubmitted)
-    : filterSource === 'SCHOOL'
-      ? students.filter((s) => !s.parentSubmitted)
-      : students;
+  const displayed = useMemo(() => {
+    const bySource = filterSource === 'PARENT'
+      ? students.filter((s) => s.parentSubmitted)
+      : filterSource === 'SCHOOL'
+        ? students.filter((s) => !s.parentSubmitted)
+        : students;
+    return bySource.filter((s) => matchesSearch(
+      search,
+      s.studentId,
+      s.lastName,
+      s.postName,
+      s.firstName,
+      s.class?.name,
+      s.parentName,
+      s.fatherName,
+      s.motherName,
+      s.fatherPhone,
+      s.motherPhone,
+    ));
+  }, [students, filterSource, search]);
 
   const closeDeleteModal = () => {
     setDeleteTarget(null);
@@ -161,7 +178,13 @@ export default function Students() {
         )}
       />
 
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex flex-wrap gap-4 mb-6 items-center">
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={`${t('ui.search')} name, ID, class, parent…`}
+          className="min-w-[220px] flex-1 max-w-md"
+        />
         <select className="input max-w-xs" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
           <option value="">{isTeacher ? t('ui.allMyClasses') : t('ui.allClasses')}</option>
           {classes.map((c) => (
@@ -188,8 +211,12 @@ export default function Students() {
       <div className="card">
         {displayed.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">{t('pageBody.students.empty')}</p>
-            {!isTeacher && (
+            <p className="text-gray-500 mb-4">
+              {students.length > 0 && search.trim()
+                ? t('ui.noSearchResults')
+                : t('pageBody.students.empty')}
+            </p>
+            {!isTeacher && !(students.length > 0 && search.trim()) && (
               <div className="flex flex-wrap gap-3 justify-center">
                 <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => setImportOpen(true)}>
                   <FileSpreadsheet className="w-4 h-4" /> {t('pages.students.importExcel')}

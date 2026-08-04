@@ -27,8 +27,17 @@ function classLabelFor(classes, student) {
   return '—';
 }
 
+function campusLabelFor(student) {
+  if (student.campusLetter) {
+    return `LA RACINE (${student.campusLetter})`;
+  }
+  if (student.inscritA) return student.inscritA;
+  return student.campusCode || student.campusName || '—';
+}
+
 function PreviewDetail({ student }) {
   const rows = [
+    ['Campus', campusLabelFor(student)],
     ['Nom', student.lastName],
     ['Post-Nom', student.postName],
     ['Prénom', student.firstName],
@@ -58,6 +67,7 @@ function PreviewDetail({ student }) {
 
 export default function StudentExcelImportModal({ open, onClose, onImported }) {
   const inputRef = useRef(null);
+  const [campuses, setCampuses] = useState([]);
   const [academicYears, setAcademicYears] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
@@ -72,6 +82,8 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
   const [step, setStep] = useState('upload'); // upload | preview | done
   const [dupInfo, setDupInfo] = useState({}); // row -> { reason, message, ... }
   const [checkingDup, setCheckingDup] = useState(false);
+
+  const defaultCampusId = typeof localStorage !== 'undefined' ? localStorage.getItem('campusId') : null;
 
   const resetFlow = () => {
     setParseErrors([]);
@@ -90,13 +102,33 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
     if (!open) return;
     resetFlow();
     setLoadingMeta(true);
-    Promise.all([api.getAcademicYears(), api.getClasses({ allYears: true })])
-      .then(([years, cls]) => {
-        setAcademicYears(Array.isArray(years) ? years : []);
-        setClasses(Array.isArray(cls) ? cls : []);
-      })
-      .catch((err) => setError(err.message || 'Failed to load classes'))
-      .finally(() => setLoadingMeta(false));
+    (async () => {
+      try {
+        const campusList = await api.getCampuses();
+        const activeCampuses = (Array.isArray(campusList) ? campusList : []).filter((c) => c.isActive !== false);
+        setCampuses(activeCampuses);
+
+        const meta = await Promise.all(
+          activeCampuses.map(async (campus) => {
+            const [years, cls] = await Promise.all([
+              api.getAcademicYearsForCampus(campus.id),
+              api.getClassesForCampus(campus.id, { allYears: true }),
+            ]);
+            return {
+              years: (Array.isArray(years) ? years : []).map((y) => ({ ...y, campusId: y.campusId || campus.id })),
+              classes: (Array.isArray(cls) ? cls : []).map((c) => ({ ...c, campusId: c.campusId || campus.id })),
+            };
+          }),
+        );
+
+        setAcademicYears(meta.flatMap((m) => m.years));
+        setClasses(meta.flatMap((m) => m.classes));
+      } catch (err) {
+        setError(err.message || 'Failed to load campuses / classes');
+      } finally {
+        setLoadingMeta(false);
+      }
+    })();
   }, [open]);
 
   const selectedStudents = useMemo(
@@ -131,7 +163,12 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
 
     try {
       const buffer = await file.arrayBuffer();
-      const parsed = parseStudentImportFile(buffer, { academicYears, classes });
+      const parsed = parseStudentImportFile(buffer, {
+        academicYears,
+        classes,
+        campuses,
+        defaultCampusId,
+      });
       setParseErrors(parsed.errors);
 
       if (!parsed.students.length) {
@@ -259,7 +296,8 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
                   />
                 </label>
                 <p className="text-xs text-gray-500">
-                  You will preview all students in a form list before anything is saved.
+                  Column <strong>Inscrit à :</strong> (LA RACINE A or B) chooses the campus for each student.
+                  You will preview all students before anything is saved.
                 </p>
               </div>
             </>
@@ -317,6 +355,7 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
                         <th className="px-3 py-2 w-10">Inc.</th>
                         <th className="px-3 py-2">Row</th>
                         <th className="px-3 py-2">Student</th>
+                        <th className="px-3 py-2">Campus</th>
                         <th className="px-3 py-2">Class</th>
                         <th className="px-3 py-2">Year</th>
                         <th className="px-3 py-2">Parent phones</th>
@@ -361,6 +400,10 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
                               )}
                             </td>
                             <td className="px-3 py-2">
+                              <p className="font-medium text-gray-900">{campusLabelFor(student)}</p>
+                              <p className="text-xs text-gray-500">{student.campusCode || student.campusName || ''}</p>
+                            </td>
+                            <td className="px-3 py-2">
                               <p>{classLabelFor(classes, student)}</p>
                               {student.classSection ? (
                                 <p className="text-xs text-gray-500">Section {student.classSection}</p>
@@ -369,7 +412,11 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
                                 <p className="text-[11px] text-amber-700 mt-0.5">Will create class if missing</p>
                               ) : null}
                             </td>
-                            <td className="px-3 py-2">{yearName(academicYears, student.academicYearId)}</td>
+                            <td className="px-3 py-2">{yearName(academicYears, student.academicYearId)}
+                              {student.yearBorrowed ? (
+                                <p className="text-[11px] text-amber-700 mt-0.5">Year will be created on this campus if missing</p>
+                              ) : null}
+                            </td>
                             <td className="px-3 py-2 text-xs text-gray-600">
                               <div>{student.fatherPhone || '—'}</div>
                               <div>{student.motherPhone || '—'}</div>
@@ -416,7 +463,8 @@ export default function StudentExcelImportModal({ open, onClose, onImported }) {
                 <p className="text-xs text-green-800">
                   Open the Students list to see them
                   {status === 'PENDING' ? ' (filter status: Pending)' : ''}.
-                  {' '}If they don’t appear, switch the school year in the top bar to the year used in the Excel (e.g. 2026–2027).
+                  {' '}Switch campus in the top bar to LA RACINE A or B to see students for that campus.
+                  {' '}If they don’t appear, also switch the school year to the year used in the Excel (e.g. 2026–2027).
                 </p>
               )}
               {(result.skipped > 0 || result.failed > 0) && (

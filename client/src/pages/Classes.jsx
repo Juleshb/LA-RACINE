@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
@@ -15,6 +16,7 @@ export default function Classes() {
   const isTeacher = user?.role === 'TEACHER';
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [search, setSearch] = useState('');
   const [formMode, setFormMode] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -32,6 +34,17 @@ export default function Classes() {
       api.getTeachers().then(setTeachers).catch(console.error);
     }
   }, [isTeacher]);
+
+  const displayed = useMemo(
+    () => classes.filter((cls) => matchesSearch(
+      search,
+      cls.name,
+      cls.grade,
+      cls.section,
+      cls.teacher?.name,
+    )),
+    [classes, search],
+  );
 
   const openCreate = () => {
     setForm({ ...EMPTY_FORM });
@@ -101,6 +114,15 @@ export default function Classes() {
         )}
       />
 
+      <div className="mb-6">
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={`${t('ui.search')} class, grade, section, teacher…`}
+          className="max-w-md"
+        />
+      </div>
+
       <FormModeModal
         open={Boolean(formMode)}
         mode={isEditing ? 'edit' : 'create'}
@@ -169,19 +191,21 @@ export default function Classes() {
       </FormModeModal>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classes.length === 0 ? (
+        {displayed.length === 0 ? (
           <div className="col-span-full empty-state py-16 card">
             <p className="text-gray-600 font-medium">
-              {isTeacher ? t('pageBody.classes.emptyTeacher') : t('pageBody.classes.emptyStaff')}
+              {classes.length > 0 && search.trim()
+                ? t('ui.noSearchResults')
+                : (isTeacher ? t('pageBody.classes.emptyTeacher') : t('pageBody.classes.emptyStaff'))}
             </p>
-            {!isTeacher && (
+            {!isTeacher && !(classes.length > 0 && search.trim()) && (
               <button onClick={openCreate} className="btn-primary mt-4 inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> {t('pageBody.classes.addFirst')}
               </button>
             )}
           </div>
         ) : (
-          classes.map((cls) => {
+          displayed.map((cls) => {
             const isActive = editingId === cls.id;
             return (
               <div

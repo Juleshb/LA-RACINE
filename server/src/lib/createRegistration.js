@@ -5,6 +5,7 @@ import {
   saveDocuments,
 } from './studentRegistration.js';
 import { resolveOrCreateClass } from './defaultClasses.js';
+import { resolveAcademicYearForCampus } from './resolveAcademicYear.js';
 
 export function validateRegistrationPayload(body, { requireDocuments = true } = {}) {
   const {
@@ -74,20 +75,22 @@ export async function createStudentRegistration({
   const { documents, academicYearId, rest } = validated;
   let { classId } = validated;
 
-  const academicYear = await prisma.academicYear.findFirst({
-    where: { id: academicYearId, campusId },
-  });
+  const academicYear = await resolveAcademicYearForCampus(prisma, campusId, academicYearId);
   if (!academicYear) {
     const err = new Error('Selected academic year not found for this campus');
     err.status = 400;
     throw err;
   }
 
+  // Class ids from another campus (Excel import A→B) must not be reused
   let selectedClass = classId
     ? await prisma.class.findFirst({
       where: { id: classId, campusId, academicYearId: academicYear.id },
     })
     : null;
+  if (classId && !selectedClass) {
+    classId = null;
+  }
 
   if (!selectedClass && rest.classGrade) {
     selectedClass = await resolveOrCreateClass(
@@ -112,6 +115,11 @@ export async function createStudentRegistration({
     classSection: _cs,
     classLabel: _cl,
     __row: _row,
+    campusId: _campusId,
+    campusCode: _campusCode,
+    campusName: _campusName,
+    campusLetter: _campusLetter,
+    inscritA: _inscritA,
     ...studentFields
   } = rest;
 

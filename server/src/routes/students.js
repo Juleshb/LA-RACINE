@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import prisma from '../lib/prisma.js';
 import { studentScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
-import { authorizePermission, authorizeRoles, PERMISSIONS } from '../config/permissions.js';
+import { authorizePermission, authorizeRoles, PERMISSIONS, isManagerRole } from '../config/permissions.js';
 import {
   suggestFamilyAccountEmails,
   provisionFamilyAccounts,
@@ -25,6 +25,31 @@ const router = Router();
 const serverRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 router.use(authorizePermission(PERMISSIONS.STUDENTS));
+
+/** Resolve target campus for an Excel import row (Inscrit à A/B). */
+async function resolveImportCampusId(req, rowCampusId) {
+  const requested = String(rowCampusId || '').trim() || req.campusId;
+  if (!requested) {
+    const err = new Error('Campus is required for each imported student');
+    err.status = 400;
+    throw err;
+  }
+  if (requested === req.campusId) return requested;
+
+  if (!isManagerRole(req.user.role)) {
+    const err = new Error('You can only import students into your assigned campus');
+    err.status = 403;
+    throw err;
+  }
+
+  const campus = await prisma.campus.findUnique({ where: { id: requested } });
+  if (!campus || !campus.isActive) {
+    const err = new Error('Target campus not found or inactive');
+    err.status = 400;
+    throw err;
+  }
+  return campus.id;
+}
 
 const studentInclude = {
   class: true,
@@ -289,8 +314,24 @@ router.post('/check-duplicates', async (req, res) => {
       return res.status(400).json({ error: 'Maximum 300 students per check' });
     }
 
+    const campusIds = [...new Set(
+      rows.map((row) => String(row?.campusId || req.campusId || '').trim()).filter(Boolean),
+    )];
+    if (!campusIds.length) campusIds.push(req.campusId);
+
+    for (const campusId of campusIds) {
+      if (campusId === req.campusId) continue;
+      if (!isManagerRole(req.user.role)) {
+        return res.status(403).json({ error: 'You can only import students into your assigned campus' });
+      }
+      const campus = await prisma.campus.findUnique({ where: { id: campusId } });
+      if (!campus || !campus.isActive) {
+        return res.status(400).json({ error: 'One or more target campuses are invalid' });
+      }
+    }
+
     const existing = await prisma.student.findMany({
-      where: { campusId: req.campusId },
+      where: { campusId: { in: campusIds } },
       select: {
         id: true,
         studentId: true,
@@ -299,11 +340,19 @@ router.post('/check-duplicates', async (req, res) => {
         firstName: true,
         dateOfBirth: true,
         academicYearId: true,
+        campusId: true,
         registrationStatus: true,
         academicYear: { select: { name: true } },
       },
     });
-    const existingIndex = buildDuplicateIndex(existing);
+    // Index per campus so A and B do not collide
+    const existingByCampus = new Map();
+    for (const campusId of campusIds) {
+      existingByCampus.set(
+        campusId,
+        buildDuplicateIndex(existing.filter((s) => s.campusId === campusId)),
+      );
+    }
 
     const seenInFile = new Map();
     const duplicates = [];
@@ -313,20 +362,23 @@ router.post('/check-duplicates', async (req, res) => {
       const key = studentDuplicateKey(row);
       if (!key || key === '|||') return;
 
+      const campusId = String(row.campusId || req.campusId).trim();
       const name = [row.lastName, row.postName, row.firstName].filter(Boolean).join(' ');
+      const fileKey = `${campusId}::${key}`;
 
-      if (seenInFile.has(key)) {
+      if (seenInFile.has(fileKey)) {
         duplicates.push({
           row: excelRow,
           reason: 'file',
-          message: `Duplicate in this file (same as row ${seenInFile.get(key)})`,
-          matchRow: seenInFile.get(key),
+          message: `Duplicate in this file (same as row ${seenInFile.get(fileKey)})`,
+          matchRow: seenInFile.get(fileKey),
           name,
         });
         return;
       }
-      seenInFile.set(key, excelRow);
+      seenInFile.set(fileKey, excelRow);
 
+      const existingIndex = existingByCampus.get(campusId) || new Map();
       const matches = existingIndex.get(key) || [];
       if (matches.length) {
         const match = matches[0];
@@ -347,7 +399,7 @@ router.post('/check-duplicates', async (req, res) => {
       total: rows.length,
       duplicateCount: duplicates.length,
       duplicates,
-      matchRule: 'Same last name + post name + first name + date of birth (this campus)',
+      matchRule: 'Same last name + post name + first name + date of birth (same campus)',
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -374,9 +426,18 @@ router.post('/register-bulk', async (req, res) => {
       return res.status(400).json({ error: 'Maximum 300 students per import' });
     }
 
+    const campusIds = [...new Set(
+      rows.map((row) => String(row?.campusId || req.campusId || '').trim()).filter(Boolean),
+    )];
+    if (!campusIds.length) campusIds.push(req.campusId);
+
+    for (const campusId of campusIds) {
+      await resolveImportCampusId(req, campusId);
+    }
+
     const existing = skipDuplicates
       ? await prisma.student.findMany({
-        where: { campusId: req.campusId },
+        where: { campusId: { in: campusIds } },
         select: {
           id: true,
           studentId: true,
@@ -384,11 +445,18 @@ router.post('/register-bulk', async (req, res) => {
           postName: true,
           firstName: true,
           dateOfBirth: true,
+          campusId: true,
           academicYear: { select: { name: true } },
         },
       })
       : [];
-    const existingIndex = buildDuplicateIndex(existing);
+    const existingByCampus = new Map();
+    for (const campusId of campusIds) {
+      existingByCampus.set(
+        campusId,
+        buildDuplicateIndex(existing.filter((s) => s.campusId === campusId)),
+      );
+    }
     const seenInFile = new Map();
 
     const results = [];
@@ -398,21 +466,26 @@ router.post('/register-bulk', async (req, res) => {
       const name = [row.lastName, row.postName, row.firstName].filter(Boolean).join(' ');
 
       try {
+        const campusId = await resolveImportCampusId(req, row.campusId);
+        const existingIndex = existingByCampus.get(campusId) || buildDuplicateIndex([]);
+        if (!existingByCampus.has(campusId)) existingByCampus.set(campusId, existingIndex);
+
         if (skipDuplicates) {
           const key = studentDuplicateKey(row);
           if (key && key !== '|||') {
-            if (seenInFile.has(key)) {
+            const fileKey = `${campusId}::${key}`;
+            if (seenInFile.has(fileKey)) {
               results.push({
                 row: excelRow,
                 ok: false,
                 skipped: true,
                 reason: 'file_duplicate',
-                error: `Skipped duplicate in file (same as row ${seenInFile.get(key)})`,
+                error: `Skipped duplicate in file (same as row ${seenInFile.get(fileKey)})`,
                 name,
               });
               continue;
             }
-            seenInFile.set(key, excelRow);
+            seenInFile.set(fileKey, excelRow);
 
             const matches = existingIndex.get(key) || [];
             if (matches.length) {
@@ -434,7 +507,7 @@ router.post('/register-bulk', async (req, res) => {
         }
 
         const { student } = await createStudentRegistration({
-          campusId: req.campusId,
+          campusId,
           body: {
             ...row,
             registrationStatus: row.registrationStatus || defaultStatus,
@@ -459,6 +532,7 @@ router.post('/register-bulk', async (req, res) => {
           ok: true,
           id: student.id,
           studentId: student.studentId,
+          campusId,
           name: [student.lastName, student.postName, student.firstName].filter(Boolean).join(' '),
         });
       } catch (error) {

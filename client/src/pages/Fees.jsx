@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 
 function formatCurrency(amount) {
@@ -42,6 +43,7 @@ export default function Fees() {
   const isParent = user?.role === 'PARENT';
   const [fees, setFees] = useState([]);
   const [filter, setFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
 
   const loadFees = () => api.getFees().then(setFees).catch(console.error);
   useEffect(() => { loadFees(); }, []);
@@ -65,7 +67,20 @@ export default function Fees() {
     }
   };
 
-  const filtered = filter === 'ALL' ? fees : fees.filter((f) => f.status === filter);
+  const filtered = useMemo(() => {
+    const byStatus = filter === 'ALL' ? fees : fees.filter((f) => f.status === filter);
+    return byStatus.filter((fee) => matchesSearch(
+      search,
+      fee.receiptNumber,
+      fee.student?.firstName,
+      fee.student?.lastName,
+      fee.student?.postName,
+      fee.student?.studentId,
+      fee.feeType,
+      FEE_TYPE_KEYS[fee.feeType] ? t(FEE_TYPE_KEYS[fee.feeType]) : '',
+      fee.amount,
+    ));
+  }, [fees, filter, search, t]);
 
   return (
     <div>
@@ -80,23 +95,34 @@ export default function Fees() {
         )}
       />
 
-      <div className="flex gap-2 mb-6">
-        {['ALL', 'PENDING', 'PAID', 'OVERDUE', 'WAIVED'].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filter === s ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            {t(FEE_STATUS_KEYS[s])}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={`${t('ui.search')} student, receipt, fee type…`}
+          className="min-w-[220px] flex-1 max-w-md"
+        />
+        <div className="flex gap-2 flex-wrap">
+          {['ALL', 'PENDING', 'PAID', 'OVERDUE', 'WAIVED'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFilter(s)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                filter === s ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {t(FEE_STATUS_KEYS[s])}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card">
         {filtered.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">{t('pageBody.fees.empty')}</p>
+          <p className="text-gray-500 text-center py-8">
+            {fees.length > 0 && search.trim() ? t('ui.noSearchResults') : t('pageBody.fees.empty')}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { api } from '../lib/api';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
@@ -11,6 +12,7 @@ const EMPTY_FORM = { name: '', email: '', phone: '', subject: '' };
 export default function Teachers() {
   const { t } = useTranslation();
   const [teachers, setTeachers] = useState([]);
+  const [search, setSearch] = useState('');
   const [formMode, setFormMode] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -22,6 +24,17 @@ export default function Teachers() {
   const loadTeachers = () => api.getTeachers().then(setTeachers).catch(console.error);
 
   useEffect(() => { loadTeachers(); }, []);
+
+  const displayed = useMemo(
+    () => teachers.filter((teacher) => matchesSearch(
+      search,
+      teacher.name,
+      teacher.subject,
+      teacher.email,
+      teacher.phone,
+    )),
+    [teachers, search],
+  );
 
   const openCreate = () => {
     setForm({ ...EMPTY_FORM });
@@ -93,6 +106,15 @@ export default function Teachers() {
         )}
       />
 
+      <div className="mb-6">
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={`${t('ui.search')} name, subject, email, phone…`}
+          className="max-w-md"
+        />
+      </div>
+
       <FormModeModal
         open={Boolean(formMode)}
         mode={isEditing ? 'edit' : 'create'}
@@ -147,12 +169,18 @@ export default function Teachers() {
       </FormModeModal>
 
       <div className="card p-0 overflow-hidden">
-        {teachers.length === 0 ? (
+        {displayed.length === 0 ? (
           <div className="empty-state py-16">
-            <p className="text-gray-600 font-medium">{t('pageBody.teachers.empty')}</p>
-            <button onClick={openCreate} className="btn-primary mt-4 inline-flex items-center gap-2">
-              <Plus className="w-4 h-4" /> {t('pageBody.teachers.addFirst')}
-            </button>
+            <p className="text-gray-600 font-medium">
+              {teachers.length > 0 && search.trim()
+                ? t('ui.noSearchResults')
+                : t('pageBody.teachers.empty')}
+            </p>
+            {!(teachers.length > 0 && search.trim()) && (
+              <button onClick={openCreate} className="btn-primary mt-4 inline-flex items-center gap-2">
+                <Plus className="w-4 h-4" /> {t('pageBody.teachers.addFirst')}
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -168,7 +196,7 @@ export default function Teachers() {
                 </tr>
               </thead>
               <tbody>
-                {teachers.map((teacher) => {
+                {displayed.map((teacher) => {
                   const isActive = editingId === teacher.id;
                   return (
                     <tr key={teacher.id} className={isActive ? 'table-row-active' : ''}>
