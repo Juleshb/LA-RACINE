@@ -27,6 +27,7 @@ export const PERMISSIONS = {
 
 export const ROLE_LABELS = {
   SCHOOL_MANAGER: 'School Manager',
+  SCHOOL_ADMIN: 'School Admin',
   TEACHER: 'Teacher',
   PARENT: 'Parent',
   STUDENT: 'Student',
@@ -36,6 +37,13 @@ export const ROLE_LABELS = {
   ACCOUNTANT: 'Accountant',
   LIBRARIAN: 'Librarian',
 };
+
+/** Roles with full org-wide access (same permissions as School Manager). */
+export const MANAGER_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'];
+
+export function isManagerRole(role) {
+  return MANAGER_ROLES.includes(role);
+}
 
 const CAMPUS_ADMIN = [
   PERMISSIONS.DASHBOARD,
@@ -61,9 +69,10 @@ const CAMPUS_ADMIN = [
   PERMISSIONS.WEBSITE,
 ];
 
-// SCHOOL_MANAGER keeps exclusive control of users and campuses
+// SCHOOL_MANAGER / SCHOOL_ADMIN keep exclusive control of users and campuses
 export const ROLE_PERMISSIONS = {
   SCHOOL_MANAGER: Object.values(PERMISSIONS),
+  SCHOOL_ADMIN: Object.values(PERMISSIONS),
   SECRETARY: CAMPUS_ADMIN,
   HEAD_OF_STUDIES: [
     PERMISSIONS.DASHBOARD,

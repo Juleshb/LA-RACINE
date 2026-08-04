@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { signToken, userSelect } from '../lib/auth.js';
 import { authenticate } from '../middleware/auth.js';
-import { ROLE_LABELS, ROLE_PERMISSIONS } from '../config/permissions.js';
+import { ROLE_LABELS, ROLE_PERMISSIONS, isManagerRole } from '../config/permissions.js';
 import { issuePasswordReset } from '../lib/passwordReset.js';
 import { validateStrongPassword, PASSWORD_POLICY_HINT } from '../lib/passwordPolicy.js';
 import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
@@ -13,7 +13,7 @@ const ALLOWED_LANGUAGES = ['en', 'rw', 'sw', 'fr'];
 const router = Router();
 
 async function getCampusesForUser(user) {
-  if (user.role === 'SCHOOL_MANAGER') {
+  if (isManagerRole(user.role)) {
     return prisma.campus.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -113,7 +113,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    if (user.role !== 'SCHOOL_MANAGER' && !user.campusId) {
+    if (user.role !== 'SCHOOL_MANAGER' && user.role !== 'SCHOOL_ADMIN' && !user.campusId) {
       return res.status(403).json({ error: 'Your account is not assigned to a campus. Contact the school manager.' });
     }
 

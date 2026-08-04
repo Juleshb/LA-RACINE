@@ -73,7 +73,7 @@ export default function Layout() {
   const isParent = user?.role === 'PARENT';
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
-  const isStaff = ['SCHOOL_MANAGER', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'LIBRARIAN'].includes(user?.role);
+  const isStaff = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'LIBRARIAN'].includes(user?.role);
   const rawNavGroups = getNavGroupsForRole(user.role, campusId);
   const navGroups = rawNavGroups?.length
     ? rawNavGroups.map((group) => ({

@@ -32,7 +32,7 @@ router.get('/active', async (req, res) => {
   }
 });
 
-router.get('/:id/copy-preview', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.get('/:id/copy-preview', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const year = await prisma.academicYear.findFirst({
       where: { id: req.params.id, campusId: req.campusId },
@@ -46,7 +46,7 @@ router.get('/:id/copy-preview', authorizeRoles('SCHOOL_MANAGER'), async (req, re
   }
 });
 
-router.post('/', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.post('/', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const { name, startDate } = req.body;
     if (!name || !startDate) {
@@ -119,7 +119,7 @@ async function relinkStudentUsers(tx, campusId, yearId) {
   return count;
 }
 
-router.post('/start-new', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.post('/start-new', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const {
       name,
@@ -230,7 +230,7 @@ function buildStartMessage({ closed, year, copied }) {
   return msg;
 }
 
-router.patch('/:id/activate', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.patch('/:id/activate', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const target = await prisma.academicYear.findFirst({
       where: { id: req.params.id, campusId: req.campusId },
@@ -302,7 +302,7 @@ router.patch('/:id/activate', authorizeRoles('SCHOOL_MANAGER'), async (req, res)
   }
 });
 
-router.patch('/:id/close', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.patch('/:id/close', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const year = await prisma.academicYear.findFirst({
       where: { id: req.params.id, campusId: req.campusId },

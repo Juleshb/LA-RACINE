@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRoles } from '../config/permissions.js';
+import { authorizeRoles, isManagerRole } from '../config/permissions.js';
 
 const router = Router();
 
@@ -10,7 +10,7 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const where =
-      req.user.role === 'SCHOOL_MANAGER'
+      isManagerRole(req.user.role)
         ? {}
         : { id: (await prisma.user.findUnique({ where: { id: req.user.id }, select: { campusId: true } }))?.campusId || 'none' };
 
@@ -37,7 +37,7 @@ router.get('/:id', async (req, res) => {
     });
     if (!campus) return res.status(404).json({ error: 'Campus not found' });
 
-    if (req.user.role !== 'SCHOOL_MANAGER') {
+    if (!isManagerRole(req.user.role)) {
       const dbUser = await prisma.user.findUnique({
         where: { id: req.user.id },
         select: { campusId: true },
@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.post('/', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const { name, code, city, district, province, country, address, phone, email } = req.body;
     if (!name || !code || !city || !district) {
@@ -79,7 +79,7 @@ router.post('/', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
   }
 });
 
-router.put('/:id', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.put('/:id', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const existing = await prisma.campus.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Campus not found' });
@@ -138,7 +138,7 @@ router.put('/:id', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
   }
 });
 
-router.patch('/:id/status', authorizeRoles('SCHOOL_MANAGER'), async (req, res) => {
+router.patch('/:id/status', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
   try {
     const campus = await prisma.campus.update({
       where: { id: req.params.id },

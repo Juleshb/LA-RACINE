@@ -258,7 +258,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    if (req.user.role !== 'SCHOOL_MANAGER' && req.user.role !== 'SECRETARY') {
+    if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete classes' });
     }
     const scope = await classScopeWhere(req);

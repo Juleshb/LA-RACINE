@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import { isManagerRole } from '../config/permissions.js';
 
 export async function requireAcademicYear(req, res, next) {
   try {
@@ -12,7 +13,7 @@ export async function requireAcademicYear(req, res, next) {
       if (!year) {
         return res.status(404).json({ error: 'Academic year not found' });
       }
-      if (!year.isActive && req.user.role !== 'SCHOOL_MANAGER') {
+      if (!year.isActive && !isManagerRole(req.user.role)) {
         return res.status(403).json({ error: 'You can only access the active academic year' });
       }
     } else {

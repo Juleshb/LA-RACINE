@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
         logout,
         refreshUser,
         hasPermission: (p) => permissions.includes(p),
-        isManager: user?.role === 'SCHOOL_MANAGER',
+        isManager: user?.role === 'SCHOOL_MANAGER' || user?.role === 'SCHOOL_ADMIN',
       }}
     >
       {children}

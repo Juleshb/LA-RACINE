@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
-import { ROLE_LABELS } from '../config/permissions';
+import { ROLE_LABELS, isManagerRole } from '../config/permissions';
 import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
@@ -163,7 +163,7 @@ export default function Users() {
         lastName: form.lastName.trim(),
         role: form.role,
         phone: roleNeedsPhone(form.role) ? form.phone.trim() : (form.phone.trim() || null),
-        campusId: form.role === 'SCHOOL_MANAGER' ? null : campusId,
+        campusId: isManagerRole(form.role) ? null : campusId,
         teacherId: form.role === 'TEACHER' ? (form.teacherId || null) : null,
         studentId: form.role === 'STUDENT' ? (form.studentId || null) : null,
         parentId: form.role === 'PARENT' ? (form.parentId || null) : null,

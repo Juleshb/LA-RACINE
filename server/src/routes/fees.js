@@ -133,7 +133,7 @@ router.patch('/:id/status', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    if (req.user.role !== 'SCHOOL_MANAGER' && req.user.role !== 'SECRETARY' && req.user.role !== 'ACCOUNTANT') {
+    if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY','ACCOUNTANT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete fee records' });
     }
     const filter = await campusStudentFilter(req);

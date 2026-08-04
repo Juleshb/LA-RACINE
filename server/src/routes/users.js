@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { userSelect } from '../lib/auth.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRoles } from '../config/permissions.js';
+import { authorizeRoles, isManagerRole } from '../config/permissions.js';
 import { issuePasswordReset, buildResetPreview } from '../lib/passwordReset.js';
 import { validateStrongPassword } from '../lib/passwordPolicy.js';
 
@@ -11,6 +11,7 @@ const router = Router();
 
 const STAFF_ROLES = new Set([
   'SCHOOL_MANAGER',
+  'SCHOOL_ADMIN',
   'TEACHER',
   'HEAD_OF_STUDIES',
   'HEAD_OF_DISCIPLINE',
@@ -35,7 +36,7 @@ function validatePhone(phone) {
 }
 
 router.use(authenticate);
-router.use(authorizeRoles('SCHOOL_MANAGER', 'SECRETARY'));
+router.use(authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'));
 
 router.get('/', async (req, res) => {
   try {
@@ -136,7 +137,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'All required fields must be provided' });
     }
 
-    if (role !== 'SCHOOL_MANAGER' && !campusId) {
+    if (!isManagerRole(role) && !campusId) {
       return res.status(400).json({ error: 'Campus is required for this role' });
     }
 
@@ -172,7 +173,7 @@ router.post('/', async (req, res) => {
         lastName,
         role,
         phone: phoneValue,
-        campusId: role === 'SCHOOL_MANAGER' ? null : campusId,
+        campusId: isManagerRole(role) ? null : campusId,
         teacherId: teacherId || null,
         studentId: studentId || null,
         parentId: parentId || null,
@@ -213,8 +214,8 @@ router.put('/:id', async (req, res) => {
     const target = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!target) return res.status(404).json({ error: 'User not found' });
 
-    if (target.role === 'SCHOOL_MANAGER' && req.user.role !== 'SCHOOL_MANAGER') {
-      return res.status(403).json({ error: 'Only a school manager can modify manager accounts' });
+    if (isManagerRole(target.role) && !isManagerRole(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school manager or school admin can modify manager accounts' });
     }
 
     const {
@@ -242,7 +243,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const nextRole = role || target.role;
-    if (nextRole !== 'SCHOOL_MANAGER') {
+    if (!isManagerRole(nextRole)) {
       const nextCampusId = campusId !== undefined ? campusId : target.campusId;
       if (!nextCampusId) {
         return res.status(400).json({ error: 'Campus is required for this role' });
@@ -286,7 +287,7 @@ router.put('/:id', async (req, res) => {
     if (typeof isActive === 'boolean') data.isActive = isActive;
     if (phoneValue !== undefined) data.phone = phoneValue;
 
-    if (nextRole === 'SCHOOL_MANAGER') {
+    if (isManagerRole(nextRole)) {
       data.campusId = null;
       data.teacherId = null;
       data.studentId = null;
@@ -356,8 +357,8 @@ router.patch('/:id/status', async (req, res) => {
   try {
     const target = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!target) return res.status(404).json({ error: 'User not found' });
-    if (target.role === 'SCHOOL_MANAGER' && req.user.role !== 'SCHOOL_MANAGER') {
-      return res.status(403).json({ error: 'Only a school manager can modify manager accounts' });
+    if (isManagerRole(target.role) && !isManagerRole(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school manager or school admin can modify manager accounts' });
     }
     if (req.params.id === req.user.id && req.body.isActive === false) {
       return res.status(400).json({ error: 'You cannot deactivate your own account' });
@@ -381,8 +382,8 @@ router.post('/:id/send-password-reset', async (req, res) => {
     if (!target.isActive) {
       return res.status(400).json({ error: 'Cannot reset password for an inactive account' });
     }
-    if (target.role === 'SCHOOL_MANAGER' && req.user.role !== 'SCHOOL_MANAGER') {
-      return res.status(403).json({ error: 'Only a school manager can reset manager accounts' });
+    if (isManagerRole(target.role) && !isManagerRole(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school manager or school admin can reset manager accounts' });
     }
 
     const result = await issuePasswordReset(target, { initiatedBy: req.user.role });
@@ -407,8 +408,8 @@ router.get('/:id/password-reset', async (req, res) => {
   try {
     const target = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!target) return res.status(404).json({ error: 'User not found' });
-    if (target.role === 'SCHOOL_MANAGER' && req.user.role !== 'SCHOOL_MANAGER') {
-      return res.status(403).json({ error: 'Only a school manager can view manager reset details' });
+    if (isManagerRole(target.role) && !isManagerRole(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school manager or school admin can view manager reset details' });
     }
 
     const resetRecord = await prisma.passwordResetToken.findFirst({
@@ -458,8 +459,8 @@ router.delete('/:id', async (req, res) => {
     const target = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!target) return res.status(404).json({ error: 'User not found' });
 
-    if (target.role === 'SCHOOL_MANAGER' && req.user.role !== 'SCHOOL_MANAGER') {
-      return res.status(403).json({ error: 'Only a school manager can delete manager accounts' });
+    if (isManagerRole(target.role) && !isManagerRole(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school manager or school admin can delete manager accounts' });
     }
 
     const id = target.id;

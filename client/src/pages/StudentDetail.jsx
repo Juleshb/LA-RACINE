@@ -175,7 +175,7 @@ export default function StudentDetail() {
   const { campusId } = useCampus();
   const { user } = useAuth();
   const canManage = !['TEACHER', 'PARENT', 'STUDENT'].includes(user?.role);
-  const canProvisionAccounts = ['SCHOOL_MANAGER', 'SECRETARY'].includes(user?.role);
+  const canProvisionAccounts = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'].includes(user?.role);
 
   const [student, setStudent] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);

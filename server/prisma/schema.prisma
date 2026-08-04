@@ -984,6 +984,7 @@ enum AcademicYearStatus {
 
 enum UserRole {
   SCHOOL_MANAGER
+  SCHOOL_ADMIN
   TEACHER
   PARENT
   STUDENT

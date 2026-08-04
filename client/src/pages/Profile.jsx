@@ -151,7 +151,7 @@ export default function Profile() {
     || passwordForm.newPassword === passwordForm.confirmPassword;
 
   const displayRole = roleLabel || ROLE_LABELS[user?.role] || user?.role;
-  const isSchoolManager = user?.role === 'SCHOOL_MANAGER';
+  const isSchoolManager = user?.role === 'SCHOOL_MANAGER' || user?.role === 'SCHOOL_ADMIN';
   const campusName = isSchoolManager
     ? t('ui.allCampuses')
     : (campus?.name || user?.campus?.name || t('ui.allCampuses'));
@@ -499,7 +499,7 @@ export default function Profile() {
               </div>
             )}
 
-            {user?.role === 'SCHOOL_MANAGER' && (
+            {isSchoolManager && (
               <div className="profile-linked-block">
                 <InfoRow label={t('ui.accessLevel')} value={t('ui.allCampuses')} />
                 <InfoRow label={t('ui.accountType')} value={displayRole} />
@@ -510,7 +510,7 @@ export default function Profile() {
               </div>
             )}
 
-            {!['TEACHER', 'PARENT', 'SCHOOL_MANAGER'].includes(user?.role) && (
+            {!['TEACHER', 'PARENT', 'SCHOOL_MANAGER', 'SCHOOL_ADMIN'].includes(user?.role) && (
               <div className="profile-linked-block">
                 <InfoRow label={t('ui.role')} value={displayRole} />
                 <InfoRow label={t('ui.campus')} value={campusName} />
@@ -519,7 +519,7 @@ export default function Profile() {
               </div>
             )}
 
-            {!profile?.teacher && !profile?.parent && user?.role !== 'SCHOOL_MANAGER' && ['TEACHER', 'PARENT'].includes(user?.role) && (
+            {!profile?.teacher && !profile?.parent && !isSchoolManager && ['TEACHER', 'PARENT'].includes(user?.role) && (
               <p className="text-sm text-gray-500 flex items-center gap-2">
                 <BookOpen className="w-4 h-4" aria-hidden />
                 {t('ui.noLinkedRecord')}

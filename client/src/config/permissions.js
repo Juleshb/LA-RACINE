@@ -27,6 +27,7 @@ export const PERMISSIONS = {
 
 export const ROLE_LABELS = {
   SCHOOL_MANAGER: 'School Manager',
+  SCHOOL_ADMIN: 'School Admin',
   TEACHER: 'Teacher',
   PARENT: 'Parent',
   STUDENT: 'Student',
@@ -36,6 +37,13 @@ export const ROLE_LABELS = {
   ACCOUNTANT: 'Accountant',
   LIBRARIAN: 'Librarian',
 };
+
+/** Roles with full org-wide access (same permissions as School Manager). */
+export const MANAGER_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'];
+
+export function isManagerRole(role) {
+  return MANAGER_ROLES.includes(role);
+}
 
 const CAMPUS_ADMIN = [
   PERMISSIONS.DASHBOARD,
@@ -64,6 +72,7 @@ const CAMPUS_ADMIN = [
 
 export const ROLE_PERMISSIONS = {
   SCHOOL_MANAGER: Object.values(PERMISSIONS),
+  SCHOOL_ADMIN: Object.values(PERMISSIONS),
   SECRETARY: CAMPUS_ADMIN,
   HEAD_OF_STUDIES: [
     PERMISSIONS.DASHBOARD,
@@ -241,6 +250,7 @@ export const STUDENT_NAV_GROUPS = [
 
 const STAFF_ROLES = new Set([
   'SCHOOL_MANAGER',
+  'SCHOOL_ADMIN',
   'SECRETARY',
   'HEAD_OF_STUDIES',
   'HEAD_OF_DISCIPLINE',
@@ -352,7 +362,7 @@ export function getNavGroupsForRole(role, campusId) {
 }
 
 export function getLoginRedirect(user, defaultCampusId) {
-  if (user.role === 'SCHOOL_MANAGER') return '/campuses';
+  if (isManagerRole(user.role)) return '/campuses';
   if (defaultCampusId) return `/campus/${defaultCampusId}`;
   return '/campuses';
 }

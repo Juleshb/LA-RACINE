@@ -299,6 +299,7 @@ Seeded password for **all** accounts: **`password123`**
 | Email | Role |
 |-------|------|
 | `manager@laracineschool.rw` | School Manager → campus picker |
+| `admin@laracineschool.rw` | School Admin → same access as School Manager |
 | `secretary@laracineschool.rw` | Secretary |
 | `head.studies@laracineschool.rw` | Head of Studies |
 | `head.discipline@laracineschool.rw` | Head of Discipline |

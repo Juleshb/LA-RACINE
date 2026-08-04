@@ -110,7 +110,7 @@ const REPORT_CATALOG = [
     description: 'Fee payments with status, amounts, and due dates',
     category: 'Finance',
     permission: PERMISSIONS.FEES,
-    filters: ['status', 'dateRange'],
+    filters: ['status', 'feeType', 'dateRange'],
     dateFieldLabel: 'Due date between',
   },
   {
@@ -189,7 +189,7 @@ router.get('/:type', async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission for this report' });
     }
 
-    const { classId, status, date, dateFrom, dateTo, term } = req.query;
+    const { classId, status, feeType, date, dateFrom, dateTo, term } = req.query;
     const queryDates = { date, dateFrom, dateTo };
     let columns = [];
     let rows = [];
@@ -451,6 +451,7 @@ router.get('/:type', async (req, res) => {
         where: {
           student: scope,
           ...(status ? { status } : {}),
+          ...(feeType ? { feeType } : {}),
           ...(dueFilter || {}),
         },
         orderBy: { createdAt: 'desc' },

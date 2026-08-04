@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import { isManagerRole } from '../config/permissions.js';
 
 export async function requireCampus(req, res, next) {
   try {
@@ -13,7 +14,7 @@ export async function requireCampus(req, res, next) {
       return res.status(404).json({ error: 'Campus not found or inactive' });
     }
 
-    if (req.user.role !== 'SCHOOL_MANAGER') {
+    if (!isManagerRole(req.user.role)) {
       const dbUser = await prisma.user.findUnique({
         where: { id: req.user.id },
         select: { campusId: true },

@@ -8,7 +8,7 @@ const router = Router();
 
 router.use(authorizePermission(PERMISSIONS.COMMUNICATION));
 
-const SCHOOL_ROLES = ['SCHOOL_MANAGER', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'TEACHER'];
+const SCHOOL_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'TEACHER'];
 
 function isSchoolStaff(role) {
   return SCHOOL_ROLES.includes(role);

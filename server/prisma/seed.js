@@ -297,7 +297,7 @@ async function createUser({ email, password, firstName, lastName, role, campusId
     lastName,
     role,
     phone: phone || null,
-    campusId: role === 'SCHOOL_MANAGER' ? null : campusId,
+    campusId: (role === 'SCHOOL_MANAGER' || role === 'SCHOOL_ADMIN') ? null : campusId,
     teacherId,
     studentId,
     parentId,
@@ -309,7 +309,7 @@ async function createUser({ email, password, firstName, lastName, role, campusId
       lastName,
       role,
       phone: phone || null,
-      campusId: role === 'SCHOOL_MANAGER' ? null : campusId,
+      campusId: (role === 'SCHOOL_MANAGER' || role === 'SCHOOL_ADMIN') ? null : campusId,
       teacherId,
       studentId,
       parentId,
@@ -585,6 +585,7 @@ async function main() {
   const defaultPassword = 'password123';
 
   await createUser({ email: 'manager@laracineschool.rw', password: defaultPassword, firstName: 'Admin', lastName: 'Manager', role: 'SCHOOL_MANAGER', phone: '0789000001' });
+  await createUser({ email: 'admin@laracineschool.rw', password: defaultPassword, firstName: 'School', lastName: 'Admin', role: 'SCHOOL_ADMIN', phone: '0789000000' });
   await createUser({ email: 'head.studies@laracineschool.rw', password: defaultPassword, firstName: 'Fabrice', lastName: 'Habimana', role: 'HEAD_OF_STUDIES', campusId: campus.id, phone: '0789000002' });
   await createUser({ email: 'head.discipline@laracineschool.rw', password: defaultPassword, firstName: 'Claude', lastName: 'Mugisha', role: 'HEAD_OF_DISCIPLINE', campusId: campus.id, phone: '0789000003' });
   await createUser({ email: 'secretary@laracineschool.rw', password: defaultPassword, firstName: 'Divine', lastName: 'Keza', role: 'SECRETARY', campusId: campus.id, phone: '0789000004' });

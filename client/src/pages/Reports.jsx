@@ -9,6 +9,15 @@ import { exportReportExcel, exportReportPdf, exportReportWord } from '../lib/rep
 
 const DEFAULT_TERMS = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'];
 
+const FEE_TYPE_OPTIONS = [
+  { value: 'TUITION', labelKey: 'pageBody.fees.types.TUITION' },
+  { value: 'REGISTRATION', labelKey: 'pageBody.fees.types.REGISTRATION' },
+  { value: 'EXAM', labelKey: 'pageBody.fees.types.EXAM' },
+  { value: 'TRANSPORT', labelKey: 'pageBody.fees.types.TRANSPORT' },
+  { value: 'UNIFORM', labelKey: 'pageBody.fees.types.UNIFORM' },
+  { value: 'OTHER', labelKey: 'pageBody.fees.types.OTHER' },
+];
+
 export default function Reports() {
   const { t } = useTranslation();
   const [catalog, setCatalog] = useState([]);
@@ -16,6 +25,7 @@ export default function Reports() {
   const [selectedId, setSelectedId] = useState('');
   const [classId, setClassId] = useState('');
   const [status, setStatus] = useState('');
+  const [feeType, setFeeType] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [term, setTerm] = useState('Trimestre 1');
@@ -67,6 +77,7 @@ export default function Reports() {
       const params = {};
       if (filters.includes('classId') && classId) params.classId = classId;
       if (filters.includes('status') && status) params.status = status;
+      if (filters.includes('feeType') && feeType) params.feeType = feeType;
       if (filters.includes('dateRange')) {
         if (from) params.dateFrom = from;
         if (to) params.dateTo = to;
@@ -269,6 +280,17 @@ export default function Reports() {
                           <option value="REJECTED">{t('pages.reports.statusRejected')}</option>
                         </>
                       )}
+                    </select>
+                  </div>
+                )}
+                {filters.includes('feeType') && (
+                  <div>
+                    <label className="label">{t('ui.feeType')}</label>
+                    <select className="input" value={feeType} onChange={(e) => setFeeType(e.target.value)}>
+                      <option value="">{t('ui.all')}</option>
+                      {FEE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                      ))}
                     </select>
                   </div>
                 )}

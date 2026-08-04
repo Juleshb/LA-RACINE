@@ -485,7 +485,7 @@ router.post('/register-bulk', async (req, res) => {
   }
 });
 
-const canProvisionAccounts = authorizeRoles('SCHOOL_MANAGER', 'SECRETARY');
+const canProvisionAccounts = authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY');
 
 router.get('/:id/account-suggestions', canProvisionAccounts, async (req, res) => {
   try {
@@ -737,7 +737,7 @@ router.put('/:id', async (req, res) => {
 
 router.post('/:id/request-delete-otp', async (req, res) => {
   try {
-    if (req.user.role !== 'SCHOOL_MANAGER' && req.user.role !== 'SECRETARY') {
+    if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete student records' });
     }
     const scope = await studentScopeWhere(req);
@@ -782,7 +782,7 @@ router.post('/:id/request-delete-otp', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    if (req.user.role !== 'SCHOOL_MANAGER' && req.user.role !== 'SECRETARY') {
+    if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete student records' });
     }
     const { challengeId, code } = req.body || {};
