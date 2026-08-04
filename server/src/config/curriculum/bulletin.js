@@ -109,21 +109,24 @@ export function buildCurriculum(grade, label, domains, extra = {}) {
 }
 
 export const GRADE_LABELS = {
+  M1: 'Petite Section (PS)/M1',
+  M2: 'Moyenne Section/M2',
+  M3: 'Grande Section/M3',
+  TOP: 'Grande Section/M3 (Top class)',
   CRECHE: 'Crèche',
-  N1: '1ère année Maternelle / Nursery 1',
-  N2: '2ème année Maternelle / Nursery 2',
-  N3: '3ème année Maternelle / Nursery 3',
-  TOP: 'Top Class',
-  P1: '1ère année Primaire / Primary 1',
-  P2: '2ème année Primaire / Primary 2',
-  P3: '3ème année Primaire / Primary 3',
-  P4: '4ème année Primaire / Primary 4',
-  P5: '5ème année Primaire / Primary 5',
-  P6: '6ème année Primaire / Primary 6',
+  N1: 'Petite Section (PS)/M1',
+  N2: 'Moyenne Section/M2',
+  N3: 'Grande Section/M3',
+  P1: 'CP/P1',
+  P2: 'CE1/P2',
+  P3: 'CE2/P3',
+  P4: 'CM1/P4',
+  P5: 'CM2/P5',
+  P6: '6ème année/P6',
 };
 
 const PRIMARY_GRADES = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
-const NURSERY_GRADES = ['CRECHE', 'N1', 'N2', 'N3', 'TOP'];
+const NURSERY_GRADES = ['M1', 'M2', 'M3', 'TOP', 'CRECHE', 'N1', 'N2', 'N3'];
 
 export function buildAllCurricula() {
   const curricula = {};

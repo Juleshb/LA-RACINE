@@ -125,14 +125,15 @@ export default function Classes() {
               onChange={(e) => {
                 const name = e.target.value;
                 const next = { ...form, name };
-                if (/^top\s*class$/i.test(name.trim()) && (!form.grade || form.grade === 'N3')) {
+                if ((/top\s*class/i.test(name.trim()) || /grande\s*section.*top/i.test(name.trim()))
+                  && (!form.grade || form.grade === 'N3' || form.grade === 'M3')) {
                   next.grade = 'TOP';
                 }
                 setForm(next);
               }}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Top Class uses niveau <strong>TOP</strong> (not N3). Niveau + section must be unique per year.
+              Nursery: M1 (Petite), M2 (Moyenne), M3 (Grande), TOP (Top class). Primary: P1–P6 (CP–6ème). Niveau + section must be unique per year.
             </p>
           </div>
           <div>

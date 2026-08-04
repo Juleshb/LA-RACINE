@@ -4,6 +4,8 @@ import { classScopeWhere } from '../lib/scope.js';
 import { resolveTeacherId } from '../lib/teacherAccess.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { listBulletinPresets, resolveBulletinConfig } from '../config/bulletinPresets.js';
+import { isNurseryGrade } from '../config/grades.js';
+import { ensureDefaultClasses, classSortKey } from '../lib/defaultClasses.js';
 
 const router = Router();
 
@@ -78,18 +80,29 @@ router.patch('/:id/bulletin-config', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
+    // Align nursery/primary names & create missing official levels for the active year
+    if (!['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role) && req.academicYearId) {
+      await ensureDefaultClasses(prisma, req.campusId, req.academicYearId);
+    }
+
     const allYears = String(req.query.allYears || '') === '1';
     const scope = allYears && !['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)
       ? { campusId: req.campusId }
       : await classScopeWhere(req);
     const classes = await prisma.class.findMany({
       where: scope,
-      orderBy: [{ grade: 'asc' }, { section: 'asc' }],
+      orderBy: [{ section: 'asc' }],
       include: {
         teacher: true,
         academicYear: { select: { id: true, name: true } },
         _count: { select: { students: true, subjects: true } },
       },
+    });
+    classes.sort((a, b) => {
+      const ka = classSortKey(a.grade, a.section);
+      const kb = classSortKey(b.grade, b.section);
+      if (ka !== kb) return ka - kb;
+      return String(a.name).localeCompare(String(b.name));
     });
     res.json(classes);
   } catch (error) {
@@ -141,8 +154,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Class name, grade (niveau), and section are required' });
     }
 
-    // "Top Class" is its own level — don't reuse N3 (often already taken)
-    if (/^top\s*class$/i.test(name) && (grade === 'N3' || grade === 'NURSERY 3')) {
+    // "Top Class" / Grande Section Top is its own level
+    if (
+      (/top\s*class/i.test(name) || /grande\s*section.*top/i.test(name))
+      && (grade === 'N3' || grade === 'M3' || grade === 'NURSERY 3')
+    ) {
       grade = 'TOP';
     }
 
@@ -181,7 +197,7 @@ router.post('/', async (req, res) => {
         teacherId,
         campusId: req.campusId,
         academicYearId: req.academicYearId,
-        bulletinConfig: ['CRECHE', 'N1', 'N2', 'N3', 'TOP'].includes(grade)
+        bulletinConfig: isNurseryGrade(grade)
           ? { preset: 'COMPETENCE' }
           : { preset: 'STANDARD' },
       },
@@ -216,7 +232,8 @@ router.put('/:id', async (req, res) => {
     if (data.section != null) data.section = String(data.section).trim().toUpperCase();
     if (data.teacherId === '') data.teacherId = null;
 
-    if (data.name && /^top\s*class$/i.test(data.name) && (data.grade === 'N3' || data.grade === 'NURSERY 3')) {
+    if (data.name && (/top\s*class/i.test(data.name) || /grande\s*section.*top/i.test(data.name))
+      && (data.grade === 'N3' || data.grade === 'M3' || data.grade === 'NURSERY 3')) {
       data.grade = 'TOP';
     }
 

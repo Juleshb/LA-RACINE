@@ -175,7 +175,7 @@ function normalizeTreatment(tuberculosisRaw, generalAllergiesRaw) {
   return 'NO_ILLNESS';
 }
 
-/** Map form class label → grade code (N1, P1, …) */
+/** Map form class label → grade code (M1, P1, …) */
 export function classLabelToGrade(label) {
   const v = normalizeHeader(label);
   if (!v) return null;
@@ -183,10 +183,27 @@ export function classLabelToGrade(label) {
   const exact = {
     'creche': 'CRECHE',
     'crèche': 'CRECHE',
-    '1ere annee maternelle / nursery 1': 'N1',
-    '2eme annee maternelle / nursery 2': 'N2',
-    '3eme annee maternelle / nursery 3': 'N3',
+    'petite section (ps)/m1': 'M1',
+    'petite section': 'M1',
+    'ps/m1': 'M1',
+    'm1': 'M1',
+    'moyenne section/m2': 'M2',
+    'moyenne section': 'M2',
+    'm2': 'M2',
+    'grande section/m3': 'M3',
+    'grande section': 'M3',
+    'm3': 'M3',
+    'grande section/m3 (top class)': 'TOP',
     'top class': 'TOP',
+    '1ere annee maternelle / nursery 1': 'M1',
+    '2eme annee maternelle / nursery 2': 'M2',
+    '3eme annee maternelle / nursery 3': 'M3',
+    'cp/p1': 'P1',
+    'ce1/p2': 'P2',
+    'ce2/p3': 'P3',
+    'cm1/p4': 'P4',
+    'cm2/p5': 'P5',
+    '6eme annee/p6': 'P6',
     '1ere annee primaire / primary 1': 'P1',
     '2eme annee primaire / primary 2': 'P2',
     '3eme annee primaire / primary 3': 'P3',
@@ -197,16 +214,17 @@ export function classLabelToGrade(label) {
   if (exact[v]) return exact[v];
 
   if (v.includes('creche')) return 'CRECHE';
-  if (v.includes('top class') || v.includes('topclass')) return 'TOP';
-  if (v.includes('nursery 1') || v.includes('1ere annee maternelle') || v.includes('1re annee maternelle')) return 'N1';
-  if (v.includes('nursery 2') || v.includes('2eme annee maternelle') || v.includes('2e annee maternelle')) return 'N2';
-  if (v.includes('nursery 3') || v.includes('3eme annee maternelle') || v.includes('3e annee maternelle')) return 'N3';
-  if (v.includes('primary 1') || v.includes('1ere annee primaire') || v.includes('1re annee primaire')) return 'P1';
-  if (v.includes('primary 2') || v.includes('2eme annee primaire') || v.includes('2e annee primaire')) return 'P2';
-  if (v.includes('primary 3') || v.includes('3eme annee primaire') || v.includes('3e annee primaire')) return 'P3';
-  if (v.includes('primary 4') || v.includes('4eme annee primaire') || v.includes('4e annee primaire')) return 'P4';
-  if (v.includes('primary 5') || v.includes('5eme annee primaire') || v.includes('5e annee primaire')) return 'P5';
-  if (v.includes('primary 6') || v.includes('6eme annee primaire') || v.includes('6e annee primaire')) return 'P6';
+  if (v.includes('top class') || v.includes('topclass') || (v.includes('grande') && v.includes('top'))) return 'TOP';
+  if (v.includes('petite') || v.includes('nursery 1') || /\bm1\b/.test(v) || v.includes('1ere annee maternelle')) return 'M1';
+  if ((v.includes('moyenne') && v.includes('middle')) || v.includes('middle class')) return 'M2';
+  if (v.includes('moyenne') || v.includes('nursery 2') || /\bm2\b/.test(v) || v.includes('2eme annee maternelle')) return 'M2';
+  if (v.includes('grande') || v.includes('nursery 3') || /\bm3\b/.test(v) || v.includes('3eme annee maternelle')) return 'M3';
+  if (v.includes('cp/') || v.includes('primary 1') || v.includes('1ere annee primaire') || /\bp1\b/.test(v)) return 'P1';
+  if (v.includes('ce1') || v.includes('primary 2') || v.includes('2eme annee primaire') || /\bp2\b/.test(v)) return 'P2';
+  if (v.includes('ce2') || v.includes('primary 3') || v.includes('3eme annee primaire') || /\bp3\b/.test(v)) return 'P3';
+  if (v.includes('cm1') || v.includes('primary 4') || v.includes('4eme annee primaire') || /\bp4\b/.test(v)) return 'P4';
+  if (v.includes('cm2') || v.includes('primary 5') || v.includes('5eme annee primaire') || /\bp5\b/.test(v)) return 'P5';
+  if (v.includes('6eme annee') || v.includes('primary 6') || /\bp6\b/.test(v)) return 'P6';
   return null;
 }
 

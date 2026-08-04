@@ -4,17 +4,16 @@ export const SCHOOL_YEARS = [
 ];
 
 export const CLASS_LEVELS = [
-  { value: 'CRECHE', label: 'Crèche' },
-  { value: 'N1', label: '1ère année Maternelle / Nursery 1' },
-  { value: 'N2', label: '2ème année Maternelle / Nursery 2' },
-  { value: 'N3', label: '3ème année Maternelle / Nursery 3' },
-  { value: 'TOP', label: 'Top Class' },
-  { value: 'P1', label: '1ère année Primaire / Primary 1' },
-  { value: 'P2', label: '2ème année Primaire / Primary 2' },
-  { value: 'P3', label: '3ème année Primaire / Primary 3' },
-  { value: 'P4', label: '4ème année Primaire / Primary 4' },
-  { value: 'P5', label: '5ème année Primaire / Primary 5' },
-  { value: 'P6', label: '6ème année Primaire / Primary 6' },
+  { value: 'M1', label: 'Petite Section (PS)/M1' },
+  { value: 'M2', label: 'Moyenne Section/M2' },
+  { value: 'M3', label: 'Grande Section/M3' },
+  { value: 'TOP', label: 'Grande Section/M3 (Top class)' },
+  { value: 'P1', label: 'CP/P1' },
+  { value: 'P2', label: 'CE1/P2' },
+  { value: 'P3', label: 'CE2/P3' },
+  { value: 'P4', label: 'CM1/P4' },
+  { value: 'P5', label: 'CM2/P5' },
+  { value: 'P6', label: '6ème année/P6' },
 ];
 
 export const BUS_STOPS = [

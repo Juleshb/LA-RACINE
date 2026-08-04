@@ -4,17 +4,16 @@ export const SCHOOL_YEARS = [
 ];
 
 export const CLASS_LEVELS = [
-  { value: 'CRECHE', label: 'Crèche', labelFr: 'Crèche', labelEn: 'Crèche', labelRw: 'Crèche' },
-  { value: 'N1', label: '1ère année Maternelle / Nursery 1', labelFr: '1ère année Maternelle', labelEn: 'Nursery 1', labelRw: 'N1' },
-  { value: 'N2', label: '2ème année Maternelle / Nursery 2', labelFr: '2ème année Maternelle', labelEn: 'Nursery 2', labelRw: 'N2' },
-  { value: 'N3', label: '3ème année Maternelle / Nursery 3', labelFr: '3ème année Maternelle', labelEn: 'Nursery 3', labelRw: 'N3' },
-  { value: 'TOP', label: 'Top Class', labelFr: 'Top Class', labelEn: 'Top Class', labelRw: 'Top Class' },
-  { value: 'P1', label: '1ère année Primaire / Primary 1', labelFr: '1ère année Primaire', labelEn: 'Primary 1', labelRw: 'P1' },
-  { value: 'P2', label: '2ème année Primaire / Primary 2', labelFr: '2ème année Primaire', labelEn: 'Primary 2', labelRw: 'P2' },
-  { value: 'P3', label: '3ème année Primaire / Primary 3', labelFr: '3ème année Primaire', labelEn: 'Primary 3', labelRw: 'P3' },
-  { value: 'P4', label: '4ème année Primaire / Primary 4', labelFr: '4ème année Primaire', labelEn: 'Primary 4', labelRw: 'P4' },
-  { value: 'P5', label: '5ème année Primaire / Primary 5', labelFr: '5ème année Primaire', labelEn: 'Primary 5', labelRw: 'P5' },
-  { value: 'P6', label: '6ème année Primaire / Primary 6', labelFr: '6ème année Primaire', labelEn: 'Primary 6', labelRw: 'P6' },
+  { value: 'M1', label: 'Petite Section (PS)/M1', labelFr: 'Petite Section (PS)/M1', labelEn: 'Petite Section (PS)/M1', labelRw: 'M1' },
+  { value: 'M2', label: 'Moyenne Section/M2', labelFr: 'Moyenne Section/M2', labelEn: 'Moyenne Section/M2', labelRw: 'M2' },
+  { value: 'M3', label: 'Grande Section/M3', labelFr: 'Grande Section/M3', labelEn: 'Grande Section/M3', labelRw: 'M3' },
+  { value: 'TOP', label: 'Grande Section/M3 (Top class)', labelFr: 'Grande Section/M3 (Top class)', labelEn: 'Top class', labelRw: 'Top' },
+  { value: 'P1', label: 'CP/P1', labelFr: 'CP/P1', labelEn: 'CP/P1', labelRw: 'P1' },
+  { value: 'P2', label: 'CE1/P2', labelFr: 'CE1/P2', labelEn: 'CE1/P2', labelRw: 'P2' },
+  { value: 'P3', label: 'CE2/P3', labelFr: 'CE2/P3', labelEn: 'CE2/P3', labelRw: 'P3' },
+  { value: 'P4', label: 'CM1/P4', labelFr: 'CM1/P4', labelEn: 'CM1/P4', labelRw: 'P4' },
+  { value: 'P5', label: 'CM2/P5', labelFr: 'CM2/P5', labelEn: 'CM2/P5', labelRw: 'P5' },
+  { value: 'P6', label: '6ème année/P6', labelFr: '6ème année/P6', labelEn: 'Primary 6', labelRw: 'P6' },
 ];
 
 export const BUS_STOPS = [
