@@ -9,10 +9,13 @@ export async function applyCurriculumToClass(db, campusId, classId, grade) {
     throw new Error('Class not found');
   }
 
-  const resolvedGrade = grade || cls.grade;
+  const resolvedGrade = String(grade || cls.grade || '').trim().toUpperCase();
   const curriculum = getCurriculum(resolvedGrade);
   if (!curriculum) {
-    throw new Error(`No bulletin curriculum for grade ${resolvedGrade}`);
+    throw new Error(
+      `No bulletin curriculum for grade ${resolvedGrade}. `
+      + 'Expected nursery M1/M2/M3/TOP (or legacy N1/N2/N3) or primary P1–P6.',
+    );
   }
 
   const existing = await db.subject.findMany({
@@ -113,16 +116,23 @@ export async function applyCurriculumToAllClasses(db, campusId, academicYearId) 
 
   const results = [];
   let totalCreated = 0;
+  const skipped = [];
 
   for (const cls of classes) {
-    const result = await applyCurriculumToClass(db, campusId, cls.id, cls.grade);
-    results.push(result);
-    totalCreated += result.created;
+    try {
+      const result = await applyCurriculumToClass(db, campusId, cls.id, cls.grade);
+      results.push(result);
+      totalCreated += result.created;
+    } catch (err) {
+      skipped.push({ classId: cls.id, grade: cls.grade, name: cls.name, error: err.message });
+      console.warn(`Skipping curriculum for ${cls.name} (${cls.grade}): ${err.message}`);
+    }
   }
 
   return {
     classes: results.length,
     totalCreated,
+    skipped,
     results,
   };
 }

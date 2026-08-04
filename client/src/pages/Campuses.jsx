@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Plus, Building2, ArrowRight, Users, GraduationCap,
-  MapPin, LogOut, LayoutDashboard, Calendar, Pencil,
+  MapPin, LogOut, LayoutDashboard, Calendar, Pencil, Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -35,6 +35,7 @@ export default function Campuses() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = () => api.getCampuses().then(setCampuses).catch(console.error);
   useEffect(() => { load(); }, []);
@@ -46,6 +47,34 @@ export default function Campuses() {
     }
   }, [isManager, campuses, navigate]);
 
+  const handleDeleteCampus = async (campus) => {
+    if (!isManager) return;
+    if (campuses.length <= 1) {
+      window.alert('You cannot delete the only remaining campus.');
+      return;
+    }
+    const students = campus._count?.students || 0;
+    const teachers = campus._count?.teachers || 0;
+    const ok = window.confirm(
+      `Delete campus “${campus.name}” (${campus.code})?\n\n`
+      + `This permanently removes its academic years, classes, students (${students}), teachers (${teachers}), and related data.\n`
+      + 'This cannot be undone.',
+    );
+    if (!ok) return;
+
+    setDeletingId(campus.id);
+    try {
+      await api.deleteCampus(campus.id);
+      if (localStorage.getItem('campusId') === campus.id) {
+        localStorage.removeItem('campusId');
+      }
+      await load();
+    } catch (err) {
+      window.alert(err.message || 'Failed to delete campus');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const totals = campuses.reduce(
     (acc, c) => ({
       students: acc.students + (c._count?.students || 0),
@@ -306,6 +335,18 @@ export default function Campuses() {
                   >
                     <Pencil className="w-4 h-4" />
                     {t('ui.edit')}
+                  </button>
+                )}
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCampus(c)}
+                    disabled={deletingId === c.id || campuses.length <= 1}
+                    className="btn-secondary flex-1 inline-flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 hover:border-red-200 disabled:opacity-50"
+                    title={campuses.length <= 1 ? 'Cannot delete the only campus' : 'Delete campus'}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {deletingId === c.id ? t('ui.loading') : t('ui.delete')}
                   </button>
                 )}
                 <button

@@ -150,4 +150,44 @@ router.patch('/:id/status', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), as
   }
 });
 
+router.delete('/:id', authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN'), async (req, res) => {
+  try {
+    const existing = await prisma.campus.findUnique({
+      where: { id: req.params.id },
+      include: {
+        _count: { select: { users: true, students: true, teachers: true, classes: true } },
+      },
+    });
+    if (!existing) return res.status(404).json({ error: 'Campus not found' });
+
+    const totalCampuses = await prisma.campus.count();
+    if (totalCampuses <= 1) {
+      return res.status(400).json({ error: 'You cannot delete the only remaining campus' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Users reference campus without cascade — detach them first
+      await tx.user.updateMany({
+        where: { campusId: existing.id },
+        data: { campusId: null },
+      });
+      await tx.campus.delete({ where: { id: existing.id } });
+    });
+
+    res.json({
+      message: 'Campus deleted',
+      id: existing.id,
+      name: existing.name,
+      detachedUsers: existing._count.users,
+    });
+  } catch (error) {
+    if (error.code === 'P2003') {
+      return res.status(409).json({
+        error: 'This campus still has related records that block deletion. Deactivate it instead, or contact support.',
+      });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

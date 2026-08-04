@@ -145,7 +145,11 @@ export async function ensureDefaultClasses(db, campusId, academicYearId) {
   });
 
   for (const cls of newClasses) {
-    await applyCurriculumToClass(db, campusId, cls.id, cls.grade);
+    try {
+      await applyCurriculumToClass(db, campusId, cls.id, cls.grade);
+    } catch (err) {
+      console.warn(`Curriculum apply skipped for ${cls.grade} (${cls.id}): ${err.message}`);
+    }
   }
 
   return toCreate.length;

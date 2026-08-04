@@ -101,6 +101,7 @@ export const api = {
   getCampus: (id) => request(`/campuses/${id}`),
   createCampus: (data) => request('/campuses', { method: 'POST', body: JSON.stringify(data) }),
   updateCampus: (id, data) => request(`/campuses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCampus: (id) => request(`/campuses/${id}`, { method: 'DELETE' }),
   toggleCampusStatus: (id, isActive) =>
     request(`/campuses/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 

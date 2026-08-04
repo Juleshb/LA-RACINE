@@ -211,9 +211,10 @@ export const NURSERY_TEMPLATE_BY_GRADE = {
 };
 
 export function getNurseryCompetenceDomains(grade) {
-  return NURSERY_TEMPLATE_BY_GRADE[grade] || null;
+  const key = String(grade || '').trim().toUpperCase();
+  return NURSERY_TEMPLATE_BY_GRADE[key] || null;
 }
 
 export function isCompetenceNurseryCurriculum(grade) {
-  return Boolean(NURSERY_TEMPLATE_BY_GRADE[grade]);
+  return Boolean(getNurseryCompetenceDomains(grade));
 }
