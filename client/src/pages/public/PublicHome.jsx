@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { getYouTubeEmbedUrl, parseYouTubeId } from '../../lib/youtube';
+import ProgramCard from '../../components/public/ProgramCard';
+import { enrichProgramCard } from './programUtils';
 
 function formatDate(value, locale) {
   if (!value) return '';
@@ -41,6 +43,7 @@ export default function PublicHome() {
   const c = page('home') || {};
   const news = page('news') || {};
   const gallery = page('gallery') || {};
+  const academics = page('academics') || {};
 
   const brand = (school?.name || 'École La RACINE').replace(/\s*school\s*$/i, '').trim();
   const videoId = parseYouTubeId(c.heroVideoUrl || '');
@@ -86,7 +89,11 @@ export default function PublicHome() {
   const active = slides[slide] || slides[0] || {};
   const campusCount = campuses?.length || c.stats?.campuses || '';
 
-  const programs = Array.isArray(c.programs) ? c.programs.filter((p) => p?.title) : [];
+  const programs = useMemo(() => {
+    const cards = Array.isArray(c.programs) ? c.programs.filter((p) => p?.title) : [];
+    const academicsPrograms = Array.isArray(academics.programs) ? academics.programs : [];
+    return cards.map((card) => enrichProgramCard(card, academicsPrograms));
+  }, [c.programs, academics.programs]);
   const whyItems = (Array.isArray(c.whyChoose) && c.whyChoose.length
     ? c.whyChoose
     : (c.values || [])).filter((item) => item?.title);
@@ -187,28 +194,12 @@ export default function PublicHome() {
           {programs.length > 0 && (
             <div className="ps-program-grid">
               {programs.map((item, index) => (
-                <article key={item.title || index} className={`ps-program ${index === 1 ? 'is-featured' : ''}`}>
-                  <div className="ps-program-media">
-                    {item.imageUrl && <img src={item.imageUrl} alt="" />}
-                    {item.tag && <span className="ps-program-tag">{item.tag}</span>}
-                  </div>
-                  <div className="ps-program-body">
-                    <h3>{item.title}</h3>
-                    {item.body && <p>{item.body}</p>}
-                    {!!item.points?.length && (
-                      <ul>
-                        {item.points.filter(Boolean).map((point) => (
-                          <li key={point}>{point}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {(item.cta || c.programsExplore) && (
-                      <Link to={item.to || '/academics'} className="ps-text-link">
-                        {item.cta || c.programsExplore}
-                      </Link>
-                    )}
-                  </div>
-                </article>
+                <ProgramCard
+                  key={item.slug || item.title || index}
+                  program={item}
+                  index={index}
+                  exploreLabel={c.programsExplore || 'Explore program'}
+                />
               ))}
             </div>
           )}

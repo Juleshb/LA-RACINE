@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import { ROLE_LABELS, ROLE_PERMISSIONS } from '../config/permissions.js';
 import { issuePasswordReset } from '../lib/passwordReset.js';
 import { validateStrongPassword, PASSWORD_POLICY_HINT } from '../lib/passwordPolicy.js';
+import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
 
 const ALLOWED_LANGUAGES = ['en', 'rw', 'sw', 'fr'];
 
@@ -73,6 +74,30 @@ async function buildMeResponse(userId) {
   };
 }
 
+async function issueLoginSession(user) {
+  const campuses = await getCampusesForUser(user);
+  const token = signToken({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    campusId: user.campusId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    teacherId: user.teacherId,
+    studentId: user.studentId,
+    parentId: user.parentId,
+  });
+  const { password: _, ...safeUser } = user;
+  return {
+    token,
+    user: safeUser,
+    campuses,
+    defaultCampusId: user.campusId || campuses[0]?.id || null,
+    roleLabel: ROLE_LABELS[user.role],
+    permissions: ROLE_PERMISSIONS[user.role],
+  };
+}
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -97,28 +122,83 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const campuses = await getCampusesForUser(user);
-
-    const token = signToken({
-      id: user.id,
+    const otp = await createAndSendOtp({
+      userId: user.id,
       email: user.email,
-      role: user.role,
-      campusId: user.campusId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      teacherId: user.teacherId,
-      studentId: user.studentId,
-      parentId: user.parentId,
+      purpose: OTP_PURPOSE.LOGIN,
+      subject: 'Your École La RACINE login code',
+      introHtml: `Hello ${user.firstName || ''}, use this code to finish signing in:`,
     });
 
-    const { password: _, ...safeUser } = user;
     res.json({
-      token,
-      user: safeUser,
-      campuses,
-      defaultCampusId: user.campusId || campuses[0]?.id || null,
-      roleLabel: ROLE_LABELS[user.role],
-      permissions: ROLE_PERMISSIONS[user.role],
+      requiresOtp: true,
+      challengeId: otp.challengeId,
+      emailMasked: otp.emailMasked,
+      expiresAt: otp.expiresAt,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/login/verify-otp', async (req, res) => {
+  try {
+    const { challengeId, code } = req.body;
+    if (!challengeId || !code) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+
+    const challenge = await verifyOtpChallenge({
+      challengeId,
+      code,
+      purpose: OTP_PURPOSE.LOGIN,
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: challenge.userId },
+      include: { campus: { select: { id: true, name: true, code: true, city: true } } },
+    });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Account is no longer available' });
+    }
+
+    res.json(await issueLoginSession(user));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.post('/login/resend-otp', async (req, res) => {
+  try {
+    const { challengeId } = req.body;
+    if (!challengeId) {
+      return res.status(400).json({ error: 'Challenge id is required' });
+    }
+
+    const existing = await prisma.authOtpChallenge.findUnique({ where: { id: challengeId } });
+    if (!existing || existing.purpose !== OTP_PURPOSE.LOGIN) {
+      return res.status(400).json({ error: 'Invalid challenge. Sign in again.' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: existing.userId } });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Account is no longer available' });
+    }
+
+    const otp = await createAndSendOtp({
+      userId: user.id,
+      email: user.email,
+      purpose: OTP_PURPOSE.LOGIN,
+      subject: 'Your École La RACINE login code',
+      introHtml: `Hello ${user.firstName || ''}, use this code to finish signing in:`,
+    });
+
+    res.json({
+      requiresOtp: true,
+      challengeId: otp.challengeId,
+      emailMasked: otp.emailMasked,
+      expiresAt: otp.expiresAt,
+      message: 'A new verification code was sent.',
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

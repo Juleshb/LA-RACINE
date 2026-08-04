@@ -11,8 +11,10 @@ import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
 import BulletinSteps from '../components/bulletin/BulletinSteps';
 import SubjectTestManager from '../components/marks/SubjectTestManager';
+import NurseryCompetenceMarks from '../components/marks/NurseryCompetenceMarks';
 import ScoreBadge from '../components/bulletin/ScoreBadge';
 import { formatGradingScale, groupCoursesByCategory } from '../lib/curriculum';
+import { isNurseryGrade } from '../lib/grades';
 import {
   getMaxForAssessment,
   courseUsesBulletinScale,
@@ -502,6 +504,19 @@ export default function Marks() {
     return <Navigate to={`/campus/${campusId}/bulletin-report`} replace />;
   }
 
+  if (isNurseryGrade(selectedClass?.grade)) {
+    return (
+      <NurseryCompetenceMarks
+        campusId={campusId}
+        classes={classes}
+        classId={classId}
+        onClassChange={setClassId}
+        t={t}
+        isTeacher={isTeacher}
+      />
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -517,10 +532,12 @@ export default function Marks() {
                 {autoSaveLabel}
               </span>
             )}
-            <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              {t('pages.bulletin.title')}
-            </Link>
+            {!isTeacher && (
+              <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                {t('pages.bulletin.title')}
+              </Link>
+            )}
             <button
               onClick={handleSave}
               disabled={saving || !subjectId || students.length === 0 || !hasSavableMarks(records)}

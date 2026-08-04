@@ -37,9 +37,9 @@ export function PublicRoute() {
   return <Outlet />;
 }
 
-export function RequirePermission({ permission, children }) {
+export function RequirePermission({ permission, denyRoles = [], children }) {
   const { user } = useAuth();
-  if (!hasPermission(user.role, permission)) {
+  if (denyRoles.includes(user?.role) || !hasPermission(user.role, permission)) {
     return <Navigate to="/app" replace />;
   }
   return children;

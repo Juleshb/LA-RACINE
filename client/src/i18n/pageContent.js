@@ -322,6 +322,7 @@ export const pageEn = {
       description: 'Student enrollment and registration records',
       descriptionTeacher: 'Students in your homeroom and subject classes — view profiles only',
       register: 'Register student',
+      importExcel: 'Import Excel',
     },
     teachers: {
       title: 'Teachers',
@@ -579,6 +580,7 @@ export const pageEn = {
       pageHome: 'Home',
       pageAbout: 'About',
       pageAcademics: 'Academics',
+      pageCalendar: 'School calendar',
       pageCampuses: 'Campuses',
       pageAdmissions: 'Admissions',
       pageContact: 'Contact',
@@ -1418,6 +1420,7 @@ export const pageFr = {
       description: 'Inscriptions et dossiers des élèves',
       descriptionTeacher: 'Élèves de vos classes — consultation uniquement',
       register: 'Inscrire un élève',
+      importExcel: 'Importer Excel',
     },
     teachers: {
       title: 'Enseignants',
@@ -1643,6 +1646,7 @@ export const pageFr = {
       pageHome: 'Accueil',
       pageAbout: 'À propos',
       pageAcademics: 'Scolarité',
+      pageCalendar: 'Calendrier scolaire',
       pageCampuses: 'Campus',
       pageAdmissions: 'Admissions',
       pageContact: 'Contact',
@@ -2482,6 +2486,7 @@ export const pageRw = {
       description: 'Kwiyandikisha n’amakuru y’abanyeshuri',
       descriptionTeacher: 'Abanyeshuri b’amasomo yawe — gusuzuma gusa',
       register: 'Andikisha umunyeshuri',
+      importExcel: 'Kuzana Excel',
     },
     teachers: {
       title: 'Abarimu',
@@ -2739,6 +2744,7 @@ export const pageRw = {
       pageHome: 'Ahabanza',
       pageAbout: 'Ibyerekeye',
       pageAcademics: 'Amasomo',
+      pageCalendar: 'Kalendari y’ishuri',
       pageCampuses: 'Ahantu h’ishuri',
       pageAdmissions: 'Kwiyandikisha',
       pageContact: 'Itumanaho',
@@ -3578,6 +3584,7 @@ export const pageSw = {
       description: 'Usajili na rekodi za wanafunzi',
       descriptionTeacher: 'Wanafunzi wa madarasa yako — kuangalia tu',
       register: 'Sajili mwanafunzi',
+      importExcel: 'Ingiza Excel',
     },
     teachers: {
       title: 'Walimu',

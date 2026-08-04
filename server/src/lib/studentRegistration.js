@@ -101,6 +101,7 @@ export function buildStudentData(body, campusId, academicYearId, studentId) {
     transportMode: fields.transportMode || null,
     busStop: fields.busStop || null,
     paymentMethod: fields.paymentMethod || null,
+    additionalInfo: fields.additionalInfo || null,
   };
 }
 
@@ -170,6 +171,87 @@ export async function saveDocuments(studentUuid, studentCode, documents = []) {
     saved.push(record);
   }
   return saved;
+}
+
+function removeDocumentFile(filePathRel) {
+  if (!filePathRel) return;
+  const absPath = path.resolve(path.join(__dirname, '../..'), filePathRel);
+  if (fs.existsSync(absPath)) {
+    try {
+      fs.unlinkSync(absPath);
+    } catch {
+      // ignore missing/locked files
+    }
+  }
+}
+
+/** Delete one document record and its file from disk. */
+export async function deleteStudentDocument(doc) {
+  if (!doc) return;
+  removeDocumentFile(doc.filePath);
+  await prisma.studentDocument.delete({ where: { id: doc.id } }).catch(() => {});
+}
+
+/**
+ * Replace existing document(s) of the same type (or a specific doc id) with a new upload.
+ * Old file(s) are deleted from disk.
+ */
+export async function replaceStudentDocument({
+  studentUuid,
+  studentCode,
+  docType,
+  replaceDocId = null,
+  fileName,
+  contentBase64,
+  mimeType = null,
+}) {
+  if (!docType || !fileName || !contentBase64) {
+    const err = new Error('Document type and file are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const raw = String(contentBase64).includes(',')
+    ? String(contentBase64).split(',')[1]
+    : String(contentBase64);
+  const buffer = Buffer.from(raw, 'base64');
+  if (!buffer.length) {
+    const err = new Error('Invalid file data');
+    err.status = 400;
+    throw err;
+  }
+  if (buffer.length > MAX_FILE_SIZE_BYTES) {
+    const err = new Error(`File exceeds the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB limit`);
+    err.status = 400;
+    throw err;
+  }
+
+  const toRemove = replaceDocId
+    ? await prisma.studentDocument.findMany({ where: { id: replaceDocId, studentId: studentUuid } })
+    : await prisma.studentDocument.findMany({ where: { studentId: studentUuid, docType } });
+
+  for (const old of toRemove) {
+    await deleteStudentDocument(old);
+  }
+
+  const studentDir = path.join(UPLOADS_DIR, studentUuid);
+  fs.mkdirSync(studentDir, { recursive: true });
+
+  const names = buildAttachmentFileName(docType, studentCode, fileName, mimeType);
+  // Avoid overwrite collision if delete failed to remove same disk name
+  const uniqueDisk = `${Date.now()}-${names.diskName}`;
+  const absPath = path.join(studentDir, uniqueDisk);
+  fs.writeFileSync(absPath, buffer);
+
+  return prisma.studentDocument.create({
+    data: {
+      studentId: studentUuid,
+      docType,
+      fileName: names.fileName,
+      filePath: path.relative(path.join(__dirname, '../..'), absPath),
+      mimeType: mimeType || null,
+    },
+  });
 }
 
 export async function findClassForGrade(campusId, academicYearId, grade) {

@@ -93,6 +93,7 @@ model User {
   mustChangePassword Boolean             @default(false)
   phone              String?
   passwordResetTokens PasswordResetToken[]
+  authOtpChallenges   AuthOtpChallenge[]
   broadcastsCreated   CommunicationBroadcast[] @relation("BroadcastCreator")
   messagesSent        CommunicationMessage[] @relation("MessageSender")
   threadsCreated      CommunicationThread[]    @relation("ThreadCreator")
@@ -100,6 +101,22 @@ model User {
   broadcastReads      CommunicationBroadcastRead[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+}
+
+model AuthOtpChallenge {
+  id        String    @id @default(uuid())
+  purpose   String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  code      String
+  meta      Json?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {
@@ -277,6 +294,9 @@ model Student {
   busStop              BusStop?
   paymentMethod        PaymentMethod?
 
+  /// Free-text notes / other information (editable by school staff)
+  additionalInfo       String?          @db.Text
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -307,6 +327,7 @@ model Subject {
   category        String?
   categoryOrder   Int             @default(0)
   sortOrder       Int             @default(0)
+  subcategory     String?
   test1Max        Float?
   test2Max        Float?
   testsMarkMax    Float?

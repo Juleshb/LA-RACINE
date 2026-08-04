@@ -17,49 +17,91 @@ export async function applyCurriculumToClass(db, campusId, classId, grade) {
 
   const existing = await db.subject.findMany({
     where: { classId },
-    select: { code: true },
+    select: { id: true, code: true, name: true, category: true, subcategory: true, categoryOrder: true, sortOrder: true },
   });
-  const existingCodes = new Set(existing.map((s) => s.code));
+  const existingByCode = new Map(existing.map((s) => [s.code, s]));
+  const isCompetence = curriculum.mode === 'COMPETENCE';
 
+  const desiredCodes = new Set();
   const toCreate = [];
+  const toUpdate = [];
+
   for (const domain of curriculum.domains) {
     domain.subjects.forEach((sub, index) => {
-      if (existingCodes.has(sub.code)) return;
-      toCreate.push({
-        campusId,
-        classId,
+      desiredCodes.add(sub.code);
+      const sortOrder = sub.sortOrder || index + 1;
+      const payload = {
         name: sub.name,
-        code: sub.code,
         category: domain.name,
         categoryOrder: domain.order,
-        sortOrder: index + 1,
-        test1Max: sub.test1Max,
-        test2Max: sub.test2Max,
-        examMax: sub.examMax,
-        totalMax: sub.totalMax,
-        periodsPerWeek: 1,
-      });
+        sortOrder,
+        subcategory: sub.subcategory || null,
+        test1Max: isCompetence ? null : sub.test1Max,
+        test2Max: isCompetence ? null : sub.test2Max,
+        examMax: isCompetence ? null : sub.examMax,
+        totalMax: isCompetence ? null : sub.totalMax,
+      };
+      const current = existingByCode.get(sub.code);
+      if (!current) {
+        toCreate.push({
+          campusId,
+          classId,
+          code: sub.code,
+          periodsPerWeek: 1,
+          ...payload,
+        });
+        return;
+      }
+      if (
+        current.name !== payload.name
+        || current.category !== payload.category
+        || (current.subcategory || null) !== payload.subcategory
+        || current.categoryOrder !== payload.categoryOrder
+        || current.sortOrder !== payload.sortOrder
+      ) {
+        toUpdate.push({ id: current.id, data: payload });
+      }
     });
   }
 
-  if (!toCreate.length) {
-    return {
-      created: 0,
-      skipped: existing.length,
-      grade: resolvedGrade,
-      className: cls.name,
-      grandTotalMax: curriculum.grandTotalMax,
-    };
+  // For competence nursery curricula, remove obsolete numeric/old skill subjects
+  let removed = 0;
+  if (isCompetence) {
+    const obsoleteIds = existing.filter((s) => !desiredCodes.has(s.code)).map((s) => s.id);
+    if (obsoleteIds.length) {
+      await db.subject.deleteMany({ where: { id: { in: obsoleteIds } } });
+      removed = obsoleteIds.length;
+    }
   }
 
-  await db.subject.createMany({ data: toCreate });
+  for (const row of toUpdate) {
+    await db.subject.update({ where: { id: row.id }, data: row.data });
+  }
+
+  if (toCreate.length) {
+    await db.subject.createMany({ data: toCreate });
+  }
+
   return {
     created: toCreate.length,
-    skipped: existing.length,
+    updated: toUpdate.length,
+    removed,
+    skipped: existing.length - removed,
     grade: resolvedGrade,
     className: cls.name,
     grandTotalMax: curriculum.grandTotalMax,
+    mode: curriculum.mode || 'NUMERIC',
+    expectedSubjects: desiredCodes.size,
   };
+}
+
+/** Ensure nursery class subjects match Excel competence templates. */
+export async function ensureNurseryCurriculum(db, campusId, classId, grade) {
+  const curriculum = getCurriculum(grade);
+  if (!curriculum || curriculum.mode !== 'COMPETENCE') {
+    return null;
+  }
+  return applyCurriculumToClass(db, campusId, classId, grade);
 }
 
 export async function applyCurriculumToAllClasses(db, campusId, academicYearId) {
@@ -107,4 +149,40 @@ export function groupCoursesByCategory(courses) {
       ...g,
       courses: g.courses.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)),
     }));
+}
+
+/** Group nursery competence subjects by domain then subcategory for bulletin layout. */
+export function groupCompetenceSubjects(subjects) {
+  const domains = [];
+  const domainMap = new Map();
+
+  const sorted = [...subjects].sort(
+    (a, b) => (a.categoryOrder || 0) - (b.categoryOrder || 0)
+      || (a.sortOrder || 0) - (b.sortOrder || 0)
+      || String(a.name).localeCompare(String(b.name)),
+  );
+
+  for (const subject of sorted) {
+    const domainKey = subject.category || 'OTHER';
+    if (!domainMap.has(domainKey)) {
+      const domain = {
+        category: domainKey,
+        categoryOrder: subject.categoryOrder || 999,
+        subdomains: [],
+        _subMap: new Map(),
+      };
+      domainMap.set(domainKey, domain);
+      domains.push(domain);
+    }
+    const domain = domainMap.get(domainKey);
+    const subKey = subject.subcategory || '';
+    if (!domain._subMap.has(subKey)) {
+      const sub = { name: subKey, items: [] };
+      domain._subMap.set(subKey, sub);
+      domain.subdomains.push(sub);
+    }
+    domain._subMap.get(subKey).items.push(subject);
+  }
+
+  return domains.map(({ _subMap, ...domain }) => domain);
 }

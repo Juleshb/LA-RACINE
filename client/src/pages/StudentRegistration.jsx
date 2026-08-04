@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Check, FileUp, X, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, FileUp, X, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampusOptional } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import {
   DOCUMENT_TYPES, fileToBase64, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES, formatAttachmentName,
 } from '../config/registration';
 import RwandaLocationSelect from '../components/RwandaLocationSelect';
+import StudentExcelImportModal from '../components/StudentExcelImportModal';
 
 function classLabel(cls) {
   return `${cls.name} (${cls.grade} — ${cls.section})`;
@@ -67,6 +68,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
   const [optionsLoading, setOptionsLoading] = useState(!isPublic);
   const [success, setSuccess] = useState(null);
   const [honeypot, setHoneypot] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
 
   const campusId = isPublic ? publicCampusId : contextCampusId;
 
@@ -306,17 +308,29 @@ export default function StudentRegistration({ isParent = false, isPublic = false
   return (
     <div className="max-w-4xl mx-auto relative">
       {!isPublic && (
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">
-            {isParent
-              ? 'Register your child'
-              : 'Fiche d\'inscription scolaire'}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {isParent
-              ? 'Complete all sections and submit — the school will review and approve or reject your application.'
-              : 'Registration Form 2025-2026 · Ifishi yo kwiyandikisha ku ishuri'}
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isParent
+                ? 'Register your child'
+                : 'Fiche d\'inscription scolaire'}
+            </h1>
+            <p className="text-gray-500 mt-1">
+              {isParent
+                ? 'Complete all sections and submit — the school will review and approve or reject your application.'
+                : 'Registration Form 2025-2026 · Ifishi yo kwiyandikisha ku ishuri'}
+            </p>
+          </div>
+          {!isParent && (
+            <button
+              type="button"
+              className="btn-secondary text-sm inline-flex items-center gap-2 shrink-0"
+              onClick={() => setImportOpen(true)}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Import Excel
+            </button>
+          )}
         </div>
       )}
 
@@ -728,6 +742,14 @@ export default function StudentRegistration({ isParent = false, isPublic = false
         </>
         )}
       </div>
+      )}
+
+      {!isParent && !isPublic && (
+        <StudentExcelImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onImported={() => navigate(`/campus/${campusId}/students`)}
+        />
       )}
     </div>
   );

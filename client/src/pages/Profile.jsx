@@ -151,7 +151,10 @@ export default function Profile() {
     || passwordForm.newPassword === passwordForm.confirmPassword;
 
   const displayRole = roleLabel || ROLE_LABELS[user?.role] || user?.role;
-  const campusName = campus?.name || user?.campus?.name || t('ui.allCampuses');
+  const isSchoolManager = user?.role === 'SCHOOL_MANAGER';
+  const campusName = isSchoolManager
+    ? t('ui.allCampuses')
+    : (campus?.name || user?.campus?.name || t('ui.allCampuses'));
   const initials = `${(form.firstName?.[0] || profile?.firstName?.[0] || '').toUpperCase()}${(form.lastName?.[0] || profile?.lastName?.[0] || '').toUpperCase()}`;
 
   const dirtyAccount = useMemo(() => {
@@ -214,11 +217,15 @@ export default function Profile() {
             </p>
             <p className="profile-hero-meta">
               <span>{displayRole}</span>
-              <span className="profile-hero-dot" aria-hidden />
-              <span className="inline-flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5" aria-hidden />
-                {campusName}
-              </span>
+              {!isSchoolManager && (
+                <>
+                  <span className="profile-hero-dot" aria-hidden />
+                  <span className="inline-flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" aria-hidden />
+                    {campusName}
+                  </span>
+                </>
+              )}
               <span className="profile-hero-dot" aria-hidden />
               <span className="inline-flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" aria-hidden />

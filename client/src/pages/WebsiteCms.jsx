@@ -27,6 +27,8 @@ import PageHeader from '../components/PageHeader';
 import { useCampus } from '../context/CampusContext';
 import { useTranslation } from '../context/LanguageContext';
 import HomeEditor from './cms/HomeEditor';
+import AcademicsEditor from './cms/AcademicsEditor';
+import CalendarEditor from './cms/CalendarEditor';
 
 const LOCALES = [
   { code: 'en', label: 'English', short: 'EN' },
@@ -47,6 +49,7 @@ const PAGE_GROUPS = [
       { slug: 'home', labelKey: 'pages.website.pageHome', icon: Home },
       { slug: 'about', labelKey: 'pages.website.pageAbout', icon: School },
       { slug: 'academics', labelKey: 'pages.website.pageAcademics', icon: GraduationCap },
+      { slug: 'calendar', labelKey: 'pages.website.pageCalendar', icon: CalendarDays },
       { slug: 'locations', labelKey: 'pages.website.pageCampuses', icon: MapPin },
       { slug: 'admissions', labelKey: 'pages.website.pageAdmissions', icon: BookOpen },
       { slug: 'contact', labelKey: 'pages.website.pageContact', icon: MessageSquare },
@@ -68,6 +71,7 @@ const PAGE_LABEL_KEYS = {
   home: 'pages.website.pageHome',
   about: 'pages.website.pageAbout',
   academics: 'pages.website.pageAcademics',
+  calendar: 'pages.website.pageCalendar',
   locations: 'pages.website.pageCampuses',
   admissions: 'pages.website.pageAdmissions',
   contact: 'pages.website.pageContact',
@@ -1669,6 +1673,8 @@ export default function WebsiteCms() {
   const isAnnouncements = slug === 'announcements';
   const isGallery = slug === 'gallery';
   const isHome = slug === 'home';
+  const isAcademics = slug === 'academics';
+  const isCalendar = slug === 'calendar';
   const currentPageCoverage = (stats?.pageCoverage || []).find((p) => p.slug === slug);
   const localeStatus = Object.fromEntries(
     (currentPageCoverage?.locales || []).map((item) => [item.code, item]),
@@ -1895,6 +1901,10 @@ export default function WebsiteCms() {
                 </div>
               ) : isHome ? (
                 <HomeEditor data={data} onChange={setEditorData} />
+              ) : isAcademics ? (
+                <AcademicsEditor data={data} onChange={setEditorData} />
+              ) : isCalendar ? (
+                <CalendarEditor data={data} onChange={setEditorData} />
               ) : isNews ? (
                 <NewsEditor data={data} onChange={setEditorData} />
               ) : isEvents ? (

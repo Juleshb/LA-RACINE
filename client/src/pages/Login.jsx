@@ -8,7 +8,7 @@ import { setActiveCampus, api } from '../lib/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, verifyLoginOtp } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -24,6 +24,11 @@ export default function Login() {
   const [forgotSent, setForgotSent] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [panelKey, setPanelKey] = useState(0);
+  const [otpChallengeId, setOtpChallengeId] = useState('');
+  const [otpEmailMasked, setOtpEmailMasked] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpInfo, setOtpInfo] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -32,31 +37,86 @@ export default function Login() {
 
   useEffect(() => {
     if (!mounted) return undefined;
-    const targetId = showForgot ? (forgotSent ? null : 'forgot-email') : 'login-email';
+    let targetId = 'login-email';
+    if (showForgot) targetId = forgotSent ? null : 'forgot-email';
+    else if (otpChallengeId) targetId = 'login-otp';
     if (!targetId) return undefined;
     const el = document.getElementById(targetId);
     if (!el) return undefined;
     const timer = window.setTimeout(() => el.focus(), 220);
     return () => window.clearTimeout(timer);
-  }, [showForgot, forgotSent, mounted, panelKey]);
+  }, [showForgot, forgotSent, mounted, panelKey, otpChallengeId]);
+
+  const finishLogin = (data) => {
+    if (data.user?.mustChangePassword) {
+      navigate('/set-new-password', { replace: true });
+      return;
+    }
+    if (data.defaultCampusId) setActiveCampus(data.defaultCampusId);
+    navigate(getLoginRedirect(data.user, data.defaultCampusId));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setOtpInfo('');
     setLoading(true);
     try {
       const data = await login(email, password);
-      if (data.user?.mustChangePassword) {
-        navigate('/set-new-password', { replace: true });
+      if (data.requiresOtp) {
+        setOtpChallengeId(data.challengeId);
+        setOtpEmailMasked(data.emailMasked || '');
+        setOtpCode('');
+        setPanelKey((k) => k + 1);
         return;
       }
-      if (data.defaultCampusId) setActiveCampus(data.defaultCampusId);
-      navigate(getLoginRedirect(data.user, data.defaultCampusId));
+      finishLogin(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setOtpInfo('');
+    setLoading(true);
+    try {
+      const data = await verifyLoginOtp(otpChallengeId, otpCode.trim());
+      finishLogin(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError('');
+    setOtpInfo('');
+    setResendLoading(true);
+    try {
+      const data = await api.resendLoginOtp(otpChallengeId);
+      setOtpChallengeId(data.challengeId);
+      setOtpEmailMasked(data.emailMasked || otpEmailMasked);
+      setOtpCode('');
+      setOtpInfo(data.message || 'A new code was sent.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const backFromOtp = () => {
+    setOtpChallengeId('');
+    setOtpCode('');
+    setOtpEmailMasked('');
+    setOtpInfo('');
+    setError('');
+    setPanelKey((k) => k + 1);
   };
 
   const handleForgot = async (e) => {
@@ -125,80 +185,154 @@ export default function Login() {
 
         <div className="login-form-shell">
           {!showForgot ? (
-            <div className="login-form-pane login-form-pane-active" key={`signin-${panelKey}`}>
-              <header className="login-form-header">
-                <h2>{t('app.login.signIn')}</h2>
-                <p>{t('app.login.accessAccount')}</p>
-              </header>
-
-              {error && (
-                <div className="login-alert login-alert-error" role="alert">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="login-form" noValidate>
-                <div className="login-field">
-                  <label htmlFor="login-email">{t('app.login.email')}</label>
-                  <div className="login-input-wrap">
-                    <Mail className="login-input-icon" aria-hidden />
-                    <input
-                      id="login-email"
-                      className="login-input"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@laracineschool.rw"
-                    />
-                  </div>
-                </div>
-
-                <div className="login-field">
-                  <div className="login-field-row">
-                    <label htmlFor="login-password">{t('app.login.password')}</label>
-                    <button type="button" className="login-text-btn" onClick={openForgot}>
-                      {t('app.login.forgot')}
-                    </button>
-                  </div>
-                  <div className="login-input-wrap">
-                    <input
-                      id="login-password"
-                      className="login-input login-input-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      className="login-eye-btn"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button type="submit" disabled={loading} className="login-submit">
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                      {t('app.login.signingIn')}
-                    </>
-                  ) : (
-                    <>
-                      {t('app.login.signInBtn')}
-                      <ArrowRight className="w-4 h-4 login-submit-arrow" aria-hidden />
-                    </>
-                  )}
+            otpChallengeId ? (
+              <div className="login-form-pane login-form-pane-active" key={`otp-${panelKey}`}>
+                <button type="button" className="login-forgot-back" onClick={backFromOtp}>
+                  <ArrowLeft className="w-4 h-4" aria-hidden />
+                  {t('app.login.back')}
                 </button>
-              </form>
-            </div>
+                <header className="login-form-header">
+                  <h2>Enter verification code</h2>
+                  <p>
+                    We sent a 6-digit code to{' '}
+                    <strong>{otpEmailMasked || 'your email'}</strong>. Enter it to finish signing in.
+                  </p>
+                </header>
+
+                {error && (
+                  <div className="login-alert login-alert-error" role="alert">
+                    {error}
+                  </div>
+                )}
+                {otpInfo && !error && (
+                  <div className="login-alert" role="status" style={{ background: '#ecfdf5', color: '#065f46' }}>
+                    {otpInfo}
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyOtp} className="login-form" noValidate>
+                  <div className="login-field">
+                    <label htmlFor="login-otp">Verification code</label>
+                    <div className="login-input-wrap">
+                      <input
+                        id="login-otp"
+                        className="login-input"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        required
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={loading || otpCode.length < 6} className="login-submit">
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                        Verifying…
+                      </>
+                    ) : (
+                      <>
+                        Verify and sign in
+                        <ArrowRight className="w-4 h-4 login-submit-arrow" aria-hidden />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <p className="login-forgot-next" style={{ marginTop: '1rem' }}>
+                  Didn’t get the code?{' '}
+                  <button
+                    type="button"
+                    className="login-text-btn"
+                    onClick={handleResendOtp}
+                    disabled={resendLoading}
+                  >
+                    {resendLoading ? 'Sending…' : 'Resend code'}
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <div className="login-form-pane login-form-pane-active" key={`signin-${panelKey}`}>
+                <header className="login-form-header">
+                  <h2>{t('app.login.signIn')}</h2>
+                  <p>{t('app.login.accessAccount')}</p>
+                </header>
+
+                {error && (
+                  <div className="login-alert login-alert-error" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="login-form" noValidate>
+                  <div className="login-field">
+                    <label htmlFor="login-email">{t('app.login.email')}</label>
+                    <div className="login-input-wrap">
+                      <Mail className="login-input-icon" aria-hidden />
+                      <input
+                        id="login-email"
+                        className="login-input"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@laracineschool.rw"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="login-field">
+                    <div className="login-field-row">
+                      <label htmlFor="login-password">{t('app.login.password')}</label>
+                      <button type="button" className="login-text-btn" onClick={openForgot}>
+                        {t('app.login.forgot')}
+                      </button>
+                    </div>
+                    <div className="login-input-wrap">
+                      <input
+                        id="login-password"
+                        className="login-input login-input-password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        className="login-eye-btn"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={loading} className="login-submit">
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                        {t('app.login.signingIn')}
+                      </>
+                    ) : (
+                      <>
+                        {t('app.login.signInBtn')}
+                        <ArrowRight className="w-4 h-4 login-submit-arrow" aria-hidden />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )
           ) : (
             <div className="login-form-pane login-form-pane-active" key={`forgot-${panelKey}-${forgotSent ? 'sent' : 'form'}`}>
               <button type="button" className="login-forgot-back" onClick={closeForgot}>

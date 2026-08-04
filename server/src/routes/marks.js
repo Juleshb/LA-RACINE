@@ -4,6 +4,8 @@ import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { assertTeacherCourseAccess, resolveTeacherId } from '../lib/teacherAccess.js';
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
+import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
+import { isNurseryGrade } from '../config/grades.js';
 import {
   ensureSubjectAssessments,
   resolveTotalMax,
@@ -11,6 +13,17 @@ import {
   resolveExamMax,
   assessmentsToSteps,
 } from '../lib/subjectAssessments.js';
+import {
+  letterToScore,
+  scoreToLetter,
+  normalizeNurseryLetter,
+  NURSERY_ASSESSMENT,
+  NURSERY_MAX_SCORE,
+  NURSERY_TERMS,
+  NURSERY_LETTER_GRADES,
+  NURSERY_GRADE_LABELS,
+} from '../lib/nurseryGrade.js';
+import { groupCompetenceSubjects, ensureNurseryCurriculum } from '../lib/curriculum.js';
 
 const router = Router();
 
@@ -119,6 +132,9 @@ router.get('/stats', async (req, res) => {
 
 router.get('/report', async (req, res) => {
   try {
+    if (req.user.role === 'TEACHER') {
+      return res.status(403).json({ error: 'Teachers cannot access bulletin reports' });
+    }
     const { classId, studentId, term } = req.query;
     if (!classId || !studentId) {
       return res.status(400).json({ error: 'classId and studentId are required' });
@@ -148,6 +164,17 @@ router.get('/report', async (req, res) => {
     });
     if (!allowedStudent) {
       return res.status(403).json({ error: 'You cannot view this student bulletin' });
+    }
+
+    if (isNurseryGrade(cls.grade)) {
+      const report = await buildNurseryBulletinReport(prisma, {
+        classId,
+        studentId,
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+        term: term || 'Trimestre 1',
+      });
+      return res.json(report);
     }
 
     const termValue = term || 'Trimestre 1';
@@ -361,6 +388,203 @@ router.get('/assessments', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/competence', async (req, res) => {
+  try {
+    const { classId, term } = req.query;
+    if (!classId) {
+      return res.status(400).json({ error: 'classId is required' });
+    }
+
+    await resolveClassIdFilter(req, classId);
+    const scope = await classScopeWhere(req);
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, ...scope },
+      include: {
+        subjects: { orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] },
+      },
+    });
+    if (!cls) return res.status(404).json({ error: 'Class not found' });
+    if (!isNurseryGrade(cls.grade)) {
+      return res.status(400).json({ error: 'This class does not use competence grading' });
+    }
+
+    await ensureNurseryCurriculum(prisma, req.campusId, classId, cls.grade);
+
+    const refreshed = await prisma.class.findFirst({
+      where: { id: classId, ...scope },
+      include: {
+        subjects: { orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] },
+      },
+    });
+    if (!refreshed) return res.status(404).json({ error: 'Class not found' });
+
+    const termValue = NURSERY_TERMS.includes(term) ? term : 'Trimestre 1';
+    const studentScope = await studentScopeWhere(req);
+    const students = await prisma.student.findMany({
+      where: { ...studentScope, classId },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: { id: true, studentId: true, firstName: true, lastName: true, postName: true },
+    });
+
+    const subjectIds = refreshed.subjects.map((s) => s.id);
+    const marks = subjectIds.length
+      ? await prisma.mark.findMany({
+        where: {
+          subjectId: { in: subjectIds },
+          term: termValue,
+          assessment: NURSERY_ASSESSMENT,
+          studentId: { in: students.map((s) => s.id) },
+        },
+      })
+      : [];
+
+    const letterByKey = new Map();
+    for (const m of marks) {
+      letterByKey.set(`${m.subjectId}:${m.studentId}`, scoreToLetter(m.score));
+    }
+
+    const domains = groupCompetenceSubjects(refreshed.subjects).map((domain) => ({
+      category: domain.category,
+      categoryOrder: domain.categoryOrder,
+      subdomains: domain.subdomains.map((sub) => ({
+        name: sub.name,
+        items: sub.items.map((subject) => ({
+          id: subject.id,
+          code: subject.code,
+          name: subject.name,
+          subcategory: subject.subcategory || sub.name || '',
+          grades: Object.fromEntries(
+            students.map((st) => [st.id, letterByKey.get(`${subject.id}:${st.id}`) || null]),
+          ),
+        })),
+      })),
+    }));
+
+    res.json({
+      mode: 'COMPETENCE',
+      classId,
+      grade: refreshed.grade,
+      className: refreshed.name,
+      term: termValue,
+      terms: NURSERY_TERMS,
+      letters: NURSERY_LETTER_GRADES,
+      gradeLabels: NURSERY_GRADE_LABELS,
+      students,
+      domains,
+      skillCount: refreshed.subjects.length,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.put('/competence/bulk', async (req, res) => {
+  try {
+    if (['PARENT', 'STUDENT'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'You cannot edit marks' });
+    }
+    const { classId, term, records } = req.body;
+    if (!classId || !Array.isArray(records)) {
+      return res.status(400).json({ error: 'classId and records are required' });
+    }
+    if (!NURSERY_TERMS.includes(term)) {
+      return res.status(400).json({ error: 'Invalid nursery term' });
+    }
+
+    await resolveClassIdFilter(req, classId);
+    const scope = await classScopeWhere(req);
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, ...scope },
+      include: { subjects: { select: { id: true, teacherId: true } } },
+    });
+    if (!cls) return res.status(404).json({ error: 'Class not found' });
+    if (!isNurseryGrade(cls.grade)) {
+      return res.status(400).json({ error: 'This class does not use competence grading' });
+    }
+
+    if (req.user.role === 'TEACHER') {
+      const teacherId = await resolveTeacherId(req);
+      const allowed = cls.subjects.some((s) => s.teacherId === teacherId);
+      if (!allowed && cls.teacherId !== teacherId) {
+        // Allow if teacher is class teacher or teaches any subject in class
+        const teaches = await prisma.subject.findFirst({
+          where: { classId, campusId: req.campusId, teacherId },
+          select: { id: true },
+        });
+        if (!teaches) {
+          return res.status(403).json({ error: 'You are not assigned to this class' });
+        }
+      }
+    }
+
+    const subjectIds = new Set(cls.subjects.map((s) => s.id));
+    const studentIds = [...new Set(records.map((r) => r.studentId).filter(Boolean))];
+    const validStudents = await prisma.student.findMany({
+      where: {
+        id: { in: studentIds },
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+        classId,
+      },
+      select: { id: true },
+    });
+    const validStudentIds = new Set(validStudents.map((s) => s.id));
+
+    let saved = 0;
+    let cleared = 0;
+
+    for (const row of records) {
+      if (!subjectIds.has(row.subjectId) || !validStudentIds.has(row.studentId)) continue;
+      const letter = normalizeNurseryLetter(row.letter);
+      const where = {
+        studentId_subjectId_term_assessment_catNumber: {
+          studentId: row.studentId,
+          subjectId: row.subjectId,
+          term,
+          assessment: NURSERY_ASSESSMENT,
+          catNumber: 0,
+        },
+      };
+
+      if (!letter) {
+        await prisma.mark.deleteMany({
+          where: {
+            studentId: row.studentId,
+            subjectId: row.subjectId,
+            term,
+            assessment: NURSERY_ASSESSMENT,
+            catNumber: 0,
+          },
+        });
+        cleared += 1;
+        continue;
+      }
+
+      await prisma.mark.upsert({
+        where,
+        create: {
+          studentId: row.studentId,
+          subjectId: row.subjectId,
+          term,
+          assessment: NURSERY_ASSESSMENT,
+          catNumber: 0,
+          score: letterToScore(letter),
+          maxScore: NURSERY_MAX_SCORE,
+        },
+        update: {
+          score: letterToScore(letter),
+          maxScore: NURSERY_MAX_SCORE,
+        },
+      });
+      saved += 1;
+    }
+
+    res.json({ message: 'Competence grades saved', saved, cleared, term });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 

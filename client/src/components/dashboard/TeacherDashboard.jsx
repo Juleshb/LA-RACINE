@@ -165,7 +165,6 @@ export default function TeacherDashboard({ campusId, data, userName }) {
             <QuickLink to={`${base}/homework`} icon={FileText} label={t('pages.homework.title')} badge={upcomingHomework.length} />
             <QuickLink to={`${base}/timetable`} icon={Clock} label={t('staffDash.teacher.myTimetable')} />
             <QuickLink to={`${base}/students`} icon={Users} label={t('staffDash.teacher.myStudents')} />
-            <QuickLink to={`${base}/bulletin-report`} icon={FileText} label={t('staffDash.teacher.bulletinReports')} />
             <QuickLink to={`${base}/extracurricular`} icon={Sparkles} label={t('pages.activities.titleShort')} />
             <QuickLink to={`${base}/transport`} icon={Bus} label={t('staffDash.teacher.transport')} />
           </div>

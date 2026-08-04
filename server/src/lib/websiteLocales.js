@@ -13,6 +13,7 @@ export const WEBSITE_PAGE_SLUGS = [
   'home',
   'about',
   'academics',
+  'calendar',
   'locations',
   'announcements',
   'news',

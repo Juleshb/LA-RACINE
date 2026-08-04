@@ -28,13 +28,17 @@ export const BULLETIN_PRESETS = {
   },
   NURSERY: {
     preset: 'NURSERY',
-    label: 'Nursery — TEST1 + TEST2 + EX (smaller scale)',
-    labelFr: 'Maternelle — TEST1 + TEST2 + EX',
-    assessments: [
-      { key: 'TEST1', label: 'TEST 1', maxField: 'test1Max', fallbackMax: 10 },
-      { key: 'TEST2', label: 'TEST 2', maxField: 'test2Max', fallbackMax: 10 },
-      { key: 'EX', label: 'EX', maxField: 'examMax', fallbackMax: 20 },
-    ],
+    label: 'Nursery competence — A / B / C / D',
+    labelFr: 'Maternelle — acquis A / B / C / D',
+    mode: 'COMPETENCE',
+    assessments: [],
+  },
+  COMPETENCE: {
+    preset: 'COMPETENCE',
+    label: 'Competence grades — A / B / C / D',
+    labelFr: 'Notes de compétence — A / B / C / D',
+    mode: 'COMPETENCE',
+    assessments: [],
   },
 };
 
@@ -60,11 +64,11 @@ export function resolveBulletinConfig(stored, grade) {
     };
   }
   if (stored?.preset && BULLETIN_PRESETS[stored.preset]) {
-    const base = BULLETIN_PRESETS[stored.preset];
+    const base = stored.preset === 'NURSERY' ? BULLETIN_PRESETS.COMPETENCE : BULLETIN_PRESETS[stored.preset];
     return { ...base, terms: stored.terms || DEFAULT_TERMS };
   }
   const nurseryGrades = ['CRECHE', 'N1', 'N2', 'N3', 'TOP'];
-  const preset = nurseryGrades.includes(grade) ? BULLETIN_PRESETS.NURSERY : BULLETIN_PRESETS.STANDARD;
+  const preset = nurseryGrades.includes(grade) ? BULLETIN_PRESETS.COMPETENCE : BULLETIN_PRESETS.STANDARD;
   return { ...preset, terms: DEFAULT_TERMS };
 }
 

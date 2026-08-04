@@ -1,8 +1,10 @@
 import { Link, useOutletContext } from 'react-router-dom';
+import ProgramCard from '../../components/public/ProgramCard';
 
 export default function PublicAcademics() {
   const { page } = useOutletContext();
-  const c = page('academics');
+  const c = page('academics') || {};
+  const programs = Array.isArray(c.programs) ? c.programs.filter((p) => p?.title) : [];
 
   return (
     <>
@@ -15,16 +17,19 @@ export default function PublicAcademics() {
       </div>
 
       <section className="ps-section">
-        <div className="ps-list">
-          {(c.programs || []).map((item) => (
-            <div key={item.title} className="ps-list-item">
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </div>
+        <div className="ps-program-grid ps-program-grid-rich">
+          {programs.map((item, index) => (
+            <ProgramCard
+              key={item.slug || item.title || index}
+              program={item}
+              index={index}
+              exploreLabel={c.exploreLabel || 'Explore program'}
+              featured={index === 1}
+            />
           ))}
         </div>
         <div className="ps-cta-row" style={{ marginTop: '2.5rem' }}>
-          <Link to="/admissions" className="ps-btn ps-btn-primary">{c.ctaPlacement}</Link>
+          <Link to="/admissions/apply" className="ps-btn ps-btn-primary">{c.ctaPlacement}</Link>
           <Link to="/login" className="ps-btn ps-btn-ghost">{c.ctaPortal}</Link>
         </div>
       </section>

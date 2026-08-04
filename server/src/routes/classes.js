@@ -78,12 +78,16 @@ router.patch('/:id/bulletin-config', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const scope = await classScopeWhere(req);
+    const allYears = String(req.query.allYears || '') === '1';
+    const scope = allYears && !['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)
+      ? { campusId: req.campusId }
+      : await classScopeWhere(req);
     const classes = await prisma.class.findMany({
       where: scope,
       orderBy: [{ grade: 'asc' }, { section: 'asc' }],
       include: {
         teacher: true,
+        academicYear: { select: { id: true, name: true } },
         _count: { select: { students: true, subjects: true } },
       },
     });
@@ -178,7 +182,7 @@ router.post('/', async (req, res) => {
         campusId: req.campusId,
         academicYearId: req.academicYearId,
         bulletinConfig: ['CRECHE', 'N1', 'N2', 'N3', 'TOP'].includes(grade)
-          ? { preset: 'NURSERY' }
+          ? { preset: 'COMPETENCE' }
           : { preset: 'STANDARD' },
       },
       include: { teacher: true },

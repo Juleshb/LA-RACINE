@@ -10,7 +10,16 @@ import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
 import ParentChildFilter from '../components/parent/ParentChildFilter';
 import BulletinScolaireSheet from '../components/bulletin/BulletinScolaireSheet';
-import { downloadBulletinPdf } from '../lib/bulletinPdf';
+import NurseryBulletinSheet from '../components/bulletin/NurseryBulletinSheet';
+import { downloadBulletinPdf, downloadBulletinJpeg } from '../lib/bulletinPdf';
+import { isNurseryGrade } from '../lib/grades';
+
+const NURSERY_BULLETIN_TERM_OPTIONS = [
+  { value: 'Trimestre 1', label: '1er Trimestre' },
+  { value: 'Trimestre 2', label: '2ème Trimestre' },
+  { value: 'Trimestre 3', label: '3ème Trimestre' },
+  { value: 'Annuel', label: 'Bulletin annuel (année complète)' },
+];
 
 export default function BulletinReport() {
   const { campusId } = useCampus();
@@ -31,6 +40,7 @@ export default function BulletinReport() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [jpegLoading, setJpegLoading] = useState(false);
   const [error, setError] = useState('');
 
   const studentIndex = useMemo(
@@ -103,6 +113,12 @@ export default function BulletinReport() {
     }).catch(console.error);
   }, [isStudent, classId]);
 
+  const selectedClass = isParent
+    ? children.find((c) => c.id === studentId)?.class
+    : classes.find((c) => c.id === classId);
+  const isCompetenceClass = isNurseryGrade(selectedClass?.grade);
+  const isCompetenceReport = report?.mode === 'COMPETENCE';
+
   useEffect(() => {
     if (!classId || !studentId) {
       setReport(null);
@@ -119,6 +135,13 @@ export default function BulletinReport() {
       .finally(() => setLoading(false));
   }, [classId, studentId, term]);
 
+  useEffect(() => {
+    if (!isCompetenceClass) return;
+    if (!NURSERY_BULLETIN_TERM_OPTIONS.some((o) => o.value === term)) {
+      setTerm('Trimestre 1');
+    }
+  }, [isCompetenceClass, term]);
+
   const goStudent = (delta) => {
     if (isParent) {
       const idx = children.findIndex((c) => c.id === studentId);
@@ -130,22 +153,31 @@ export default function BulletinReport() {
     if (next) setStudentId(next.id);
   };
 
-  const selectedClass = isParent
-    ? children.find((c) => c.id === studentId)?.class
-    : classes.find((c) => c.id === classId);
-
   const handlePrint = () => window.print();
 
   const handleDownloadPdf = async () => {
     if (!report || !sheetRef.current) return;
     setPdfLoading(true);
     try {
-      const name = `${report.student.studentId}-${report.term}`.replace(/\s+/g, '-');
+      const name = `${report.student.studentId}-${report.term || 'bulletin'}`.replace(/\s+/g, '-');
       await downloadBulletinPdf(sheetRef.current, `bulletin-${name}.pdf`);
     } catch (err) {
       setError(err.message || 'Failed to generate PDF');
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const handleDownloadJpeg = async () => {
+    if (!report || !sheetRef.current) return;
+    setJpegLoading(true);
+    try {
+      const name = `${report.student.studentId}-${report.term || 'bulletin'}`.replace(/\s+/g, '-');
+      await downloadBulletinJpeg(sheetRef.current, `bulletin-${name}.jpg`);
+    } catch (err) {
+      setError(err.message || 'Failed to generate JPEG');
+    } finally {
+      setJpegLoading(false);
     }
   };
 
@@ -185,11 +217,20 @@ export default function BulletinReport() {
             <button
               type="button"
               onClick={handleDownloadPdf}
-              disabled={!report || pdfLoading}
+              disabled={!report || pdfLoading || jpegLoading}
               className="btn-primary flex items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              {pdfLoading ? t('ui.loading') : t('ui.download')}
+              {pdfLoading ? t('ui.loading') : 'PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadJpeg}
+              disabled={!report || pdfLoading || jpegLoading}
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              {jpegLoading ? t('ui.loading') : 'JPEG'}
             </button>
           </div>
         )}
@@ -205,7 +246,7 @@ export default function BulletinReport() {
 
       <div className="filter-panel print:hidden">
         <p className="filter-panel-title">{isFamily ? t('pages.bulletin.filterFamily') : t('pages.bulletin.filterStaff')}</p>
-        <div className={`grid grid-cols-1 ${isFamily ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'} gap-4`}>
+        <div className={`grid grid-cols-1 ${isFamily ? (isCompetenceClass ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-1 max-w-sm') : 'md:grid-cols-3'} gap-4`}>
           {!isFamily && (
             <div>
               <label className="label flex items-center gap-1.5">
@@ -259,10 +300,19 @@ export default function BulletinReport() {
               <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('pages.bulletin.trimestre')}
             </label>
             <select className="input" value={term} onChange={(e) => setTerm(e.target.value)}>
-              {terms.map((t) => <option key={t} value={t}>{t}</option>)}
+              {isCompetenceClass
+                ? NURSERY_BULLETIN_TERM_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))
+                : terms.map((tr) => <option key={tr} value={tr}>{tr}</option>)}
             </select>
           </div>
         </div>
+        {isCompetenceClass && (
+          <p className="text-xs text-gray-400 mt-3">
+            Choose one trimestre for a single-term bulletin, or Bulletin annuel for the full year (T1 + T2 + T3 + Résultat Annuel).
+          </p>
+        )}
         {selectedClass && (
           <p className="text-xs text-gray-400 mt-3">
             {t('pages.bulletin.bulletinFormatHint', { className: selectedClass.name })}
@@ -284,7 +334,11 @@ export default function BulletinReport() {
       {!loading && report && (
         <div className="bulletin-preview-wrap print:p-0">
           <div ref={sheetRef}>
-            <BulletinScolaireSheet report={report} />
+            {isCompetenceReport || report.mode === 'COMPETENCE' ? (
+              <NurseryBulletinSheet report={report} />
+            ) : (
+              <BulletinScolaireSheet report={report} />
+            )}
           </div>
         </div>
       )}

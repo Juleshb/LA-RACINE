@@ -9,6 +9,7 @@ import {
   resetWebsiteAdminPage,
   saveWebsiteAdminPage,
 } from '../lib/websiteCms.js';
+import { saveCalendarPdf } from '../lib/calendarFiles.js';
 
 const router = Router();
 
@@ -32,6 +33,17 @@ router.get('/', async (_req, res) => {
     res.json({ items: rows, ...getWebsiteMeta() });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/** Upload a school calendar PDF — returns a public /uploads/calendar/... URL */
+router.post('/upload-calendar', async (req, res) => {
+  try {
+    const { fileName, contentBase64 } = req.body || {};
+    const saved = saveCalendarPdf({ fileName, contentBase64 });
+    res.status(201).json(saved);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 

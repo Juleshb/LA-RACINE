@@ -36,7 +36,7 @@ async function request(endpoint, options = {}) {
     ...options,
   });
 
-  if (res.status === 401 && !endpoint.includes('/auth/login')) {
+  if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/forgot')) {
     localStorage.removeItem('token');
     localStorage.removeItem('campusId');
     localStorage.removeItem('academicYearId');
@@ -69,9 +69,18 @@ export const api = {
     request(`/website/${slug}/${locale}/reset`, { method: 'POST', body: JSON.stringify({}) }),
   copyWebsitePage: (slug, locale, fromLocale) =>
     request(`/website/${slug}/${locale}/copy-from/${fromLocale}`, { method: 'POST', body: JSON.stringify({}) }),
+  uploadCalendarPdf: (fileName, contentBase64) =>
+    request('/website/upload-calendar', {
+      method: 'POST',
+      body: JSON.stringify({ fileName, contentBase64 }),
+    }),
 
   login: (email, password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  verifyLoginOtp: (challengeId, code) =>
+    request('/auth/login/verify-otp', { method: 'POST', body: JSON.stringify({ challengeId, code }) }),
+  resendLoginOtp: (challengeId) =>
+    request('/auth/login/resend-otp', { method: 'POST', body: JSON.stringify({ challengeId }) }),
   forgotPassword: (email) =>
     request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (token, password, confirmPassword) =>
@@ -140,7 +149,36 @@ export const api = {
     if (!res.ok) return null;
     return URL.createObjectURL(await res.blob());
   },
+  getStudentDocumentBlob: async (studentId, docId, { download = false } = {}) => {
+    const token = getToken();
+    const campusId = getCampusId();
+    const qs = download ? '?download=1' : '';
+    const res = await fetch(`${API_BASE}/students/${studentId}/documents/${docId}${qs}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(campusId ? { 'X-Campus-Id': campusId } : {}),
+        ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Could not load document' }));
+      throw new Error(err.error || 'Could not load document');
+    }
+    const blob = await res.blob();
+    const contentType = res.headers.get('Content-Type') || blob.type || '';
+    return { blob, url: URL.createObjectURL(blob), contentType };
+  },
   registerStudent: (data) => request('/students/register', { method: 'POST', body: JSON.stringify(data) }),
+  registerStudentsBulk: (students, defaultStatus = 'APPROVED', { skipDuplicates = true } = {}) =>
+    request('/students/register-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ students, defaultStatus, skipDuplicates }),
+    }),
+  checkStudentImportDuplicates: (students) =>
+    request('/students/check-duplicates', {
+      method: 'POST',
+      body: JSON.stringify({ students }),
+    }),
   updateRegistrationStatus: (id, status) =>
     request(`/students/${id}/registration-status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getStudentAccountSuggestions: (id) => request(`/students/${id}/account-suggestions`),
@@ -149,14 +187,29 @@ export const api = {
   getRegistrationOptions: () => request('/students/registration/options'),
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteStudent: (id) => request(`/students/${id}`, { method: 'DELETE' }),
+  deleteStudent: (id, { challengeId, code } = {}) =>
+    request(`/students/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ challengeId, code }),
+    }),
+  requestDeleteStudentOtp: (id) =>
+    request(`/students/${id}/request-delete-otp`, { method: 'POST', body: JSON.stringify({}) }),
+  uploadStudentDocument: (id, data) =>
+    request(`/students/${id}/documents`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteStudentDocument: (id, docId) =>
+    request(`/students/${id}/documents/${docId}`, { method: 'DELETE' }),
 
   getTeachers: () => request('/teachers'),
   createTeacher: (data) => request('/teachers', { method: 'POST', body: JSON.stringify(data) }),
   updateTeacher: (id, data) => request(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTeacher: (id) => request(`/teachers/${id}`, { method: 'DELETE' }),
 
-  getClasses: () => request('/classes'),
+  getClasses: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.allYears) q.set('allYears', '1');
+    const qs = q.toString();
+    return request(qs ? `/classes?${qs}` : '/classes');
+  },
   getClass: (id) => request(`/classes/${id}`),
   getBulletinPresets: () => request('/classes/bulletin-presets'),
   getClassBulletinConfig: (classId) => request(`/classes/${classId}/bulletin-config`),
@@ -197,6 +250,13 @@ export const api = {
   },
   getMarksStats: () => request('/marks/stats'),
   saveMarks: (data) => request('/marks/bulk', { method: 'POST', body: JSON.stringify(data) }),
+  getCompetenceMarks: (classId, term) => {
+    const params = new URLSearchParams({ classId });
+    if (term) params.set('term', term);
+    return request(`/marks/competence?${params}`);
+  },
+  saveCompetenceMarks: (data) =>
+    request('/marks/competence/bulk', { method: 'PUT', body: JSON.stringify(data) }),
   getBulletinReport: (classId, studentId, term) => {
     const params = new URLSearchParams({ classId, studentId });
     if (term) params.set('term', term);

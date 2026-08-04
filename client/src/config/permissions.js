@@ -127,7 +127,6 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EXTRACURRICULAR,
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
-    PERMISSIONS.REPORTS,
   ],
   PARENT: [
     PERMISSIONS.DASHBOARD,
@@ -206,14 +205,12 @@ export const PARENT_NAV_GROUPS = [
 /** Teacher-facing menu — daily classroom tools */
 export const TEACHER_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
-  { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
   { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'My classes' },
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'My students' },
   { to: 'courses', permission: PERMISSIONS.COURSES, icon: 'BookMarked', label: 'My courses' },
   { to: 'attendance', permission: PERMISSIONS.ATTENDANCE, icon: 'ClipboardCheck', label: 'Attendance' },
   { to: 'marks', permission: PERMISSIONS.MARKS, icon: 'Award', label: 'Enter marks' },
-  { to: 'bulletin-report', permission: PERMISSIONS.MARKS, icon: 'FileText', label: 'Bulletin reports' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'FileText', label: 'Homework' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes' },
   { to: 'timetable', permission: PERMISSIONS.TIMETABLE, icon: 'Clock', label: 'My timetable' },
@@ -222,7 +219,7 @@ export const TEACHER_NAV_ITEMS = [
 ];
 
 export const TEACHER_NAV_GROUPS = [
-  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS] },
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD] },
   { id: 'messages', title: 'Messages', permissions: [PERMISSIONS.COMMUNICATION] },
   { id: 'classroom', title: 'My classroom', permissions: [PERMISSIONS.CLASSES, PERMISSIONS.STUDENTS, PERMISSIONS.COURSES, PERMISSIONS.ATTENDANCE] },
   { id: 'teaching', title: 'Teaching', permissions: [PERMISSIONS.MARKS, PERMISSIONS.HOMEWORK, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.TIMETABLE] },

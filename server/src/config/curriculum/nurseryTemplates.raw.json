@@ -1,0 +1,720 @@
+{
+  "N1": [
+    {
+      "title": "Mobiliser le langage dans toutes ses dimensions",
+      "subdomains": [
+        {
+          "name": "LANGAGE ORAL",
+          "items": [
+            {
+              "text": "Communiquer avec l'adulte et les autres enfants"
+            },
+            {
+              "text": "Faire des phrases simples"
+            },
+            {
+              "text": "Dire de mémoire des comptines et des chants"
+            },
+            {
+              "text": "Ecouter une histoire courte et la comprendre, répondre à des questions simples, dire ce que l'on voit"
+            },
+            {
+              "text": "Reconnaître quelques sons (phonologie)"
+            }
+          ]
+        },
+        {
+          "name": "LANGAGE, ECRITURE, GRAPHISME",
+          "items": [
+            {
+              "text": "Reconnaître son étiquette avec sa photo"
+            },
+            {
+              "text": "Ecrire correctement l'initiale de son prénom, nommer certaines lettres de mon prénom"
+            },
+            {
+              "text": "Tenir correctement le crayon, avoir une bonne posture pour écrire"
+            },
+            {
+              "text": "Savoir ouvrir un livre dans le bon sens, tourner les pages et lire"
+            },
+            {
+              "text": "Tracer des lignes horizontales, verticales, des ronds… des vagues, des points"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aquérir les premiers outils mathématiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Constituer et dénombrer une collection de 1,2,3,4 ou 5 objets"
+            },
+            {
+              "text": "Savoir la comptine des nombres jusqu'à 10"
+            },
+            {
+              "text": "Lire et reconnaître les nombres jusqu'à 10, sur les doigts, sur le dé"
+            },
+            {
+              "text": "Nommer et reconnaître le carré, le triangle, le rectangle et le cercle"
+            },
+            {
+              "text": "Ecrire le 1, 2, 3, 4, 4, 5"
+            },
+            {
+              "text": "Comparer des objets selon des critères de grandeur (Petit ou Grand)"
+            },
+            {
+              "text": "Continuer un algorithme à 3 termes (De 2 à 3 étapes)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Explorer le monde",
+      "subdomains": [
+        {
+          "name": "ESPACE, TEMPS",
+          "items": [
+            {
+              "text": "Se repérer dans la journée"
+            },
+            {
+              "text": "Connaître la comptine des jours de la semaine"
+            },
+            {
+              "text": "Se repérer dans l'espace familier de la classe"
+            },
+            {
+              "text": "Utiliser le vocabulaire spatial simple (Sur/Sous, Devant/Derrière, En haut/ En bas)"
+            }
+          ]
+        },
+        {
+          "name": "LES VIVANTS, LES OBJETS, LES MATERIAUX",
+          "items": [
+            {
+              "text": "Nommer les différentes parties du corps humain, d'un animal"
+            },
+            {
+              "text": "Utiliser les ciseaux de façon correcte"
+            },
+            {
+              "text": "Manipuler, nommer différentes matières (le papier, la pierre, le sable, le carton…), exprimer la qualité des matières (mou, lisse, rugueux…)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités artistiques",
+      "subdomains": [
+        {
+          "name": "PRODUCTION PLASTIQUES",
+          "items": [
+            {
+              "text": "Dessiner librement et expliquer ce que l'on a voulu dessiner"
+            },
+            {
+              "text": "Savoir décorer une page avec différents graphismes et couleurs, dessiner un bonhomme, une maison, un arbre…"
+            }
+          ]
+        },
+        {
+          "name": "PRODUCTION SONORES",
+          "items": [
+            {
+              "text": "Chanter une mélodie simple, une comptine ou un chant seul ou en groupe"
+            },
+            {
+              "text": "Explorer des instruments différents, des temps différents (lent, rapide), frapper des rythmes simples"
+            },
+            {
+              "text": "Ecouter une musique et exprimer sa joie, sa tristesse"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités physiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Explorer les différents matériels des jeux de l'école, tenter de nouvelles choses"
+            },
+            {
+              "text": "Sauter, lancer, courir, glisser, ramper, faire rouler"
+            },
+            {
+              "text": "Participer à des jeux collectifs"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "En marche vers l'autonomie… et la socialisation",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Sait se déshabiller pour aller aux toilettes, sait se chausser"
+            },
+            {
+              "text": "Sait ranger ses affaires et les jeux de l'école"
+            },
+            {
+              "text": "Dit bonjour et sait jouer calmement avec les autres"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "N2": [
+    {
+      "title": "Mobiliser le langage dans toutes ses dimensions",
+      "subdomains": [
+        {
+          "name": "LANGAGE ORAL",
+          "items": [
+            {
+              "text": "Communiquer avec l'adulte et les autres enfants, utiliser les formules de politesse, raconter les activités de la journée"
+            },
+            {
+              "text": "Faire des phrases simples correctes et compréhensibles"
+            },
+            {
+              "text": "Poser des questions, comprendre des consignes doubles, reformuler des consignes"
+            },
+            {
+              "text": "Dire de mémoire des comptines, chants"
+            },
+            {
+              "text": "Ecouter une histoire, la comprendre, répondre à des questions simples, dire ce que l'on voit, identifier les personnages, le lieu, et la fin d'une histoire"
+            },
+            {
+              "text": "Reconnaître quelques sons (phonologie), toutes les voyelles et les consonnes, les localiser en début ou fin de mot"
+            },
+            {
+              "text": "Taper les syllabes des mots les plus connus"
+            }
+          ]
+        },
+        {
+          "name": "LANGAGE, ECRITURE, GRAPHISME",
+          "items": [
+            {
+              "text": "Reconnaître son étiquette avec sa photo"
+            },
+            {
+              "text": "Ecrire en majuscule et épeler les lettres de son prénom"
+            },
+            {
+              "text": "Tenir correctement le crayon, avoir une bonne posture pour écrire"
+            },
+            {
+              "text": "Tracer les lignes horizontales, verticales, obliques, des points, des boucles, des ronds, des vagues"
+            },
+            {
+              "text": "Participer à la production d'un écrit collectif"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aquérir les premiers outils mathématiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Constituer et dénombrer une collection de 1à 15 objets"
+            },
+            {
+              "text": "Savoir la comptine des nombres jusqu'à 30"
+            },
+            {
+              "text": "Lire et reconnaître les nombres jusqu'à 15, sur les doigts, sur le dé"
+            },
+            {
+              "text": "Ecrire les nombres jusqu'à 15"
+            },
+            {
+              "text": "Comparer des collections d'objets en utilisant les expressions: autant que, plus que, moins que"
+            },
+            {
+              "text": "Continuer un algorithme à 3 termes"
+            },
+            {
+              "text": "Reconnaître et colorier des figures symétriques et reproduire des quadrillages"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Explorer le monde",
+      "subdomains": [
+        {
+          "name": "ESPACE, TEMPS",
+          "items": [
+            {
+              "text": "Se repérer dans la journée, dans la semaine"
+            },
+            {
+              "text": "Connaître la comptine des jours de la semaine et des mois de l'année"
+            },
+            {
+              "text": "Se repérer dans l'espace familier de la classe, de la cour"
+            },
+            {
+              "text": "Utiliser le vocabulaire spatial simple (Sur/Sous, Devant/Derrière, En haut/ En bas, à côté, entre au milieu)"
+            }
+          ]
+        },
+        {
+          "name": "LES VIVANTS, LES OBJETS, LES MATERIAUX",
+          "items": [
+            {
+              "text": "Nommer les différentes parties du corps humain, d'un animal et donner quelques informations sur leur vie"
+            },
+            {
+              "text": "Utiliser parfaitement les ciseaux, tracer des traits avec une règle"
+            },
+            {
+              "text": "Manipuler, nommer différentes matières (le papier, la pierre, le sable, le carton…), exprimer la qualité des matières (mou, lisse, rugueux…)"
+            },
+            {
+              "text": "Continuer un algorithme à 3 termes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités artistiques",
+      "subdomains": [
+        {
+          "name": "PRODUCTION PLASTIQUES",
+          "items": [
+            {
+              "text": "Dessiner librement et expliquer ce que l'on a voulu dessiner"
+            },
+            {
+              "text": "Savoir décorer une page avec différentes graphismes et couleurs, dessiner un bonhomme, une maison, un arbre…"
+            }
+          ]
+        },
+        {
+          "name": "PRODUCTION SONORES",
+          "items": [
+            {
+              "text": "Chanter une mélodie simple, une comptine ou un chant seul ou en groupe"
+            },
+            {
+              "text": "Explorer des instruments, des temps différents (lent, rapide), frapper des rythmes simples"
+            },
+            {
+              "text": "Ecouter une musique et exprimer sa joie, sa tristesse"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités physiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Explorer les différents matériels des jeux de l'école, tenter de nouvelles choses"
+            },
+            {
+              "text": "Sauter, lancer, courir, glisser, ramper, faire rouler"
+            },
+            {
+              "text": "Participer à des jeux collectifs"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "En marche vers l'autonomie… et la socialisation",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Sait se déshabiller pour aller aux toilettes, sait se chausser"
+            },
+            {
+              "text": "Sait ranger ses affaires et les jeux de l'école"
+            },
+            {
+              "text": "Dit bonjour et sait jouer calmement avec les autres"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ENGLISH SKILLS",
+      "subdomains": [
+        {
+          "name": "LANGUAGE SKILLS",
+          "items": [
+            {
+              "text": "Ask questions and express curiosity"
+            },
+            {
+              "text": "Can recall letter sounds in class"
+            },
+            {
+              "text": "Recites some common nursery rhymes and songs"
+            },
+            {
+              "text": "Responds appropriately to sounds and environment"
+            },
+            {
+              "text": "Responds to general greetings and farewell"
+            }
+          ]
+        },
+        {
+          "name": "READING SKILLS",
+          "items": [
+            {
+              "text": "Read two and three letter words and simple sentences"
+            },
+            {
+              "text": "Recognize some letter sounds"
+            },
+            {
+              "text": "Tries to read in everyday situations (signs, labels, etc)"
+            }
+          ]
+        },
+        {
+          "name": "WRITING SKILLS",
+          "items": [
+            {
+              "text": "Attempts to write own name and recognizes own name in print"
+            },
+            {
+              "text": "Tries to scribble, draw or write"
+            },
+            {
+              "text": "Writes some alphabet letters"
+            }
+          ]
+        },
+        {
+          "name": "MATHEMATICAL SKILLS",
+          "items": [
+            {
+              "text": "Arranges objects in size order (big to small, or small to big)"
+            },
+            {
+              "text": "Compares the size of groups of objects using language such as small, big and short/long"
+            },
+            {
+              "text": "Identifies similarities and differences in objects"
+            },
+            {
+              "text": "Recognize some numbers"
+            },
+            {
+              "text": "Can distinguish numbers frome letters, and understands that numbers relate to quantity"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "N3": [
+    {
+      "title": "Mobiliser le langage dans toutes ses dimensions",
+      "subdomains": [
+        {
+          "name": "LANGAGE ORAL",
+          "items": [
+            {
+              "text": "Communiquer avec l'adulte et les autres enfants, utiliser les formules de politesse, raconter les activités de la journée"
+            },
+            {
+              "text": "Faire des phrases simples correctes et compréhensibles"
+            },
+            {
+              "text": "Poser des questions, comprendre des consignes doubles, reformuler des consignes"
+            },
+            {
+              "text": "Ecouter une histoire, la comprendre, répondre à des questions simples, dire ce que l'on voit, identifier les personnages, le lieu, et la fin d'une histoire"
+            },
+            {
+              "text": "Reconnaître quelques sons (phonologie), toutes les voyelles et les consonnes, les localiser en début ou fin de mot"
+            },
+            {
+              "text": "Taper les syllabes des mots les plus connus"
+            }
+          ]
+        },
+        {
+          "name": "LANGAGE, ECRITURE, GRAPHISME",
+          "items": [
+            {
+              "text": "Recopier une petite phrase en lettres cursives et taper dans les mains tous les mots de cette phrase, écrire sur la ligne"
+            },
+            {
+              "text": "Tenir correctement le crayon, avoir une bonne posture pour écrire"
+            },
+            {
+              "text": "Distinguer différentes livres: les albums, les BD, les documentaires, monter le nom de l'auteur"
+            },
+            {
+              "text": "Connaître l'alphabet par coeur et nommer les lettres en désordre, réussir des dictées de lettres"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aquérir les premiers outils mathématiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Constituer et dénombrer une collection de 1à 20 objets"
+            },
+            {
+              "text": "Addition 1 à 20"
+            },
+            {
+              "text": "Soustraction 1 à 20"
+            },
+            {
+              "text": "Savoir la comptine des nombres jusqu'à 50"
+            },
+            {
+              "text": "Lire et reconnaître les nombres jusqu'à 20, sur les doigts, sur le dé"
+            },
+            {
+              "text": "Ecrire les nombres jusqu'à 15"
+            },
+            {
+              "text": "Comparer des collections d'objets en utilisant les expressions: autant que, plus que, moins que"
+            },
+            {
+              "text": "Continuer un algorithme à 6 termes (De 4 à 6 étapes)"
+            },
+            {
+              "text": "Reconnaître et colorier des figures symétriques et reproduire des quadrillages"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Explorer le monde",
+      "subdomains": [
+        {
+          "name": "ESPACE, TEMPS",
+          "items": [
+            {
+              "text": "Se repérer dans la journée, dans la semaine"
+            },
+            {
+              "text": "Connaître la comptine des jours de la semaine et des mois de l'année"
+            },
+            {
+              "text": "Se repérer dans l'espace familier de la classe, de la cour"
+            },
+            {
+              "text": "Utiliser le vocabulaire spatial simple (Sur/Sous, Devant/Derrière, En haut/ En bas, à côté, entre au milieu)"
+            }
+          ]
+        },
+        {
+          "name": "LES VIVANTS, LES OBJETS, LES MATERIAUX",
+          "items": [
+            {
+              "text": "Nommer les différentes parties du corps humain, d'un animal et donner quelques informations sur leur vie"
+            },
+            {
+              "text": "Utiliser parfaitement les ciseaux, tracer des traits avec une règle"
+            },
+            {
+              "text": "Manipuler, nommer différentes matières (le papier, la pierre, le sable, le carton…), exprimer la qualité des matières (mou, lisse, rugueux…)"
+            },
+            {
+              "text": "Continuer un algorithme à 3 termes"
+            }
+          ]
+        },
+        {
+          "name": "INFORMATIQUE",
+          "items": [
+            {
+              "text": "Sur l'ordinateur, je sais déplacer la souris, cliquer et fermer un programme"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités artistiques",
+      "subdomains": [
+        {
+          "name": "PRODUCTION PLASTIQUES",
+          "items": [
+            {
+              "text": "Dessiner librement et expliquer ce que l'on a voulu dessiner"
+            },
+            {
+              "text": "Savoir décorer une page avec différentes graphismes et couleurs, dessiner un bonhomme, une maison, un arbre…"
+            }
+          ]
+        },
+        {
+          "name": "PRODUCTION SONORES",
+          "items": [
+            {
+              "text": "Chanter une mélodie simple, une comptine ou un chant seul ou en groupe"
+            },
+            {
+              "text": "Explorer des instruments différents, des temps différents (lent, rapide), frapper des rythmes simples"
+            },
+            {
+              "text": "Ecouter une musique et exprimer sa joie, sa tristesse"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "S'exprimer à travers des activités physiques",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Explorer les différents matériels des jeux de l'école, tenter de nouvelles choses"
+            },
+            {
+              "text": "Sauter, lancer, courir, glisser, ramper, faire rouler"
+            },
+            {
+              "text": "Participer à des jeux collectifs"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "En marche vers l'autonomie… et la socialisation",
+      "subdomains": [
+        {
+          "name": "",
+          "items": [
+            {
+              "text": "Sait se déshabiller pour aller aux toilettes, sait se chausser"
+            },
+            {
+              "text": "Sait ranger ses affaires et les jeux de l'école"
+            },
+            {
+              "text": "Dit bonjour et sait jouer calmement avec les autres"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ENGLISH SKILLS",
+      "subdomains": [
+        {
+          "name": "LANGUAGE SKILLS",
+          "items": [
+            {
+              "text": "Ask questions and express curiosity"
+            },
+            {
+              "text": "Can recall letter sounds in class"
+            },
+            {
+              "text": "Makes sentences while speaking"
+            },
+            {
+              "text": "Responds appropriately to sounds and environment"
+            },
+            {
+              "text": "Responds to general greetings and farewell"
+            }
+          ]
+        },
+        {
+          "name": "READING SKILLS",
+          "items": [
+            {
+              "text": "Read two and three letter words and simple sentences"
+            },
+            {
+              "text": "Recognize some letter sounds"
+            },
+            {
+              "text": "Tries to read in everyday situations (signs, labels, etc)"
+            }
+          ]
+        },
+        {
+          "name": "WRITING SKILLS",
+          "items": [
+            {
+              "text": "Attempts to write own name and recognizes own name in print"
+            },
+            {
+              "text": "Tries to scribble, draw or write"
+            },
+            {
+              "text": "Writes some alphabet letters"
+            }
+          ]
+        },
+        {
+          "name": "MATHEMATICAL SKILLS",
+          "items": [
+            {
+              "text": "Arranges objects in size order (big to small, or small to big)"
+            },
+            {
+              "text": "Compares the size of groups of objects using language such as small, big and short/long"
+            },
+            {
+              "text": "Identifies similarities and differences in objects"
+            },
+            {
+              "text": "Recognize some numbers"
+            },
+            {
+              "text": "Can distinguish numbers frome letters, and understands that numbers relate to quantity"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

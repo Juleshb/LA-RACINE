@@ -43,12 +43,27 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const data = await api.login(email, password);
+    if (data.requiresOtp) return data;
     localStorage.setItem('token', data.token);
     if (data.user?.preferredLanguage) {
       localStorage.setItem('laracine_lang', data.user.preferredLanguage);
     }
     applyAuthData(data);
     return data;
+  };
+
+  const completeLogin = async (data) => {
+    localStorage.setItem('token', data.token);
+    if (data.user?.preferredLanguage) {
+      localStorage.setItem('laracine_lang', data.user.preferredLanguage);
+    }
+    applyAuthData(data);
+    return data;
+  };
+
+  const verifyLoginOtp = async (challengeId, code) => {
+    const data = await api.verifyLoginOtp(challengeId, code);
+    return completeLogin(data);
   };
 
   const logout = () => {
@@ -77,6 +92,8 @@ export function AuthProvider({ children }) {
         roleLabel,
         loading,
         login,
+        verifyLoginOtp,
+        completeLogin,
         logout,
         refreshUser,
         hasPermission: (p) => permissions.includes(p),

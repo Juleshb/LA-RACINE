@@ -4,6 +4,7 @@ import {
   buildStudentData,
   saveDocuments,
 } from './studentRegistration.js';
+import { resolveOrCreateClass } from './defaultClasses.js';
 
 export function validateRegistrationPayload(body, { requireDocuments = true } = {}) {
   const {
@@ -25,7 +26,10 @@ export function validateRegistrationPayload(body, { requireDocuments = true } = 
   if (!rest.emergencyContactName || !rest.emergencyContactPhone) {
     return { error: 'Emergency contact is required' };
   }
-  if (!bodyAcademicYearId || !classId) {
+  if (!bodyAcademicYearId) {
+    return { error: 'Registration academic year and class are required' };
+  }
+  if (!classId && !rest.classGrade) {
     return { error: 'Registration academic year and class are required' };
   }
   if (!rest.registrationDate) {
@@ -67,7 +71,8 @@ export async function createStudentRegistration({
     throw err;
   }
 
-  const { documents, classId, academicYearId, rest } = validated;
+  const { documents, academicYearId, rest } = validated;
+  let { classId } = validated;
 
   const academicYear = await prisma.academicYear.findFirst({
     where: { id: academicYearId, campusId },
@@ -78,21 +83,46 @@ export async function createStudentRegistration({
     throw err;
   }
 
-  const selectedClass = await prisma.class.findFirst({
-    where: { id: classId, campusId, academicYearId: academicYear.id },
-  });
+  let selectedClass = classId
+    ? await prisma.class.findFirst({
+      where: { id: classId, campusId, academicYearId: academicYear.id },
+    })
+    : null;
+
+  if (!selectedClass && rest.classGrade) {
+    selectedClass = await resolveOrCreateClass(
+      prisma,
+      campusId,
+      academicYear.id,
+      rest.classGrade,
+      rest.classSection || 'A',
+      rest.classLabel || '',
+    );
+    classId = selectedClass?.id || null;
+  }
+
   if (!selectedClass) {
     const err = new Error('Selected class not found for this academic year');
     err.status = 400;
     throw err;
   }
 
+  const {
+    classGrade: _cg,
+    classSection: _cs,
+    classLabel: _cl,
+    __row: _row,
+    ...studentFields
+  } = rest;
+
   const registrationFields = {
-    ...rest,
+    ...studentFields,
     classId,
     registrationYear: academicYear.name,
     registrationClass: selectedClass.name,
-    registrationStatus: 'PENDING',
+    registrationStatus: ['PENDING', 'APPROVED', 'REJECTED'].includes(rest.registrationStatus)
+      ? rest.registrationStatus
+      : 'PENDING',
   };
 
   let student;

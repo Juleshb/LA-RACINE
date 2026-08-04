@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import campusRoutes from './routes/campuses.js';
 import userRoutes from './routes/users.js';
@@ -36,18 +38,23 @@ import websiteRoutes from './routes/website.js';
 import contactRoutes from './routes/contact.js';
 import { requireAcademicYear } from './middleware/academicYear.js';
 import { initRealtime } from './lib/realtime.js';
+import { ensureCalendarUploadsDir } from './lib/calendarFiles.js';
 
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5001;
 
+ensureCalendarUploadsDir();
 initRealtime(server);
 
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'École La RACINE API is running' });

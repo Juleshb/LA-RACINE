@@ -3419,6 +3419,353 @@
     border: 1px solid #ddd;
     background: #fff;
   }
+
+  /* Nursery competence bulletin — content-height A4 width (no footer overlap) */
+  .nursery-bulletin-sheet {
+    position: relative;
+    width: 210mm;
+    height: auto;
+    min-height: 0;
+    margin: 0 auto;
+    padding: 5mm 6mm 4mm;
+    background: #fff;
+    color: #111;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 8.5pt;
+    line-height: 1.2;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    overflow: visible;
+    box-sizing: border-box;
+  }
+
+  .nursery-bulletin-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .nursery-bulletin-watermark {
+    position: absolute;
+    inset: 22% 18% 28%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .nursery-bulletin-watermark img {
+    width: 55%;
+    max-width: 70mm;
+    height: auto;
+    opacity: 0.035;
+    object-fit: contain;
+  }
+
+  .nursery-bulletin-header {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+    text-align: center;
+  }
+
+  .nursery-bulletin-header-logo img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+  }
+
+  .nursery-bulletin-header-center h1 {
+    margin: 0;
+    font-size: 12pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .nursery-bulletin-header-photo {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .nursery-student-photo {
+    width: 42px;
+    height: 50px;
+    object-fit: cover;
+    border: 1.5px solid #111;
+    background: #fff;
+  }
+
+  .nursery-student-photo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+  }
+
+  .nursery-bulletin-place {
+    margin: 1px 0 0;
+    font-weight: 600;
+    font-size: 7.5pt;
+  }
+
+  .nursery-bulletin-contacts {
+    margin: 1px 0 0;
+    font-size: 6.5pt;
+    color: #333;
+  }
+
+  .nursery-bulletin-info {
+    display: grid;
+    grid-template-columns: 1.5fr 1.2fr 0.75fr 1.1fr;
+    gap: 2px 8px;
+    margin: 3px 0;
+    padding: 4px 6px;
+    border: 1.5px solid #111;
+    background: #f8fafc;
+    font-size: 8pt;
+  }
+
+  .nursery-bulletin-info span {
+    display: block;
+    font-size: 6pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #475569;
+    margin-bottom: 0;
+  }
+
+  .nursery-bulletin-title {
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 700;
+    margin: 2px 0 4px;
+    padding: 3px 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border: 1.5px solid #111;
+    background: #e2e8f0;
+  }
+
+  .nursery-table-wrap {
+    display: block;
+  }
+
+  .nursery-bulletin-table {
+    width: 100%;
+    height: auto;
+    border-collapse: collapse;
+    table-layout: fixed;
+    border: 1.5px solid #111;
+  }
+
+  .nursery-bulletin-table th,
+  .nursery-bulletin-table td {
+    border: 1px solid #1e293b;
+    padding: 2px 4px;
+    vertical-align: middle;
+    text-decoration: none;
+  }
+
+  .nursery-bulletin-table thead th {
+    background: #cbd5e1;
+    font-size: 7.5pt;
+    text-align: center;
+    font-weight: 700;
+    padding: 3px 3px;
+  }
+
+  .nursery-bulletin-table .col-domain {
+    width: 15%;
+  }
+
+  .nursery-bulletin-table .col-element {
+    width: 70%;
+  }
+
+  .nursery-bulletin-term .nursery-bulletin-table .col-term {
+    width: 15%;
+  }
+
+  .nursery-bulletin-full-year .nursery-bulletin-table .col-element {
+    width: 45%;
+  }
+
+  .nursery-bulletin-full-year .nursery-bulletin-table .col-term {
+    width: 10%;
+  }
+
+  .nursery-domain-row td {
+    background: #94a3b8;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: left;
+    font-size: 7.5pt;
+    padding: 2px 5px;
+    line-height: 1.15;
+  }
+
+  .nursery-subdomain-cell {
+    font-weight: 700;
+    font-size: 6.5pt;
+    text-align: center;
+    vertical-align: middle !important;
+    background: #f1f5f9;
+    line-height: 1.15;
+    padding: 2px 3px !important;
+  }
+
+  .nursery-element-cell {
+    font-size: 7.5pt;
+    line-height: 1.15;
+    text-align: left;
+    text-decoration: none !important;
+  }
+
+  .nursery-grade-cell {
+    text-align: center;
+    font-weight: 800;
+    font-size: 10pt;
+    letter-spacing: 0.02em;
+  }
+
+  .nursery-grade-cell span {
+    display: inline-block;
+    min-width: 1.1em;
+  }
+
+  .nursery-grade-a { background: #86efac; }
+  .nursery-grade-b { background: #93c5fd; }
+  .nursery-grade-c { background: #fde047; }
+  .nursery-grade-d { background: #fca5a5; }
+
+  /* Density tweaks for longer skill lists (N2/N3) */
+  .nursery-density-dense .nursery-element-cell { font-size: 6.5pt; line-height: 1.1; }
+  .nursery-density-dense .nursery-subdomain-cell { font-size: 5.5pt; }
+  .nursery-density-dense .nursery-domain-row td { font-size: 6.5pt; padding: 1px 4px; }
+  .nursery-density-dense .nursery-grade-cell { font-size: 8.5pt; }
+  .nursery-density-dense .nursery-bulletin-table th,
+  .nursery-density-dense .nursery-bulletin-table td { padding: 1px 3px; }
+  .nursery-density-dense .nursery-bulletin-header-center h1 { font-size: 11pt; }
+  .nursery-density-dense .nursery-bulletin-title { font-size: 8pt; padding: 2px 4px; }
+  .nursery-density-dense .nursery-sig { min-height: 26px; }
+  .nursery-density-dense .nursery-comment-lines { height: 14px; }
+
+  .nursery-density-normal .nursery-element-cell { font-size: 7pt; }
+  .nursery-density-normal .nursery-grade-cell { font-size: 9.5pt; }
+
+  .nursery-density-roomy .nursery-element-cell { font-size: 8pt; }
+  .nursery-density-roomy .nursery-grade-cell { font-size: 11pt; }
+
+  .nursery-bulletin-bottom {
+    margin-top: 4px;
+    clear: both;
+  }
+
+  .nursery-bulletin-decision {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: center;
+    margin: 0 0 3px;
+    font-size: 7.5pt;
+    padding: 2px 0;
+  }
+
+  .nursery-bulletin-decision .checkbox {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid #111;
+    margin-right: 3px;
+    vertical-align: -1px;
+  }
+
+  .nursery-bulletin-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 3px;
+  }
+
+  .nursery-legend-label {
+    font-weight: 700;
+    font-size: 7.5pt;
+  }
+
+  .nursery-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border: 1px solid #334155;
+    font-size: 6.5pt;
+    border-radius: 2px;
+  }
+
+  .nursery-legend-item strong {
+    font-size: 8pt;
+  }
+
+  .nursery-bulletin-comment {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 4px;
+    font-size: 7.5pt;
+  }
+
+  .nursery-bulletin-comment > span {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .nursery-comment-lines {
+    flex: 1;
+    height: 16px;
+    border-bottom: 1.5px solid #64748b;
+  }
+
+  .nursery-bulletin-signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 48px;
+    gap: 6px;
+    align-items: end;
+  }
+
+  .nursery-sig {
+    border-top: 1.5px solid #334155;
+    padding-top: 2px;
+    min-height: 28px;
+    text-align: center;
+  }
+
+  .nursery-sig-label {
+    margin: 0;
+    font-size: 6.5pt;
+    color: #334155;
+  }
+
+  .nursery-bulletin-signatures .sig-name {
+    margin: 3px 0 0;
+    font-weight: 700;
+    font-size: 7pt;
+  }
+
+  .nursery-bulletin-qr {
+    display: flex;
+    justify-content: flex-end;
+    align-items: end;
+  }
+
+  .nursery-bulletin-qr canvas,
+  .nursery-bulletin-qr img {
+    width: 44px !important;
+    height: 44px !important;
+  }
 }
 
 @media print {
@@ -3456,6 +3803,25 @@
     padding: 8mm 10mm;
     box-shadow: none;
     page-break-after: always;
+  }
+
+  .nursery-bulletin-sheet {
+    width: 210mm !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 5mm 6mm 4mm !important;
+    box-shadow: none !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .nursery-bulletin-table th,
+  .nursery-bulletin-table td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .bulletin-watermark img {

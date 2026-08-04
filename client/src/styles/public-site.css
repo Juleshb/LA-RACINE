@@ -2893,3 +2893,684 @@ a.ps-meta-row:hover {
     transition: none;
   }
 }
+
+/* Program detail pages */
+.ps-crumb {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.85;
+}
+.ps-crumb:hover { opacity: 1; text-decoration: underline; }
+
+.ps-program-approach-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .ps-program-approach-grid { grid-template-columns: 1fr; }
+}
+
+.ps-program-approach-media img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 1.25rem;
+  display: block;
+}
+
+.ps-program-pills {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.ps-program-pills li {
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: var(--ps-mist);
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  color: var(--ps-leaf-deep);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ps-program-offerings {
+  background: linear-gradient(180deg, var(--ps-sand) 0%, #fff 100%);
+}
+
+.ps-program-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 900px) {
+  .ps-program-offer-grid { grid-template-columns: 1fr; }
+}
+
+.ps-program-offer {
+  padding: 1.35rem 1.25rem 1.5rem;
+  border-radius: 1.1rem;
+  background: #fff;
+  border: 1px solid rgba(11, 40, 64, 0.08);
+  box-shadow: 0 14px 32px rgba(11, 40, 64, 0.05);
+}
+.ps-program-offer-tag {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ps-leaf-deep);
+}
+.ps-program-offer h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1.2rem;
+}
+.ps-program-offer p {
+  margin: 0;
+  color: var(--ps-stone);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.ps-program-offer ul {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ps-program-offer li {
+  position: relative;
+  padding-left: 1rem;
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+}
+.ps-program-offer li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--ps-leaf);
+}
+
+.ps-program-features {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.ps-program-features li {
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Rich program cards */
+.ps-program-grid-rich {
+  gap: 1.5rem;
+}
+
+.ps-program-card {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(11, 40, 64, 0.08);
+  box-shadow: 0 18px 40px rgba(11, 40, 64, 0.06);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  height: 100%;
+}
+
+.ps-program-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 56px rgba(11, 40, 64, 0.12);
+}
+
+.ps-program-card.is-featured {
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 22px 48px rgba(14, 165, 233, 0.14);
+}
+
+.ps-program-card-link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ps-program-card-media {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  background: #0c4a6e;
+}
+
+.ps-program-card-media img,
+.ps-program-card-media-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s ease;
+}
+
+.ps-program-card-media-fallback {
+  background: linear-gradient(135deg, #0c4a6e, #0ea5e9);
+}
+
+.ps-program-card:hover .ps-program-card-media img {
+  transform: scale(1.06);
+}
+
+.ps-program-card-media-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(11, 40, 64, 0.55) 100%);
+  pointer-events: none;
+}
+
+.ps-program-card-tag,
+.ps-program-card-ages,
+.ps-program-card-badge {
+  position: absolute;
+  z-index: 1;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ps-program-card-tag {
+  left: 0.9rem;
+  bottom: 0.9rem;
+  background: rgba(11, 40, 64, 0.88);
+  color: #fff;
+}
+
+.ps-program-card-ages {
+  right: 0.9rem;
+  bottom: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ps-leaf-deep);
+}
+
+.ps-program-card-badge {
+  top: 0.9rem;
+  right: 0.9rem;
+  background: #0ea5e9;
+  color: #fff;
+}
+
+.ps-program-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.35rem 1.3rem 1.45rem;
+  flex: 1;
+}
+
+.ps-program-card-top h3 {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.ps-program-card-level {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ps-leaf-deep);
+  font-weight: 600;
+}
+
+.ps-program-card-copy {
+  margin: 0;
+  color: var(--ps-stone);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.ps-program-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ps-program-card-facts span {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: var(--ps-mist);
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  color: var(--ps-leaf-deep);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ps-program-card-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-program-card-points li {
+  position: relative;
+  padding-left: 1rem;
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  color: var(--ps-ink);
+}
+
+.ps-program-card-points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--ps-leaf);
+}
+
+.ps-program-card-cta {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ps-leaf-deep);
+}
+
+.ps-program-card:hover .ps-program-card-cta {
+  color: var(--ps-leaf);
+}
+
+.ps-program-card-cta svg {
+  transition: transform 0.25s ease;
+}
+
+.ps-program-card:hover .ps-program-card-cta svg {
+  transform: translateX(3px);
+}
+
+/* Detail hero */
+.ps-program-detail-hero {
+  position: relative;
+  min-height: 72vh;
+  display: flex;
+  align-items: flex-end;
+  color: #fff;
+  overflow: hidden;
+  background: #0c4a6e;
+}
+
+.ps-program-detail-hero-media {
+  position: absolute;
+  inset: 0;
+}
+
+.ps-program-detail-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ps-program-detail-hero-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(11, 40, 64, 0.35) 0%, rgba(11, 40, 64, 0.82) 100%),
+    linear-gradient(90deg, rgba(11, 40, 64, 0.55) 0%, transparent 60%);
+}
+
+.ps-program-detail-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 7.5rem 1.25rem 3.5rem;
+}
+
+.ps-program-detail-crumb,
+.ps-program-detail-crumb .ps-crumb {
+  color: #bae6fd;
+}
+
+.ps-program-detail-ages {
+  display: inline-block;
+  margin: 0.85rem 0 0.75rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ps-program-detail-hero h1 {
+  margin: 0 0 0.85rem;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  max-width: 14ch;
+  line-height: 1.05;
+}
+
+.ps-program-detail-lead {
+  max-width: 36rem;
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.02rem, 2vw, 1.2rem);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ps-program-factstrip {
+  background: #fff;
+  border-bottom: 1px solid rgba(11, 40, 64, 0.08);
+}
+
+.ps-program-factstrip-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 800px) {
+  .ps-program-factstrip-inner {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ps-program-fact {
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.ps-program-fact strong {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.55rem;
+  color: var(--ps-leaf-deep);
+  letter-spacing: -0.02em;
+}
+
+.ps-program-fact span {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--ps-stone);
+}
+
+.ps-program-approach-caption {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ps-stone);
+  font-style: italic;
+}
+
+.ps-program-offer-card {
+  overflow: hidden;
+  border-radius: 1.15rem;
+  background: #fff;
+  border: 1px solid rgba(11, 40, 64, 0.08);
+  box-shadow: 0 16px 36px rgba(11, 40, 64, 0.06);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ps-program-offer-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 44px rgba(11, 40, 64, 0.1);
+}
+
+.ps-program-offer-media {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #0c4a6e;
+}
+
+.ps-program-offer-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.ps-program-offer-card:hover .ps-program-offer-media img {
+  transform: scale(1.04);
+}
+
+.ps-program-offer-body {
+  padding: 1.2rem 1.2rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+}
+
+.ps-program-offer-body .ps-program-card-cta {
+  padding-top: 0.65rem;
+}
+
+/* —— School calendar (PTS-style levels + campus PDFs) —— */
+.ps-calendar-year {
+  display: inline-block;
+  margin: 0 0 0.65rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--ps-leaf-deep);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ps-calendar-section {
+  padding-top: 0.5rem;
+}
+
+.ps-calendar-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2.25rem;
+}
+
+.ps-calendar-tab {
+  appearance: none;
+  border: 1px solid rgba(11, 40, 64, 0.12);
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+
+.ps-calendar-tab:hover {
+  border-color: rgba(14, 165, 233, 0.45);
+  transform: translateY(-2px);
+}
+
+.ps-calendar-tab.is-active {
+  border-color: transparent;
+  background: linear-gradient(145deg, var(--ps-leaf) 0%, var(--ps-leaf-deep) 100%);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(3, 105, 161, 0.28);
+}
+
+.ps-calendar-tab-label {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ps-calendar-tab-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  opacity: 0.78;
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.ps-calendar-panel {
+  animation: ps-rise 0.55s ease both;
+}
+
+.ps-calendar-panel-head {
+  margin-bottom: 1.5rem;
+}
+
+.ps-calendar-panel-head h2 {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  letter-spacing: -0.02em;
+}
+
+.ps-calendar-panel-head h2 em {
+  font-style: italic;
+  color: var(--ps-leaf-deep);
+  font-weight: 500;
+}
+
+.ps-calendar-panel-head p {
+  margin: 0;
+  color: var(--ps-stone);
+  max-width: 36rem;
+}
+
+.ps-calendar-empty {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--ps-mist);
+  color: var(--ps-stone);
+  border: 1px dashed rgba(14, 165, 233, 0.35);
+}
+
+.ps-calendar-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.ps-calendar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.3rem 1.35rem;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f7fbfe 100%);
+  border: 1px solid rgba(11, 40, 64, 0.08);
+  box-shadow: 0 10px 28px rgba(11, 40, 64, 0.05);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+.ps-calendar-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(11, 40, 64, 0.09);
+}
+
+.ps-calendar-card-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--ps-leaf-deep);
+}
+
+.ps-calendar-card-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.ps-calendar-card-body h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.ps-calendar-city {
+  margin: 0.2rem 0 0;
+  color: var(--ps-stone);
+  font-size: 0.92rem;
+}
+
+.ps-calendar-pdf {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.ps-calendar-note {
+  margin: 2rem 0 0;
+  max-width: 48rem;
+  color: var(--ps-stone);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.ps-calendar-help {
+  margin: 0.5rem 0 0;
+  padding: 3.5rem 1.25rem;
+  background:
+    radial-gradient(ellipse at 15% 20%, rgba(14, 165, 233, 0.18), transparent 45%),
+    linear-gradient(135deg, #0c4a6e 0%, #0369a1 55%, #0ea5e9 120%);
+  color: #fff;
+}
+
+.ps-calendar-help-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.ps-calendar-help h2 {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  color: #fff;
+}
+
+.ps-calendar-help p {
+  margin: 0 0 1.5rem;
+  max-width: 34rem;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.ps-calendar-help .ps-btn-ghost {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ps-calendar-help .ps-btn-primary {
+  background: #fff;
+  color: var(--ps-forest);
+  border-color: #fff;
+}

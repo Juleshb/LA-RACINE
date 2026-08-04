@@ -2,6 +2,8 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { verifyBulletinToken } from '../lib/bulletinVerification.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
+import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
+import { isNurseryGrade } from '../config/grades.js';
 
 const router = Router();
 
@@ -23,15 +25,25 @@ router.get('/bulletin/:token', async (req, res) => {
 
     let matchesCurrent = false;
     try {
-      const report = await buildClassBulletinReport(prisma, {
-        classId: decoded.classId,
-        studentId: decoded.studentId,
-        term: decoded.term,
-        campusId: student.class?.campusId || student.campusId,
-        academicYearId: student.class?.academicYearId || student.academicYearId,
-      });
-      matchesCurrent = report.summary.percentage === decoded.percentage
-        && report.rank?.place === decoded.place;
+      if (isNurseryGrade(student.class?.grade)) {
+        await buildNurseryBulletinReport(prisma, {
+          classId: decoded.classId,
+          studentId: decoded.studentId,
+          campusId: student.class?.campusId || student.campusId,
+          academicYearId: student.class?.academicYearId || student.academicYearId,
+        });
+        matchesCurrent = true;
+      } else {
+        const report = await buildClassBulletinReport(prisma, {
+          classId: decoded.classId,
+          studentId: decoded.studentId,
+          term: decoded.term,
+          campusId: student.class?.campusId || student.campusId,
+          academicYearId: student.class?.academicYearId || student.academicYearId,
+        });
+        matchesCurrent = report.summary.percentage === decoded.percentage
+          && report.rank?.place === decoded.place;
+      }
     } catch {
       matchesCurrent = false;
     }

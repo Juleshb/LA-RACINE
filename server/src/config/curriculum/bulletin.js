@@ -1,3 +1,5 @@
+import { getNurseryCompetenceDomains } from './nurseryTemplates.js';
+
 function grading(test1Max, test2Max) {
   const examMax = test1Max + test2Max;
   return { test1Max, test2Max, examMax, totalMax: test1Max + test2Max + examMax };
@@ -86,71 +88,23 @@ export const PRIMARY_BULLETIN_DOMAINS = [
   },
 ];
 
-/** Nursery / crèche — same bulletin style, age-appropriate domains */
-export const NURSERY_BULLETIN_DOMAINS = [
-  {
-    name: 'LANGAGE ET COMMUNICATION',
-    order: 1,
-    subjects: [
-      subject('Expression orale', 'LANG-ORAL', 10, 10),
-      subject('Compréhension', 'LANG-COMP', 10, 10),
-      subject('Pré-lecture / écriture', 'LANG-PRE', 10, 10),
-    ],
-  },
-  {
-    name: 'ÉVEIL MATHEMATIQUE',
-    order: 2,
-    subjects: [
-      subject('Numération', 'MATH-NUM', 10, 10),
-      subject('Formes et grandeurs', 'MATH-FORM', 10, 10),
-    ],
-  },
-  {
-    name: 'ÉVEIL SCIENTIFIQUE',
-    order: 3,
-    subjects: [
-      subject("Découverte de l'environnement", 'SCI-DEC', 10, 10),
-    ],
-  },
-  {
-    name: 'MOTRICITÉ ET SANTÉ',
-    order: 4,
-    subjects: [
-      subject('Psychomotricité', 'MOT-PSY', 10, 10),
-      subject('Éducation à la santé', 'MOT-SANTE', 10, 10),
-    ],
-  },
-  {
-    name: 'DOMAINE DES ARTS',
-    order: 5,
-    subjects: [
-      subject('Arts plastiques', 'ART-PLAS', 10, 10),
-      subject('Chant et rythme', 'ART-CHANT', 10, 10),
-    ],
-  },
-  {
-    name: 'VIE SOCIALE ET RELIGION',
-    order: 6,
-    subjects: [
-      subject('Éducation civique', 'VIE-CIV', 10, 10),
-      subject('Religion', 'VIE-REL', 10, 10),
-    ],
-  },
-];
+/** @deprecated Kept for reference; nursery now uses Excel competence templates. */
+export const NURSERY_BULLETIN_DOMAINS = [];
 
 function sumGrandTotal(domains) {
   return domains.reduce(
-    (total, domain) => total + domain.subjects.reduce((n, s) => n + s.totalMax, 0),
+    (total, domain) => total + domain.subjects.reduce((n, s) => n + (s.totalMax || 0), 0),
     0,
   );
 }
 
-export function buildCurriculum(grade, label, domains) {
+export function buildCurriculum(grade, label, domains, extra = {}) {
   return {
     grade,
     label,
     grandTotalMax: sumGrandTotal(domains),
     domains,
+    ...extra,
   };
 }
 
@@ -178,7 +132,11 @@ export function buildAllCurricula() {
     curricula[grade] = buildCurriculum(grade, GRADE_LABELS[grade], PRIMARY_BULLETIN_DOMAINS);
   }
   for (const grade of NURSERY_GRADES) {
-    curricula[grade] = buildCurriculum(grade, GRADE_LABELS[grade], NURSERY_BULLETIN_DOMAINS);
+    const domains = getNurseryCompetenceDomains(grade) || [];
+    curricula[grade] = buildCurriculum(grade, GRADE_LABELS[grade], domains, {
+      mode: 'COMPETENCE',
+      grandTotalMax: 0,
+    });
   }
 
   return curricula;

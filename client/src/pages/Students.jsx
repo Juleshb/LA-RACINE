@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Eye, FileText } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, FileText, FileSpreadsheet, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
+import StudentExcelImportModal from '../components/StudentExcelImportModal';
 
 const STATUS_STYLES = {
   PENDING: 'bg-amber-50 text-amber-700',
@@ -29,6 +30,14 @@ export default function Students() {
   const [filterClass, setFilterClass] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteChallengeId, setDeleteChallengeId] = useState('');
+  const [deleteEmailMasked, setDeleteEmailMasked] = useState('');
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteSending, setDeleteSending] = useState(false);
 
   const loadStudents = () => {
     api.getStudents({ classId: filterClass || undefined, status: filterStatus || undefined })
@@ -48,13 +57,66 @@ export default function Students() {
       ? students.filter((s) => !s.parentSubmitted)
       : students;
 
-  const handleDelete = async (id) => {
-    if (!confirm(t('pageBody.students.deleteConfirm'))) return;
+  const closeDeleteModal = () => {
+    setDeleteTarget(null);
+    setDeleteChallengeId('');
+    setDeleteEmailMasked('');
+    setDeleteCode('');
+    setDeleteError('');
+    setDeleteLoading(false);
+    setDeleteSending(false);
+  };
+
+  const openDeleteModal = async (student) => {
+    setDeleteTarget(student);
+    setDeleteChallengeId('');
+    setDeleteEmailMasked('');
+    setDeleteCode('');
+    setDeleteError('');
+    setDeleteSending(true);
     try {
-      await api.deleteStudent(id);
+      const data = await api.requestDeleteStudentOtp(student.id);
+      setDeleteChallengeId(data.challengeId);
+      setDeleteEmailMasked(data.emailMasked || '');
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleteSending(false);
+    }
+  };
+
+  const confirmDeleteWithOtp = async (e) => {
+    e.preventDefault();
+    if (!deleteTarget || !deleteChallengeId) return;
+    setDeleteError('');
+    setDeleteLoading(true);
+    try {
+      await api.deleteStudent(deleteTarget.id, {
+        challengeId: deleteChallengeId,
+        code: deleteCode.trim(),
+      });
+      closeDeleteModal();
       loadStudents();
     } catch (err) {
-      alert(err.message);
+      setDeleteError(err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const resendDeleteOtp = async () => {
+    if (!deleteTarget) return;
+    setDeleteError('');
+    setDeleteSending(true);
+    try {
+      const data = await api.requestDeleteStudentOtp(deleteTarget.id);
+      setDeleteChallengeId(data.challengeId);
+      setDeleteEmailMasked(data.emailMasked || '');
+      setDeleteCode('');
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleteSending(false);
     }
   };
 
@@ -62,6 +124,10 @@ export default function Students() {
     const key = STATUS_I18N[code || 'PENDING'];
     return key ? t(key) : code;
   };
+
+  const deleteName = deleteTarget
+    ? `${deleteTarget.lastName || ''} ${deleteTarget.postName || ''} ${deleteTarget.firstName || ''}`.trim()
+    : '';
 
   return (
     <div>
@@ -71,10 +137,20 @@ export default function Students() {
           ? t('pages.students.descriptionTeacher')
           : t('pages.students.description')}
         action={!isTeacher && (
-          <Link to={`/campus/${campusId}/students/register`} className="btn-primary flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            {t('pages.students.register')}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary flex items-center gap-2"
+              onClick={() => setImportOpen(true)}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              {t('pages.students.importExcel')}
+            </button>
+            <Link to={`/campus/${campusId}/students/register`} className="btn-primary flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              {t('pages.students.register')}
+            </Link>
+          </div>
         )}
       />
 
@@ -107,9 +183,14 @@ export default function Students() {
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">{t('pageBody.students.empty')}</p>
             {!isTeacher && (
-              <Link to={`/campus/${campusId}/students/register`} className="btn-primary inline-flex items-center gap-2">
-                <Plus className="w-4 h-4" /> {t('pageBody.students.startRegistration')}
-              </Link>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={() => setImportOpen(true)}>
+                  <FileSpreadsheet className="w-4 h-4" /> {t('pages.students.importExcel')}
+                </button>
+                <Link to={`/campus/${campusId}/students/register`} className="btn-primary inline-flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> {t('pageBody.students.startRegistration')}
+                </Link>
+              </div>
             )}
           </div>
         ) : (
@@ -155,7 +236,9 @@ export default function Students() {
                           <Eye className="w-4 h-4" />
                         </Link>
                         {!isTeacher && (
-                          <button onClick={() => handleDelete(s.id)} className="p-1.5 text-gray-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                          <button type="button" onClick={() => openDeleteModal(s)} className="p-1.5 text-gray-400 hover:text-red-400" title={t('ui.delete')}>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
                     </td>
@@ -166,6 +249,94 @@ export default function Students() {
           </div>
         )}
       </div>
+
+      <StudentExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={loadStudents}
+      />
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+            <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirm deletion</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Delete <strong>{deleteName || deleteTarget.studentId}</strong>? Enter the OTP sent to your email.
+                </p>
+              </div>
+              <button type="button" className="p-1 text-gray-400 hover:text-gray-600" onClick={closeDeleteModal} aria-label="Close">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={confirmDeleteWithOtp} className="space-y-4 px-5 py-4">
+              {deleteSending && !deleteChallengeId ? (
+                <p className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending verification code…
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Code sent to <strong>{deleteEmailMasked || 'your email'}</strong>
+                </p>
+              )}
+
+              {deleteError && (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</div>
+              )}
+
+              <div>
+                <label htmlFor="delete-otp" className="mb-1 block text-sm font-medium text-gray-700">
+                  Verification code
+                </label>
+                <input
+                  id="delete-otp"
+                  className="input w-full tracking-widest"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  value={deleteCode}
+                  onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  disabled={!deleteChallengeId || deleteSending}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  className="text-sm text-brand-600 hover:underline disabled:opacity-50"
+                  onClick={resendDeleteOtp}
+                  disabled={deleteSending || deleteLoading}
+                >
+                  {deleteSending ? 'Sending…' : 'Resend code'}
+                </button>
+                <div className="flex gap-2">
+                  <button type="button" className="btn-secondary" onClick={closeDeleteModal} disabled={deleteLoading}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                    disabled={deleteLoading || !deleteChallengeId || deleteCode.length < 6}
+                  >
+                    {deleteLoading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Deleting…
+                      </span>
+                    ) : (
+                      'Delete student'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

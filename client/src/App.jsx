@@ -48,6 +48,8 @@ import PublicLayout from './pages/public/PublicLayout';
 import PublicHome from './pages/public/PublicHome';
 import PublicAbout from './pages/public/PublicAbout';
 import PublicAcademics from './pages/public/PublicAcademics';
+import PublicProgramDetail from './pages/public/PublicProgramDetail';
+import PublicCalendar from './pages/public/PublicCalendar';
 import PublicCampuses from './pages/public/PublicCampuses';
 import PublicNews from './pages/public/PublicNews';
 import PublicNewsArticle from './pages/public/PublicNewsArticle';
@@ -67,6 +69,8 @@ export default function App() {
         <Route index element={<PublicHome />} />
         <Route path="about" element={<PublicAbout />} />
         <Route path="academics" element={<PublicAcademics />} />
+        <Route path="academics/:programSlug" element={<PublicProgramDetail />} />
+        <Route path="calendar" element={<PublicCalendar />} />
         <Route path="locations" element={<PublicCampuses />} />
         <Route path="news" element={<PublicNews />} />
         <Route path="news/:articleIndex" element={<PublicNewsArticle />} />
@@ -103,7 +107,7 @@ export default function App() {
             <Route path="classes" element={<RequirePermission permission={PERMISSIONS.CLASSES}><Classes /></RequirePermission>} />
             <Route path="courses" element={<RequirePermission permission={PERMISSIONS.COURSES}><Courses /></RequirePermission>} />
             <Route path="marks" element={<RequirePermission permission={PERMISSIONS.MARKS}><Marks /></RequirePermission>} />
-            <Route path="bulletin-report" element={<RequirePermission permission={PERMISSIONS.MARKS}><BulletinReport /></RequirePermission>} />
+            <Route path="bulletin-report" element={<RequirePermission permission={PERMISSIONS.MARKS} denyRoles={['TEACHER']}><BulletinReport /></RequirePermission>} />
             <Route path="attendance" element={<RequirePermission permission={PERMISSIONS.ATTENDANCE}><Attendance /></RequirePermission>} />
             <Route path="fees" element={<RequirePermission permission={PERMISSIONS.FEES}><Fees /></RequirePermission>} />
             <Route path="fees/new" element={<RequirePermission permission={PERMISSIONS.FEES}><CreateFee /></RequirePermission>} />

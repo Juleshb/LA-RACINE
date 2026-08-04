@@ -34,7 +34,7 @@ export async function ensureDefaultClasses(db, campusId, academicYearId) {
       grade: lvl.grade,
       section: lvl.section,
       bulletinConfig: ['CRECHE', 'N1', 'N2', 'N3', 'TOP'].includes(lvl.grade)
-        ? { preset: 'NURSERY' }
+        ? { preset: 'COMPETENCE' }
         : { preset: 'STANDARD' },
     })),
   });
@@ -66,4 +66,53 @@ export async function ensureDefaultClassesForCampus(db, campusId) {
     total += await ensureDefaultClasses(db, campusId, year.id);
   }
   return total;
+}
+
+/**
+ * Find class by grade+section for a year, or create it (used by Excel import).
+ */
+export async function resolveOrCreateClass(
+  db,
+  campusId,
+  academicYearId,
+  gradeInput,
+  sectionInput = 'A',
+  nameHint = '',
+) {
+  const grade = String(gradeInput || '').trim().toUpperCase();
+  const section = String(sectionInput || 'A').trim().toUpperCase() || 'A';
+  if (!grade) return null;
+
+  let cls = await db.class.findFirst({
+    where: { campusId, academicYearId, grade, section },
+  });
+  if (cls) return cls;
+
+  // Prefer any existing class for this grade if exact section is missing and hint empty
+  // (import still prefers creating the requested section)
+
+  const level = DEFAULT_CLASS_LEVELS.find((l) => l.grade === grade);
+  const baseName = String(nameHint || '').trim() || level?.name || grade;
+  const name = section === 'A' ? baseName : `${baseName} (${section})`;
+
+  cls = await db.class.create({
+    data: {
+      campusId,
+      academicYearId,
+      name,
+      grade,
+      section,
+      bulletinConfig: ['CRECHE', 'N1', 'N2', 'N3', 'TOP'].includes(grade)
+        ? { preset: 'COMPETENCE' }
+        : { preset: 'STANDARD' },
+    },
+  });
+
+  try {
+    await applyCurriculumToClass(db, campusId, cls.id, grade);
+  } catch {
+    // Curriculum is best-effort for import-created classes
+  }
+
+  return cls;
 }

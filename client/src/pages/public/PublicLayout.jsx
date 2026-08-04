@@ -164,6 +164,7 @@ function PublicShell() {
   const schoolItems = [
     { key: 'about', to: '/about' },
     { key: 'academics', to: '/academics' },
+    { key: 'calendar', to: '/calendar' },
     { key: 'locations', to: '/locations' },
   ].map((item) => ({ ...item, label: labelFor(nav, locale, item.key) }));
 
