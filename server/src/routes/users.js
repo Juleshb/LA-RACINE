@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { userSelect } from '../lib/auth.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorizeRoles, isManagerRole } from '../config/permissions.js';
+import { authorizeRoles, isManagerRole, MANAGER_ROLES } from '../config/permissions.js';
 import { issuePasswordReset, buildResetPreview } from '../lib/passwordReset.js';
 import { validateStrongPassword } from '../lib/passwordPolicy.js';
 
@@ -41,8 +41,16 @@ router.use(authorizeRoles('SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'));
 router.get('/', async (req, res) => {
   try {
     const { campusId } = req.query;
+    // Managers are org-wide (campusId null) — include them when a manager views a campus list
+    let where;
+    if (campusId) {
+      where = isManagerRole(req.user.role)
+        ? { OR: [{ campusId }, { role: { in: MANAGER_ROLES } }] }
+        : { campusId };
+    }
+
     const users = await prisma.user.findMany({
-      where: campusId ? { campusId } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         ...userSelect,
