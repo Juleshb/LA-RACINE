@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Trash2, UserCheck, UserX, KeyRound, Pencil, Search, Eye,
   Users as UsersIcon, GraduationCap, HeartHandshake, Briefcase,
@@ -10,6 +10,8 @@ import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
+import StudentSelect from '../components/StudentSelect';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const EMPTY_FORM = {
   email: '', password: '', firstName: '', lastName: '', phone: '', role: 'TEACHER',
@@ -115,6 +117,35 @@ export default function Users() {
       return matchesSearch(u, search);
     });
   }, [users, tab, search, statusFilter, staffRoleFilter]);
+
+  const getUserSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'email': return row.email || '';
+      case 'phone': return displayPhone(row);
+      case 'role': return ROLE_LABELS[row.role] || row.role || '';
+      case 'linked':
+        return row.teacher?.name
+          || row.student?.studentId
+          || (row.parent?.students?.length ?? 0);
+      case 'status': return row.isActive ? 1 : 0;
+      case 'studentId': return row.student?.studentId || '';
+      case 'class': return row.student?.class?.name || '';
+      case 'children': {
+        const kids = row.parent?.students || [];
+        return kids.length
+          ? kids.map((s) => `${s.firstName || ''} ${s.lastName || ''}`.trim()).join(', ')
+          : '';
+      }
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    filteredUsers,
+    getUserSortValue,
+    { initialKey: 'name' },
+  );
 
   const closeUserModal = () => {
     setModalMode(null);
@@ -419,19 +450,19 @@ export default function Users() {
             <table className="w-full users-table">
               <thead>
                 <tr>
-                  <th>{t('ui.name')}</th>
-                  <th>{t('ui.email')}</th>
-                  <th>{t('pages.users.phone')}</th>
-                  <th>{t('ui.role')}</th>
-                  <th>{t('pages.users.linkedProfile')}</th>
-                  <th>{t('ui.status')}</th>
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.email')} columnKey="email" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.phone')} columnKey="phone" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.role')} columnKey="role" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.linkedProfile')} columnKey="linked" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length === 0 ? (
+                {sorted.length === 0 ? (
                   <tr><td colSpan={7} className="users-empty">{emptyMessage}</td></tr>
-                ) : filteredUsers.map((u) => (
+                ) : sorted.map((u) => (
                   <tr key={u.id}>
                     <td>
                       <div className="users-name-cell">
@@ -461,18 +492,18 @@ export default function Users() {
             <table className="w-full users-table">
               <thead>
                 <tr>
-                  <th>{t('ui.name')}</th>
-                  <th>{t('ui.email')}</th>
-                  <th>{t('pages.users.studentId')}</th>
-                  <th>{t('pages.users.class')}</th>
-                  <th>{t('ui.status')}</th>
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.email')} columnKey="email" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.class')} columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length === 0 ? (
+                {sorted.length === 0 ? (
                   <tr><td colSpan={6} className="users-empty">{emptyMessage}</td></tr>
-                ) : filteredUsers.map((u) => (
+                ) : sorted.map((u) => (
                   <tr key={u.id}>
                     <td>
                       <div className="users-name-cell">
@@ -503,18 +534,18 @@ export default function Users() {
             <table className="w-full users-table">
               <thead>
                 <tr>
-                  <th>{t('ui.name')}</th>
-                  <th>{t('ui.email')}</th>
-                  <th>{t('pages.users.phone')}</th>
-                  <th>{t('pages.users.children')}</th>
-                  <th>{t('ui.status')}</th>
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.email')} columnKey="email" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.phone')} columnKey="phone" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('pages.users.children')} columnKey="children" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length === 0 ? (
+                {sorted.length === 0 ? (
                   <tr><td colSpan={6} className="users-empty">{emptyMessage}</td></tr>
-                ) : filteredUsers.map((u) => (
+                ) : sorted.map((u) => (
                   <tr key={u.id}>
                     <td>
                       <div className="users-name-cell">
@@ -628,10 +659,13 @@ export default function Users() {
           {form.role === 'STUDENT' && (
             <div className="form-field-full md:col-span-2">
               <label className="label">{t('ui.linkStudentRecord')}</label>
-              <select className="input" value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })}>
-                <option value="">{t('ui.none')}</option>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.studentId} — {s.firstName} {s.lastName}</option>)}
-              </select>
+              <StudentSelect
+                students={students}
+                value={form.studentId}
+                onChange={(studentId) => setForm({ ...form, studentId })}
+                emptyLabel={t('ui.none')}
+                getLabel={(s) => `${s.studentId} — ${s.firstName} ${s.lastName}`}
+              />
             </div>
           )}
           {form.role === 'PARENT' && (

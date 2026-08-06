@@ -40,6 +40,8 @@ model Campus {
   eLearningLessons  ELearningLesson[]
   onlineClassSessions OnlineClassSession[]
   contactInquiries ContactInquiry[]
+  midtermWindows MidtermWindow[]
+  aiConversations AiConversation[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
@@ -67,6 +69,7 @@ model AcademicYear {
   eLearningCourses  ELearningCourse[]
   eLearningLessons  ELearningLesson[]
   onlineClassSessions OnlineClassSession[]
+  midtermWindows MidtermWindow[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -99,6 +102,7 @@ model User {
   threadsCreated      CommunicationThread[]    @relation("ThreadCreator")
   contactReplies      ContactInquiryReply[]
   broadcastReads      CommunicationBroadcastRead[]
+  midtermsPublished   MidtermWindow[] @relation("MidtermPublishedBy")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
@@ -187,6 +191,8 @@ model Teacher {
   email          String?
   phone          String?
   subject        String?
+  photoPath      String?
+  photoMimeType  String?
   user           User?
   classes        Class[]
   subjects       Subject[]
@@ -247,6 +253,8 @@ model Student {
   attendance     Attendance[]
   feePayments    FeePayment[]
   marks          Mark[]
+  midtermResults MidtermResult[]
+  midtermStandings MidtermStanding[]
   documents      StudentDocument[]
   activityEnrollments ExtracurricularEnrollment[]
   transportEnrollment StudentTransport?
@@ -255,6 +263,7 @@ model Student {
   targetedBroadcasts   CommunicationBroadcast[]
   homeworkSubmissions    HomeworkSubmission[]
   eLearningExerciseSubmissions ELearningExerciseSubmission[]
+  aiConversations AiConversation[]
 
   // Legal representatives
   fatherName           String?
@@ -344,6 +353,7 @@ model Subject {
   totalMax        Float?
   assessments     SubjectAssessment[]
   marks           Mark[]
+  midtermResults  MidtermResult[]
   timetableSlots  TimetableSlot[]
   homework        Homework[]
   onlineClassSessions OnlineClassSession[]
@@ -380,10 +390,72 @@ model Mark {
   score      Float
   maxScore   Float    @default(100)
   notes      String?
+  /// Date this mark counts for midterm windows (defaults to createdAt if null)
+  assessedOn DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@unique([studentId, subjectId, term, assessment, catNumber])
+}
+
+/// Primary-only midterm cutoff managed by school managers/admins
+model MidtermWindow {
+  id             String        @id @default(uuid())
+  campusId       String
+  campus         Campus        @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  term           String
+  sequence       Int
+  title          String
+  cutoffDate     DateTime      @db.Date
+  status         MidtermStatus @default(DRAFT)
+  publishedAt    DateTime?
+  publishedById  String?
+  publishedBy    User?         @relation("MidtermPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  results        MidtermResult[]
+  standings      MidtermStanding[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([campusId, academicYearId, term, sequence])
+  @@index([campusId, academicYearId, term])
+}
+
+model MidtermResult {
+  id        String        @id @default(uuid())
+  windowId  String
+  window    MidtermWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId   String
+  obtained  Float
+  maxScore  Float
+  pct       Float         @default(0)
+  createdAt DateTime      @default(now())
+
+  @@unique([windowId, studentId, subjectId])
+  @@index([windowId, classId])
+}
+
+model MidtermStanding {
+  id            String        @id @default(uuid())
+  windowId      String
+  window        MidtermWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId       String
+  obtained      Float
+  maxScore      Float
+  pct           Float         @default(0)
+  place         Int?
+  totalStudents Int           @default(0)
+  createdAt     DateTime      @default(now())
+
+  @@unique([windowId, studentId])
+  @@index([windowId, classId])
 }
 
 model Attendance {
@@ -682,6 +754,7 @@ model CommunicationBroadcast {
   createdById     String
   createdBy       User                     @relation("BroadcastCreator", fields: [createdById], references: [id])
   reads           CommunicationBroadcastRead[]
+  deliveryMeta    Json?
   createdAt       DateTime                 @default(now())
 }
 
@@ -991,6 +1064,11 @@ enum AcademicYearStatus {
   CLOSED
 }
 
+enum MidtermStatus {
+  DRAFT
+  PUBLISHED
+}
+
 enum UserRole {
   SCHOOL_MANAGER
   SCHOOL_ADMIN
@@ -1162,4 +1240,30 @@ enum ContactInquiryStatus {
   OPEN
   REPLIED
   CLOSED
+}
+
+model AiConversation {
+  id             String      @id @default(uuid())
+  campusId       String
+  campus         Campus      @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId String?
+  title          String
+  messages       AiMessage[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([studentId, campusId, updatedAt])
+}
+
+model AiMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String         @db.Text
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
 }

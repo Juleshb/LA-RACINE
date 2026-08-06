@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, ClipboardCheck, Award, BookOpen,
-  Clock, Sparkles, Bus, Library, GraduationCap, Video,
+  Clock, Sparkles, Bus, Library, GraduationCap, Video, Bot,
 } from 'lucide-react';
 import { STUDENT_NAV_ITEMS } from '../../config/permissions';
 import { translateStudentNavItem, useTranslation } from '../../context/LanguageContext';
@@ -18,6 +18,7 @@ const iconMap = {
   Library,
   GraduationCap,
   Video,
+  Bot,
 };
 
 const TILE_STYLES = {
@@ -32,6 +33,7 @@ const TILE_STYLES = {
   Library: { bg: 'bg-indigo-100', text: 'text-indigo-700', ring: 'ring-indigo-200' },
   GraduationCap: { bg: 'bg-violet-100', text: 'text-violet-700', ring: 'ring-violet-200' },
   Video: { bg: 'bg-cyan-100', text: 'text-cyan-700', ring: 'ring-cyan-200' },
+  Bot: { bg: 'bg-teal-100', text: 'text-teal-700', ring: 'ring-teal-200' },
 };
 
 function NavTile({ to, icon, label, badge, end, variant = 'sidebar', isLive = false }) {
@@ -100,8 +102,8 @@ export function StudentBottomNav({ campusId, badges = {} }) {
   const primary = [
     STUDENT_NAV_ITEMS.find((i) => i.to === ''),
     STUDENT_NAV_ITEMS.find((i) => i.to === 'homework'),
+    STUDENT_NAV_ITEMS.find((i) => i.to === 'ai-tutor'),
     STUDENT_NAV_ITEMS.find((i) => i.to === 'online-classes'),
-    STUDENT_NAV_ITEMS.find((i) => i.to === 'e-library'),
     STUDENT_NAV_ITEMS.find((i) => i.to === 'e-learning'),
   ].filter(Boolean);
 

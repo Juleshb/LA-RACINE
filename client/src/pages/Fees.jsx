@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -82,6 +83,24 @@ export default function Fees() {
     ));
   }, [fees, filter, search, t]);
 
+  const getFeeSortValue = useCallback((fee, key) => {
+    switch (key) {
+      case 'receipt': return fee.receiptNumber || '';
+      case 'student': return `${fee.student?.lastName || ''} ${fee.student?.firstName || ''}`.trim();
+      case 'feeType': return fee.feeType || '';
+      case 'amount': return Number(fee.amount) || 0;
+      case 'dueDate': return fee.dueDate ? new Date(fee.dueDate) : null;
+      case 'status': return fee.status || '';
+      default: return '';
+    }
+  }, []);
+
+  const { sorted: sortedFees, sortKey, sortDir, toggleSort } = useTableSort(
+    filtered,
+    getFeeSortValue,
+    { initialKey: 'student' },
+  );
+
   return (
     <div>
       <PageHeader
@@ -119,7 +138,7 @@ export default function Fees() {
       </div>
 
       <div className="card">
-        {filtered.length === 0 ? (
+        {sortedFees.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
             {fees.length > 0 && search.trim() ? t('ui.noSearchResults') : t('pageBody.fees.empty')}
           </p>
@@ -128,17 +147,17 @@ export default function Fees() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.receiptNo')}</th>
-                  <th className="pb-3 font-medium">{t('ui.student')}</th>
-                  <th className="pb-3 font-medium">{t('ui.feeType')}</th>
-                  <th className="pb-3 font-medium">{t('ui.amount')}</th>
-                  <th className="pb-3 font-medium">{t('ui.dueDate')}</th>
-                  <th className="pb-3 font-medium">{t('ui.status')}</th>
+                  <SortableTh label={t('ui.receiptNo')} columnKey="receipt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.student')} columnKey="student" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.feeType')} columnKey="feeType" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.amount')} columnKey="amount" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.dueDate')} columnKey="dueDate" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   {!isParent && <th className="pb-3 font-medium">{t('ui.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((fee) => (
+                {sortedFees.map((fee) => (
                   <tr key={fee.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3">
                       <Link to={`/campus/${campusId}/fees/${fee.id}`} className="text-brand-600 hover:underline font-medium">

@@ -1,8 +1,8 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, School, Users, GraduationCap, BookOpen, BookMarked, Award,
   ClipboardCheck, Wallet, Shield, LogOut, ChevronRight,
-  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3, Globe,
+  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3, Globe, CreditCard,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
@@ -43,6 +43,7 @@ const iconMap = {
   Video,
   BarChart3,
   Globe,
+  CreditCard,
 };
 
 function NavItem({ to, icon, label, campusId, end, badge }) {
@@ -70,9 +71,11 @@ export default function Layout() {
   const { campus, campusId, academicYear } = useCampus();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const isParent = user?.role === 'PARENT';
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
+  const isAiTutor = isStudent && /\/ai-tutor\/?$/.test(location.pathname);
   const isStaff = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'LIBRARIAN'].includes(user?.role);
   const rawNavGroups = getNavGroupsForRole(user.role, campusId);
   const navGroups = rawNavGroups?.length
@@ -177,7 +180,11 @@ export default function Layout() {
             portalLabel={isParent ? t('app.familyPortal') : isTeacher ? t('app.teacherPortal') : t('app.campus')}
           />
         )}
-        <div className={`flex-1 overflow-auto ${isStudent ? 'student-main-content p-4 sm:p-6 lg:p-8' : 'p-6 lg:p-8'}`}>
+        <div
+          className={`flex-1 overflow-auto ${
+            isStudent ? 'student-main-content p-4 sm:p-6 lg:p-8' : 'p-6 lg:p-8'
+          }${isAiTutor ? ' is-ai-tutor-shell' : ''}`}
+        >
           {!isStudent && <AcademicYearBanner />}
           <Outlet />
         </div>

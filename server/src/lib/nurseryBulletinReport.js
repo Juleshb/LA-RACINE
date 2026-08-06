@@ -10,7 +10,7 @@ import {
   NURSERY_FULL_YEAR_COLUMNS,
   resolveNurseryBulletinView,
 } from './nurseryGrade.js';
-import { isNurseryGrade } from '../config/grades.js';
+import { isCrecheGrade, usesNurseryCompetence } from '../config/grades.js';
 
 async function buildMeta(db, { campusId, academicYearId, classTeacher, issuedAt }) {
   if (!campusId) return { meta: null, academicYearName: '' };
@@ -57,7 +57,12 @@ export async function buildNurseryBulletinReport(db, {
     select: { id: true, grade: true, campusId: true, name: true, section: true, bulletinConfig: true },
   });
   if (!cls) throw new Error('Class not found');
-  if (!isNurseryGrade(cls.grade)) {
+  if (isCrecheGrade(cls.grade)) {
+    const err = new Error('La Crèche n\'utilise pas de bulletin');
+    err.status = 400;
+    throw err;
+  }
+  if (!usesNurseryCompetence(cls.grade)) {
     throw new Error('Class is not a nursery grade');
   }
 

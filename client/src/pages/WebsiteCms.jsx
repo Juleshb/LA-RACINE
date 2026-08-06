@@ -29,6 +29,7 @@ import { useTranslation } from '../context/LanguageContext';
 import HomeEditor from './cms/HomeEditor';
 import AcademicsEditor from './cms/AcademicsEditor';
 import CalendarEditor from './cms/CalendarEditor';
+import HeroImageField from '../components/cms/HeroImageField';
 
 const LOCALES = [
   { code: 'en', label: 'English', short: 'EN' },
@@ -549,6 +550,12 @@ function NewsEditor({ data, onChange }) {
             onChange={(e) => onChange({ ...data, lead: e.target.value })}
           />
         </div>
+        <div className="mt-4">
+          <HeroImageField
+            value={data.heroImageUrl || ''}
+            onChange={(v) => onChange({ ...data, heroImageUrl: v })}
+          />
+        </div>
       </div>
 
       <div>
@@ -860,6 +867,12 @@ function EventsEditor({ data, onChange }) {
           <label className="label">Lead text</label>
           <textarea className="input min-h-[96px]" value={data.lead || ''} onChange={(e) => onChange({ ...data, lead: e.target.value })} />
         </div>
+        <div className="mt-4">
+          <HeroImageField
+            value={data.heroImageUrl || ''}
+            onChange={(v) => onChange({ ...data, heroImageUrl: v })}
+          />
+        </div>
       </div>
 
       <div>
@@ -1085,6 +1098,12 @@ function AnnouncementEditor({ data, onChange }) {
         <div className="mt-3">
           <label className="label">Lead text</label>
           <textarea className="input min-h-[96px]" value={data.lead || ''} onChange={(e) => onChange({ ...data, lead: e.target.value })} />
+        </div>
+        <div className="mt-4">
+          <HeroImageField
+            value={data.heroImageUrl || ''}
+            onChange={(v) => onChange({ ...data, heroImageUrl: v })}
+          />
         </div>
       </div>
 
@@ -1367,6 +1386,12 @@ function GalleryEditor({ data, onChange }) {
           <label className="label">Lead text</label>
           <textarea className="input min-h-[80px]" value={data.lead || ''} onChange={(e) => onChange({ ...data, lead: e.target.value })} />
         </div>
+        <div className="mt-4">
+          <HeroImageField
+            value={data.heroImageUrl || ''}
+            onChange={(v) => onChange({ ...data, heroImageUrl: v })}
+          />
+        </div>
       </div>
 
       <div>
@@ -1458,13 +1483,22 @@ function GalleryEditor({ data, onChange }) {
   );
 }
 
-function FieldEditor({ data, onChange }) {
-  const entries = useMemo(() => Object.entries(data || {}), [data]);
+function FieldEditor({ data, onChange, showHeroImage = true }) {
+  const entries = useMemo(
+    () => Object.entries(data || {}).filter(([key]) => key !== 'heroImageUrl'),
+    [data],
+  );
 
   const setField = (key, value) => onChange({ ...data, [key]: value });
 
   return (
     <div className="space-y-5">
+      {showHeroImage && (
+        <HeroImageField
+          value={data?.heroImageUrl || ''}
+          onChange={(v) => setField('heroImageUrl', v)}
+        />
+      )}
       {entries.map(([key, value]) => {
         if (Array.isArray(value)) {
           return (
@@ -1914,7 +1948,7 @@ export default function WebsiteCms() {
               ) : isGallery ? (
                 <GalleryEditor data={data} onChange={setEditorData} />
               ) : (
-                <FieldEditor data={data} onChange={setEditorData} />
+                <FieldEditor data={data} onChange={setEditorData} showHeroImage={slug !== 'nav'} />
               )}
             </div>
           )}

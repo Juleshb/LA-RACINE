@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Plus, Trash2, ChevronRight, Pencil } from 'lucide-react';
 import AppIcon from '../components/icons/AppIcon';
@@ -10,6 +10,7 @@ import ParentChildFilter from '../components/parent/ParentChildFilter';
 import HomeworkGradesSummary from '../components/homework/HomeworkGradesSummary';
 import CourseFormModal from '../components/elearning/CourseFormModal';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 export default function ELearning() {
   const { campusId } = useParams();
@@ -84,6 +85,24 @@ export default function ELearning() {
       alert(err.message);
     }
   };
+
+  const getCourseSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'title': return row.title || '';
+      case 'subject': return row.subject || '';
+      case 'class': return row.class?.name || '';
+      case 'lessons': return row._count?.lessons || 0;
+      case 'exercises': return row._count?.exercises || 0;
+      case 'status': return row.mySubmission ? 1 : 0;
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    courses,
+    getCourseSortValue,
+    { initialKey: 'title' },
+  );
 
   return (
     <div className={isStudent ? 'student-page' : ''}>
@@ -170,18 +189,18 @@ export default function ELearning() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">Course</th>
-                  <th className="pb-3 font-medium">Subject</th>
-                  <th className="pb-3 font-medium">Class</th>
-                  <th className="pb-3 font-medium">Lessons</th>
-                  <th className="pb-3 font-medium">Exercises</th>
-                  {isParent && <th className="pb-3 font-medium">Status</th>}
+                  <SortableTh label="Course" columnKey="title" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Subject" columnKey="subject" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Class" columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Lessons" columnKey="lessons" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Exercises" columnKey="exercises" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  {isParent && <SortableTh label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />}
                   {isParent && <th className="pb-3 font-medium">Score</th>}
                   {canManage && <th className="pb-3 font-medium">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {courses.map((course) => {
+                {sorted.map((course) => {
                   const done = course.mySubmission;
                   const detailLink = isParent && selectedChildId
                     ? `${base}/${course.id}?studentId=${selectedChildId}`

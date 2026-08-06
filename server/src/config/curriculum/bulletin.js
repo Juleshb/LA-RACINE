@@ -126,7 +126,8 @@ export const GRADE_LABELS = {
 };
 
 const PRIMARY_GRADES = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
-const NURSERY_GRADES = ['M1', 'M2', 'M3', 'TOP', 'CRECHE', 'N1', 'N2', 'N3'];
+const NURSERY_GRADES = ['M1', 'M2', 'M3', 'TOP', 'N1', 'N2', 'N3'];
+// CRECHE intentionally omitted — no marks / bulletin curriculum
 
 export function buildAllCurricula() {
   const curricula = {};

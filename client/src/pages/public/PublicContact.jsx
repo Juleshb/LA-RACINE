@@ -5,6 +5,7 @@ import { usePublicSite } from '../../hooks/usePublicSite';
 import AppIcon from '../../components/icons/AppIcon';
 import { supportT } from './supportChatI18n';
 import { SchoolMapBlock, DEFAULT_MAP_URL } from './SchoolMapBlock';
+import PageHero from '../../components/public/PageHero';
 
 export default function PublicContact() {
   const { school: profile, campuses: list = [], page } = useOutletContext();
@@ -34,13 +35,7 @@ export default function PublicContact() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero label={c.label} title={c.title} lead={c.lead} imageUrl={c.heroImageUrl} />
 
       <section className="ps-section">
         <div className="ps-contact-grid">

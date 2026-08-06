@@ -18,6 +18,7 @@ export default function SubjectTestManager({
   onSave,
   saving,
   canEdit,
+  embedded = false,
 }) {
   const updateTest = (index, field, value) => {
     const next = tests.map((t, i) => (i === index ? { ...t, [field]: value } : t));
@@ -41,25 +42,41 @@ export default function SubjectTestManager({
   const computedTotal = (Number(testsMarkMax) || 0) + (Number(examMax) || 0);
 
   return (
-    <div className="card mb-6 border-brand-100">
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <div>
-          <h3 className="font-semibold text-gray-900">Tests & exam setup</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Record each test separately, then record the exam. On the bulletin, tests are combined into one TEST column, with EX and TOT.
-          </p>
+    <div className={embedded ? 'pm-tests-manager' : 'card mb-6 border-brand-100'}>
+      {!embedded && (
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">Tests & exam setup</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Record each test separately, then record the exam. On the bulletin, tests are combined into one TEST column, with EX and TOT.
+            </p>
+          </div>
+          {canEdit && (
+            <button type="button" onClick={addTest} className="btn-secondary flex items-center gap-2 text-sm">
+              <Plus className="w-4 h-4" />
+              Add test
+            </button>
+          )}
         </div>
-        {canEdit && (
-          <button type="button" onClick={addTest} className="btn-secondary flex items-center gap-2 text-sm">
-            <Plus className="w-4 h-4" />
-            Add test
-          </button>
-        )}
-      </div>
+      )}
+
+      {embedded && (
+        <div className="pm-tests-toolbar">
+          <p className="text-sm text-gray-500">
+            Configure tests and exam maxima for this subject. Tests combine into one TEST column on the bulletin.
+          </p>
+          {canEdit && (
+            <button type="button" onClick={addTest} className="btn-secondary flex items-center gap-2 text-sm shrink-0">
+              <Plus className="w-4 h-4" />
+              Add test
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="space-y-3">
         {tests.map((test, index) => (
-          <div key={`${test.id || 'new'}-${index}`} className="grid grid-cols-1 md:grid-cols-[1fr_120px_170px_auto] gap-3 items-end">
+          <div key={`${test.id || 'new'}-${index}`} className="pm-test-row">
             <div>
               <label className="label">Test name</label>
               <input
@@ -96,7 +113,7 @@ export default function SubjectTestManager({
               <button
                 type="button"
                 onClick={() => removeTest(index)}
-                className="btn-secondary px-3 text-red-600"
+                className="btn-secondary px-3 text-red-600 pm-test-remove"
                 title="Remove test"
               >
                 <Trash2 className="w-4 h-4" />
@@ -104,9 +121,14 @@ export default function SubjectTestManager({
             )}
           </div>
         ))}
+        {tests.length === 0 && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            No tests yet — add at least one test, set maxima, then save setup before recording marks.
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100">
+      <div className="pm-tests-maxima">
         <div>
           <label className="label">Tests combined out of</label>
           <input

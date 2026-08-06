@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Plus, Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const STATUS = {
   PENDING: { label: 'Pending review', className: 'bg-amber-50 text-amber-700', icon: Clock },
@@ -25,6 +26,23 @@ export default function ParentMyRegistrations() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const getRegSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'name': return `${row.lastName || ''} ${row.postName || ''} ${row.firstName || ''}`.trim();
+      case 'studentId': return row.studentId || '';
+      case 'class': return row.class?.name || row.registrationClass || '';
+      case 'createdAt': return row.createdAt ? new Date(row.createdAt) : null;
+      case 'status': return row.registrationStatus || '';
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    items,
+    getRegSortValue,
+    { initialKey: 'createdAt', initialDir: 'desc' },
+  );
 
   return (
     <div>
@@ -61,16 +79,16 @@ export default function ParentMyRegistrations() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">Child</th>
-                  <th className="pb-3 font-medium">Reference</th>
-                  <th className="pb-3 font-medium">Class requested</th>
-                  <th className="pb-3 font-medium">Submitted</th>
-                  <th className="pb-3 font-medium">Status</th>
+                  <SortableTh label="Child" columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Reference" columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Class requested" columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Submitted" columnKey="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   <th className="pb-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => {
+                {sorted.map((item) => {
                   const status = STATUS[item.registrationStatus] || STATUS.PENDING;
                   const StatusIcon = status.icon;
                   return (

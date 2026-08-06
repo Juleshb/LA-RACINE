@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   CheckCircle,
@@ -16,6 +16,7 @@ import {
   Replace,
   Trash2,
   Plus,
+  CreditCard,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
@@ -418,6 +419,14 @@ export default function StudentDetail() {
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${status.className}`}>
                 <StatusIcon className="w-4 h-4" /> {status.label}
               </span>
+              {canManage && student.registrationStatus === 'APPROVED' && !editing && (
+                <Link
+                  to={`/campus/${campusId}/id-cards?student=${student.id}`}
+                  className="btn-secondary text-sm inline-flex items-center gap-1.5"
+                >
+                  <CreditCard className="w-3.5 h-3.5" /> Carte élève
+                </Link>
+              )}
               {canManage && !editing && (
                 <button type="button" onClick={startEdit} className="btn-secondary text-sm inline-flex items-center gap-1.5">
                   <Pencil className="w-3.5 h-3.5" /> Modifier

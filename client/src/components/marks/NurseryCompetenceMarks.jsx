@@ -1,13 +1,65 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Save, Loader2, CheckCircle2, Cloud, Calendar, GraduationCap, Users } from 'lucide-react';
+import {
+  Save,
+  Loader2,
+  CheckCircle2,
+  Cloud,
+  Calendar,
+  GraduationCap,
+  Users,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  X,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import PageHeader from '../PageHeader';
 
 const AUTO_SAVE_DELAY_MS = 1200;
+const DEFAULT_LETTERS = ['A', 'B', 'C', 'D'];
+const DEFAULT_LABELS = {
+  A: 'Très bon travail',
+  B: 'Bon travail',
+  C: 'Moyen',
+  D: 'Doit fournir des efforts',
+};
 
 function keyOf(subjectId, studentId) {
   return `${subjectId}:${studentId}`;
+}
+
+function LetterPicker({ value, letters, labels, onChange, compact }) {
+  return (
+    <div className={`nc-letter-picker ${compact ? 'is-compact' : ''}`} role="group">
+      {letters.map((letter) => {
+        const active = value === letter;
+        return (
+          <button
+            key={letter}
+            type="button"
+            className={`nc-letter-btn letter-${letter.toLowerCase()} ${active ? 'is-active' : ''}`}
+            title={labels?.[letter] || letter}
+            aria-pressed={active}
+            onClick={() => onChange(active ? '' : letter)}
+          >
+            {letter}
+          </button>
+        );
+      })}
+      {value && (
+        <button
+          type="button"
+          className="nc-letter-clear"
+          title="Effacer"
+          aria-label="Effacer la note"
+          onClick={() => onChange('')}
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function NurseryCompetenceMarks({
@@ -27,11 +79,17 @@ export default function NurseryCompetenceMarks({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [studentFilter, setStudentFilter] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [collapsedDomains, setCollapsedDomains] = useState({});
+  const [focusStudentId, setFocusStudentId] = useState('');
 
   const lastSavedRef = useRef('');
   const hydratedRef = useRef(false);
   const autoSaveTimerRef = useRef(null);
   const savingRef = useRef(false);
+
+  const letters = data?.letters || DEFAULT_LETTERS;
+  const gradeLabels = data?.gradeLabels || DEFAULT_LABELS;
 
   const load = useCallback(async () => {
     if (!classId) {
@@ -58,6 +116,7 @@ export default function NurseryCompetenceMarks({
       lastSavedRef.current = JSON.stringify(next);
       hydratedRef.current = true;
       setAutoSaveStatus('idle');
+      setCollapsedDomains({});
     } catch (err) {
       setError(err.message);
       setData(null);
@@ -71,27 +130,84 @@ export default function NurseryCompetenceMarks({
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(''), 3500);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  const allStudents = data?.students || [];
+
   const students = useMemo(() => {
-    const list = data?.students || [];
-    if (!studentFilter) return list;
-    return list.filter((s) => s.id === studentFilter);
-  }, [data, studentFilter]);
+    let list = allStudents;
+    if (studentFilter) {
+      list = list.filter((s) => s.id === studentFilter);
+    } else if (studentSearch.trim()) {
+      const q = studentSearch.trim().toLowerCase();
+      list = list.filter((s) => {
+        const name = `${s.firstName || ''} ${s.lastName || ''} ${s.postName || ''}`.toLowerCase();
+        return name.includes(q);
+      });
+    }
+    return list;
+  }, [allStudents, studentFilter, studentSearch]);
 
   const flatItems = useMemo(() => {
     const rows = [];
     for (const domain of data?.domains || []) {
-      rows.push({ type: 'domain', key: domain.category, title: domain.category });
+      const collapsed = Boolean(collapsedDomains[domain.category]);
+      let itemCount = 0;
+      for (const sub of domain.subdomains || []) {
+        itemCount += (sub.items || []).length;
+      }
+      rows.push({
+        type: 'domain',
+        key: domain.category,
+        title: domain.category,
+        itemCount,
+        collapsed,
+      });
+      if (collapsed) continue;
       for (const sub of domain.subdomains || []) {
         if (sub.name) {
           rows.push({ type: 'subdomain', key: `${domain.category}-${sub.name}`, title: sub.name });
         }
         for (const item of sub.items || []) {
-          rows.push({ type: 'item', key: item.id, item });
+          rows.push({ type: 'item', key: item.id, item, domain: domain.category });
         }
       }
     }
     return rows;
+  }, [data, collapsedDomains]);
+
+  const skillItems = useMemo(() => {
+    const items = [];
+    for (const domain of data?.domains || []) {
+      for (const sub of domain.subdomains || []) {
+        for (const item of sub.items || []) items.push(item);
+      }
+    }
+    return items;
   }, [data]);
+
+  const progress = useMemo(() => {
+    const studentList = studentFilter
+      ? allStudents.filter((s) => s.id === studentFilter)
+      : allStudents;
+    const total = skillItems.length * studentList.length;
+    if (!total) return { filled: 0, total: 0, pct: 0 };
+    let filled = 0;
+    for (const item of skillItems) {
+      for (const st of studentList) {
+        if (records[keyOf(item.id, st.id)]) filled += 1;
+      }
+    }
+    return {
+      filled,
+      total,
+      pct: Math.round((filled / total) * 100),
+    };
+  }, [skillItems, allStudents, studentFilter, records]);
 
   const persist = useCallback(async (nextRecords, { silent = false } = {}) => {
     if (!classId || !data) return;
@@ -123,7 +239,7 @@ export default function NurseryCompetenceMarks({
       await api.saveCompetenceMarks({ classId, term, records: payload });
       lastSavedRef.current = JSON.stringify(nextRecords);
       setAutoSaveStatus('saved');
-      if (!silent) setMessage('Competence grades saved');
+      if (!silent) setMessage('Notes de compétence enregistrées');
     } catch (err) {
       setAutoSaveStatus('error');
       setError(err.message);
@@ -156,6 +272,24 @@ export default function NurseryCompetenceMarks({
       return next;
     });
     setAutoSaveStatus('idle');
+    setFocusStudentId(studentId);
+  };
+
+  const fillStudentColumn = (studentId, letter) => {
+    if (!letter || !skillItems.length) return;
+    setRecords((prev) => {
+      const next = { ...prev };
+      for (const item of skillItems) {
+        next[keyOf(item.id, studentId)] = letter;
+      }
+      return next;
+    });
+    setAutoSaveStatus('idle');
+    setMessage(`Colonne remplie avec ${letter} pour cet élève`);
+  };
+
+  const toggleDomain = (category) => {
+    setCollapsedDomains((prev) => ({ ...prev, [category]: !prev[category] }));
   };
 
   const autoSaveLabel = {
@@ -169,11 +303,13 @@ export default function NurseryCompetenceMarks({
     : autoSaveStatus === 'saved' ? CheckCircle2
       : Cloud;
 
+  const selectedClass = classes.find((c) => c.id === classId);
+
   return (
-    <div>
+    <div className="nc-page">
       <PageHeader
         title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
-        description="Nursery competence grades (A / B / C / D) — Excel bulletin template"
+        description="Notes de compétence maternelle (A / B / C / D) — saisie rapide pour le bulletin"
         action={(
           <div className="flex gap-2 flex-wrap items-center">
             {autoSaveLabel && (
@@ -200,14 +336,14 @@ export default function NurseryCompetenceMarks({
         )}
       />
 
-      <div className="filter-panel mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="nc-toolbar card">
+        <div className="nc-toolbar-grid">
           <div>
             <label className="label flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-gray-400" /> {t('ui.class')}
+              <GraduationCap className="w-3.5 h-3.5 text-brand-600" /> {t('ui.class')}
             </label>
             <select className="input" value={classId} onChange={(e) => onClassChange(e.target.value)}>
-              <option value="">Select class</option>
+              <option value="">Choisir une classe nursery…</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.name} ({c.grade})</option>
               ))}
@@ -215,114 +351,210 @@ export default function NurseryCompetenceMarks({
           </div>
           <div>
             <label className="label flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" /> Period
+              <Calendar className="w-3.5 h-3.5 text-brand-600" /> Période
             </label>
-            <select className="input" value={term} onChange={(e) => setTerm(e.target.value)}>
+            <div className="nc-term-segment" role="tablist">
               {(data?.terms || ['Trimestre 1', 'Trimestre 2', 'Trimestre 3', 'Annuel']).map((tr) => (
-                <option key={tr} value={tr}>{tr}</option>
+                <button
+                  key={tr}
+                  type="button"
+                  role="tab"
+                  aria-selected={term === tr}
+                  className={`nc-term-btn ${term === tr ? 'is-active' : ''}`}
+                  onClick={() => setTerm(tr)}
+                >
+                  {tr === 'Annuel' ? 'Annuel' : tr.replace('Trimestre ', 'T')}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div>
             <label className="label flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-gray-400" /> {t('ui.student')}
+              <Users className="w-3.5 h-3.5 text-brand-600" /> Élève
             </label>
-            <select className="input" value={studentFilter} onChange={(e) => setStudentFilter(e.target.value)}>
-              <option value="">All students</option>
-              {(data?.students || []).map((s) => (
+            <select
+              className="input"
+              value={studentFilter}
+              onChange={(e) => {
+                setStudentFilter(e.target.value);
+                setStudentSearch('');
+              }}
+            >
+              <option value="">Tous les élèves</option>
+              {allStudents.map((s) => (
                 <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
               ))}
             </select>
           </div>
         </div>
-        {data?.gradeLabels && (
-          <p className="text-xs text-gray-500 mt-3">
-            A = {data.gradeLabels.A} · B = {data.gradeLabels.B} · C = {data.gradeLabels.C} · D = {data.gradeLabels.D}
-          </p>
+
+        <div className="nc-toolbar-secondary">
+          <div className="nc-search">
+            <Search className="w-4 h-4" />
+            <input
+              type="search"
+              placeholder="Filtrer les colonnes élèves…"
+              value={studentSearch}
+              disabled={Boolean(studentFilter)}
+              onChange={(e) => setStudentSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="nc-legend">
+            {letters.map((letter) => (
+              <div key={letter} className={`nc-legend-item letter-${letter.toLowerCase()}`}>
+                <span className="nc-legend-letter">{letter}</span>
+                <span className="nc-legend-text">{gradeLabels[letter] || letter}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {classId && skillItems.length > 0 && (
+          <div className="nc-progress">
+            <div className="nc-progress-meta">
+              <span>
+                Progression · {selectedClass?.name || 'Classe'} · {term}
+              </span>
+              <strong>{progress.filled}/{progress.total} ({progress.pct}%)</strong>
+            </div>
+            <div className="nc-progress-track" aria-hidden="true">
+              <div className="nc-progress-fill" style={{ width: `${progress.pct}%` }} />
+            </div>
+          </div>
         )}
-      </div>
+      </section>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>
+        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">{error}</div>
       )}
       {message && !error && (
-        <div className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">{message}</div>
+        <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">{message}</div>
       )}
 
       {!classId ? (
-        <div className="card empty-state">
-          <p className="text-gray-500">Select a nursery class to enter competence grades.</p>
+        <div className="nc-empty card">
+          <GraduationCap className="w-10 h-10 text-gray-300" />
+          <p>Choisissez une classe nursery pour saisir les compétences.</p>
         </div>
       ) : loading ? (
-        <div className="card empty-state">
-          <Loader2 className="w-8 h-8 text-brand-500 animate-spin mb-2" />
-          <p className="text-gray-500">Loading competence grid…</p>
+        <div className="nc-empty card">
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+          <p>Chargement de la grille de compétences…</p>
         </div>
       ) : !data?.domains?.length ? (
-        <div className="card empty-state">
-          <p className="text-gray-500 mb-2">No competence skills loaded for this class.</p>
-          <p className="text-sm text-gray-400">
-            Skills load automatically from the Excel nursery templates. Refresh the page, or open Courses → Load bulletin courses.
+        <div className="nc-empty card">
+          <p className="font-medium text-gray-700">Aucune compétence chargée pour cette classe.</p>
+          <p className="text-sm text-gray-500 max-w-md">
+            Les compétences viennent des modèles Excel nursery. Actualisez la page, ou ouvrez Cours → Charger les cours du bulletin.
           </p>
         </div>
+      ) : students.length === 0 ? (
+        <div className="nc-empty card">
+          <p>Aucun élève ne correspond au filtre.</p>
+          <button
+            type="button"
+            className="btn-secondary text-sm mt-1"
+            onClick={() => { setStudentFilter(''); setStudentSearch(''); }}
+          >
+            Réinitialiser le filtre
+          </button>
+        </div>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200">
-                <th className="pb-2 pr-3 font-medium min-w-[280px]">Skill / élément du programme</th>
-                {students.map((s) => (
-                  <th key={s.id} className="pb-2 px-1 font-medium text-center min-w-[72px]">
-                    <span className="block truncate max-w-[88px]" title={`${s.firstName} ${s.lastName}`}>
-                      {s.firstName}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {flatItems.map((row) => {
-                if (row.type === 'domain') {
-                  return (
-                    <tr key={row.key} className="bg-gray-100">
-                      <td colSpan={1 + students.length} className="py-2 px-2 font-semibold text-gray-800">
-                        {row.title}
-                      </td>
-                    </tr>
-                  );
-                }
-                if (row.type === 'subdomain') {
-                  return (
-                    <tr key={row.key} className="bg-gray-50">
-                      <td colSpan={1 + students.length} className="py-1.5 px-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        {row.title}
-                      </td>
-                    </tr>
-                  );
-                }
-                const item = row.item;
-                return (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="py-2 pr-3 text-gray-800 align-middle">{item.name}</td>
-                    {students.map((s) => (
-                      <td key={s.id} className="py-1 px-1 text-center">
-                        <select
-                          className="input py-1 px-1 text-center text-sm min-w-[64px]"
-                          value={records[keyOf(item.id, s.id)] || ''}
-                          onChange={(e) => setLetter(item.id, s.id, e.target.value)}
-                        >
-                          <option value="">—</option>
-                          {(data.letters || ['A', 'B', 'C', 'D']).map((letter) => (
-                            <option key={letter} value={letter}>{letter}</option>
+        <div className="nc-grid-card">
+          <div className="nc-grid-hint">
+            Cliquez <strong>A / B / C / D</strong> pour noter. Cliquez à nouveau pour désélectionner.
+            Sur l’en-tête élève, utilisez « Remplir » pour appliquer une lettre à toutes les compétences.
+          </div>
+          <div className="nc-grid-scroll">
+            <table className="nc-grid-table">
+              <thead>
+                <tr>
+                  <th className="nc-skill-col">Compétence / élément</th>
+                  {students.map((s) => (
+                    <th
+                      key={s.id}
+                      className={`nc-student-col ${focusStudentId === s.id ? 'is-focus' : ''}`}
+                    >
+                      <div className="nc-student-head">
+                        <span className="nc-student-name" title={`${s.firstName} ${s.lastName}`}>
+                          {s.firstName}
+                        </span>
+                        <span className="nc-student-last">{s.lastName}</span>
+                        <div className="nc-fill-row" title="Remplir toute la colonne">
+                          {letters.map((letter) => (
+                            <button
+                              key={letter}
+                              type="button"
+                              className={`nc-fill-btn letter-${letter.toLowerCase()}`}
+                              onClick={() => fillStudentColumn(s.id, letter)}
+                            >
+                              {letter}
+                            </button>
                           ))}
-                        </select>
+                        </div>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {flatItems.map((row) => {
+                  if (row.type === 'domain') {
+                    return (
+                      <tr key={row.key} className="nc-domain-row">
+                        <td colSpan={1 + students.length}>
+                          <button
+                            type="button"
+                            className="nc-domain-toggle"
+                            onClick={() => toggleDomain(row.key)}
+                          >
+                            {row.collapsed
+                              ? <ChevronRight className="w-4 h-4" />
+                              : <ChevronDown className="w-4 h-4" />}
+                            <span>{row.title}</span>
+                            <em>{row.itemCount} compétence{row.itemCount > 1 ? 's' : ''}</em>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (row.type === 'subdomain') {
+                    return (
+                      <tr key={row.key} className="nc-subdomain-row">
+                        <td colSpan={1 + students.length}>{row.title}</td>
+                      </tr>
+                    );
+                  }
+                  const item = row.item;
+                  return (
+                    <tr key={item.id} className="nc-item-row">
+                      <td className="nc-skill-col">
+                        <span className="nc-skill-name">{item.name}</span>
                       </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {students.map((s) => {
+                        const value = records[keyOf(item.id, s.id)] || '';
+                        return (
+                          <td
+                            key={s.id}
+                            className={`nc-grade-cell ${focusStudentId === s.id ? 'is-focus' : ''} ${value ? `has-${value.toLowerCase()}` : ''}`}
+                          >
+                            <LetterPicker
+                              value={value}
+                              letters={letters}
+                              labels={gradeLabels}
+                              onChange={(letter) => setLetter(item.id, s.id, letter)}
+                              compact
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

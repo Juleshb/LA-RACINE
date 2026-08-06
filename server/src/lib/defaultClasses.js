@@ -1,5 +1,5 @@
 import { applyCurriculumToClass } from './curriculum.js';
-import { isNurseryGrade } from '../config/grades.js';
+import { usesNurseryCompetence } from '../config/grades.js';
 
 /**
  * Official La Racine class list (nursery + primary).
@@ -78,7 +78,7 @@ async function migrateLegacyGrades(db, campusId, academicYearId) {
         grade: map.grade,
         section: targetSection,
         name,
-        bulletinConfig: isNurseryGrade(map.grade)
+        bulletinConfig: usesNurseryCompetence(map.grade)
           ? { preset: 'COMPETENCE' }
           : { preset: 'STANDARD' },
       },
@@ -129,7 +129,7 @@ export async function ensureDefaultClasses(db, campusId, academicYearId) {
       name: lvl.name,
       grade: lvl.grade,
       section: lvl.section,
-      bulletinConfig: isNurseryGrade(lvl.grade)
+      bulletinConfig: usesNurseryCompetence(lvl.grade)
         ? { preset: 'COMPETENCE' }
         : { preset: 'STANDARD' },
     })),
@@ -210,7 +210,7 @@ export async function resolveOrCreateClass(
       name,
       grade,
       section,
-      bulletinConfig: isNurseryGrade(grade)
+      bulletinConfig: usesNurseryCompetence(grade)
         ? { preset: 'COMPETENCE' }
         : { preset: 'STANDARD' },
     },

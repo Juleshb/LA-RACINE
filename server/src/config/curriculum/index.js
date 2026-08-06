@@ -9,7 +9,7 @@ const GRADE_ALIASES = {
   N1: 'M1',
   N2: 'M2',
   N3: 'M3',
-  CRECHE: 'M1',
+  // CRECHE has no curriculum / marks / bulletin
 };
 
 export function normalizeCurriculumGrade(grade) {
@@ -19,7 +19,7 @@ export function normalizeCurriculumGrade(grade) {
 
 export function getCurriculum(grade) {
   const key = String(grade || '').trim().toUpperCase();
-  if (!key) return null;
+  if (!key || key === 'CRECHE' || key === 'CRÈCHE') return null;
   return CURRICULA_BY_GRADE[key]
     || CURRICULA_BY_GRADE[GRADE_ALIASES[key]]
     || null;

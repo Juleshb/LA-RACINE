@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Plus, Building2, ArrowRight, Users, GraduationCap,
   MapPin, LogOut, LayoutDashboard, Calendar, Pencil, Trash2,
+  BookOpen, Phone, Mail, Search,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -25,19 +26,41 @@ const EMPTY_FORM = {
   isActive: true,
 };
 
+function campusStats(campus) {
+  if (campus?.stats) return campus.stats;
+  // Fallback when API has not attached year-scoped stats yet
+  const count = campus?._count || {};
+  return {
+    students: count.students || 0,
+    pending: 0,
+    teachers: count.teachers || 0,
+    classes: count.classes || 0,
+    staffUsers: count.users || 0,
+    activeYear: null,
+  };
+}
+
 export default function Campuses() {
   const { user, isManager, logout } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [campuses, setCampuses] = useState([]);
-  const [modalMode, setModalMode] = useState(null); // 'create' | 'edit' | null
+  const [search, setSearch] = useState('');
+  const [modalMode, setModalMode] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.getCampuses().then(setCampuses).catch(console.error);
+  const load = () => {
+    setLoading(true);
+    api.getCampuses()
+      .then(setCampuses)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
@@ -47,17 +70,49 @@ export default function Campuses() {
     }
   }, [isManager, campuses, navigate]);
 
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = campuses.slice().sort((a, b) => {
+      const aActive = a.isActive !== false ? 0 : 1;
+      const bActive = b.isActive !== false ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    if (!q) return list;
+    return list.filter((c) => {
+      const hay = `${c.name} ${c.code} ${c.city} ${c.district} ${c.phone || ''} ${c.email || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [campuses, search]);
+
+  const totals = useMemo(() => {
+    const active = campuses.filter((c) => c.isActive !== false);
+    return active.reduce(
+      (acc, c) => {
+        const s = campusStats(c);
+        return {
+          campuses: acc.campuses + 1,
+          students: acc.students + (s.students || 0),
+          teachers: acc.teachers + (s.teachers || 0),
+          classes: acc.classes + (s.classes || 0),
+          pending: acc.pending + (s.pending || 0),
+          staffUsers: acc.staffUsers + (s.staffUsers || 0),
+        };
+      },
+      { campuses: 0, students: 0, teachers: 0, classes: 0, pending: 0, staffUsers: 0 },
+    );
+  }, [campuses]);
+
   const handleDeleteCampus = async (campus) => {
     if (!isManager) return;
     if (campuses.length <= 1) {
       window.alert('You cannot delete the only remaining campus.');
       return;
     }
-    const students = campus._count?.students || 0;
-    const teachers = campus._count?.teachers || 0;
+    const s = campusStats(campus);
     const ok = window.confirm(
       `Delete campus “${campus.name}” (${campus.code})?\n\n`
-      + `This permanently removes its academic years, classes, students (${students}), teachers (${teachers}), and related data.\n`
+      + `This permanently removes its academic years, classes, students (${s.students}), teachers (${s.teachers}), and related data.\n`
       + 'This cannot be undone.',
     );
     if (!ok) return;
@@ -75,14 +130,6 @@ export default function Campuses() {
       setDeletingId(null);
     }
   };
-  const totals = campuses.reduce(
-    (acc, c) => ({
-      students: acc.students + (c._count?.students || 0),
-      teachers: acc.teachers + (c._count?.teachers || 0),
-      users: acc.users + (c._count?.users || 0),
-    }),
-    { students: 0, teachers: 0, users: 0 },
-  );
 
   const enterCampus = (campusId) => {
     setActiveCampus(campusId);
@@ -156,9 +203,9 @@ export default function Campuses() {
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="campuses-page">
+      <header className="campuses-topbar">
+        <div className="campuses-topbar-inner">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
             <LanguageSwitcher tone="app" />
@@ -181,16 +228,16 @@ export default function Campuses() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="campuses-shell">
         <MottoBanner className="mb-6" />
 
-        <div className="manager-hub-hero mb-8">
-          <div>
-            <p className="text-sm font-medium text-brand-700 mb-2">{t('staffDash.campuses.commandCenter')}</p>
-            <h1 className="text-3xl font-bold text-gray-900">
+        <section className="campuses-hero">
+          <div className="campuses-hero-copy">
+            <p className="campuses-kicker">{t('staffDash.campuses.commandCenter')}</p>
+            <h1 className="campuses-hero-title">
               {isManager ? t('staffDash.campuses.hello', { name: user?.firstName }) : t('staffDash.campuses.yourCampus')}
             </h1>
-            <p className="text-gray-600 mt-2 max-w-xl">
+            <p className="campuses-hero-text">
               {isManager ? t('staffDash.campuses.managerDesc') : t('staffDash.campuses.selectDesc')}
             </p>
           </div>
@@ -200,30 +247,65 @@ export default function Campuses() {
               {t('staffDash.campuses.newCampus')}
             </button>
           )}
-        </div>
+        </section>
 
         {isManager && campuses.length > 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="hub-stat">
-              <Building2 className="w-5 h-5 text-brand-600 mb-2" />
-              <p className="hub-stat-value">{campuses.length}</p>
-              <p className="hub-stat-label">{t('staffDash.campuses.campuses')}</p>
+          <div className="campuses-stats">
+            <div className="campuses-stat">
+              <Building2 className="campuses-stat-icon" />
+              <div>
+                <p className="campuses-stat-value">{totals.campuses}</p>
+                <p className="campuses-stat-label">{t('staffDash.campuses.activeCampuses')}</p>
+              </div>
             </div>
-            <div className="hub-stat">
-              <Users className="w-5 h-5 text-brand-600 mb-2" />
-              <p className="hub-stat-value">{totals.students}</p>
-              <p className="hub-stat-label">{t('staffDash.campuses.totalStudents')}</p>
+            <div className="campuses-stat">
+              <Users className="campuses-stat-icon" />
+              <div>
+                <p className="campuses-stat-value">{totals.students}</p>
+                <p className="campuses-stat-label">{t('staffDash.campuses.enrolledStudents')}</p>
+              </div>
             </div>
-            <div className="hub-stat">
-              <GraduationCap className="w-5 h-5 text-brand-600 mb-2" />
-              <p className="hub-stat-value">{totals.teachers}</p>
-              <p className="hub-stat-label">{t('staffDash.campuses.totalTeachers')}</p>
+            <div className="campuses-stat">
+              <GraduationCap className="campuses-stat-icon" />
+              <div>
+                <p className="campuses-stat-value">{totals.teachers}</p>
+                <p className="campuses-stat-label">{t('staffDash.campuses.totalTeachers')}</p>
+              </div>
             </div>
-            <div className="hub-stat">
-              <LayoutDashboard className="w-5 h-5 text-brand-600 mb-2" />
-              <p className="hub-stat-value">{totals.users}</p>
-              <p className="hub-stat-label">{t('staffDash.campuses.userAccounts')}</p>
+            <div className="campuses-stat">
+              <BookOpen className="campuses-stat-icon" />
+              <div>
+                <p className="campuses-stat-value">{totals.classes}</p>
+                <p className="campuses-stat-label">{t('staffDash.campuses.totalClasses')}</p>
+              </div>
             </div>
+            {totals.pending > 0 && (
+              <div className="campuses-stat is-amber">
+                <LayoutDashboard className="campuses-stat-icon" />
+                <div>
+                  <p className="campuses-stat-value">{totals.pending}</p>
+                  <p className="campuses-stat-label">{t('staffDash.campuses.pendingApps')}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {campuses.length > 0 && (
+          <div className="campuses-toolbar">
+            <div className="campuses-search">
+              <Search className="w-4 h-4" aria-hidden />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('staffDash.campuses.searchPlaceholder')}
+                aria-label={t('staffDash.campuses.searchPlaceholder')}
+              />
+            </div>
+            <p className="campuses-toolbar-meta">
+              {t('staffDash.campuses.showingCount', { count: visible.length, total: campuses.length })}
+            </p>
           </div>
         )}
 
@@ -294,90 +376,126 @@ export default function Campuses() {
           </FormSection>
         </FormModeModal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {campuses.map((c) => (
-            <div key={c.id} className={`campus-card group ${c.isActive === false ? 'opacity-75' : ''}`}>
-              <div className="flex items-start gap-4">
-                <div className="campus-card-icon">
-                  <Building2 className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg text-gray-900">{c.name}</h3>
-                    {c.isActive === false && (
-                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                        {t('ui.inactive')}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {c.city}, {c.district} · {c.code}
-                  </p>
-                  {(c.phone || c.email) && (
-                    <p className="text-xs text-gray-400 mt-1 truncate">
-                      {[c.phone, c.email].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <span className="campus-tag"><Users className="w-3 h-3" />{t('staffDash.campuses.tagStudents', { count: c._count?.students || 0 })}</span>
-                    <span className="campus-tag"><GraduationCap className="w-3 h-3" />{t('staffDash.campuses.tagTeachers', { count: c._count?.teachers || 0 })}</span>
-                    <span className="campus-tag"><Calendar className="w-3 h-3" />{t('staffDash.campuses.tagUsers', { count: c._count?.users || 0 })}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {isManager && (
-                  <button
-                    type="button"
-                    onClick={() => openEdit(c)}
-                    className="btn-secondary flex-1 inline-flex items-center justify-center gap-2 text-sm"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    {t('ui.edit')}
-                  </button>
-                )}
-                {isManager && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCampus(c)}
-                    disabled={deletingId === c.id || campuses.length <= 1}
-                    className="btn-secondary flex-1 inline-flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 hover:border-red-200 disabled:opacity-50"
-                    title={campuses.length <= 1 ? 'Cannot delete the only campus' : 'Delete campus'}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {deletingId === c.id ? t('ui.loading') : t('ui.delete')}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => enterCampus(c.id)}
-                  className="campus-enter-btn flex-1"
-                  disabled={c.isActive === false && !isManager}
-                >
-                  {t('staffDash.campuses.openDashboard')}
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {campuses.length === 0 && (
-          <div className="card text-center py-16">
+        {loading ? (
+          <div className="campuses-empty">
+            <p className="text-gray-500">{t('ui.loading')}</p>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="campuses-empty">
             <Building2 className="w-14 h-14 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-semibold text-gray-900 mb-2">{t('staffDash.campuses.emptyTitle')}</h3>
-            <p className="text-gray-500 mb-6 max-w-sm mx-auto">{t('staffDash.campuses.emptyDesc')}</p>
-            {isManager && (
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {campuses.length === 0 ? t('staffDash.campuses.emptyTitle') : t('ui.noSearchResults')}
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              {campuses.length === 0 ? t('staffDash.campuses.emptyDesc') : t('staffDash.campuses.searchEmpty')}
+            </p>
+            {isManager && campuses.length === 0 && (
               <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" />{t('staffDash.campuses.createFirst')}
               </button>
             )}
           </div>
+        ) : (
+          <div className="campuses-grid">
+            {visible.map((c) => {
+              const s = campusStats(c);
+              const inactive = c.isActive === false;
+              return (
+                <article key={c.id} className={`campus-card-v2 ${inactive ? 'is-inactive' : ''}`}>
+                  <div className="campus-card-v2-head">
+                    <div className="campus-card-v2-icon">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="campus-card-v2-title">{c.name}</h3>
+                        <span className={`campus-status ${inactive ? 'is-off' : 'is-on'}`}>
+                          {inactive ? t('ui.inactive') : t('ui.active')}
+                        </span>
+                      </div>
+                      <p className="campus-card-v2-meta">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span>{c.city}, {c.district} · {c.code}</span>
+                      </p>
+                      {s.activeYear && (
+                        <p className="campus-card-v2-year">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {s.activeYear}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="campus-metrics">
+                    <div className="campus-metric">
+                      <span className="campus-metric-value">{s.students}</span>
+                      <span className="campus-metric-label">{t('staffDash.campuses.metricStudents')}</span>
+                    </div>
+                    <div className="campus-metric">
+                      <span className="campus-metric-value">{s.teachers}</span>
+                      <span className="campus-metric-label">{t('staffDash.campuses.metricTeachers')}</span>
+                    </div>
+                    <div className="campus-metric">
+                      <span className="campus-metric-value">{s.classes}</span>
+                      <span className="campus-metric-label">{t('staffDash.campuses.metricClasses')}</span>
+                    </div>
+                    <div className="campus-metric">
+                      <span className="campus-metric-value">{s.pending || 0}</span>
+                      <span className="campus-metric-label">{t('staffDash.campuses.metricPending')}</span>
+                    </div>
+                  </div>
+
+                  {(c.phone || c.email) && (
+                    <div className="campus-card-v2-contact">
+                      {c.phone && (
+                        <span><Phone className="w-3.5 h-3.5" />{c.phone}</span>
+                      )}
+                      {c.email && (
+                        <span><Mail className="w-3.5 h-3.5" />{c.email}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="campus-card-v2-actions">
+                    {isManager && (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(c)}
+                        className="btn-secondary flex-1 inline-flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        {t('ui.edit')}
+                      </button>
+                    )}
+                    {isManager && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCampus(c)}
+                        disabled={deletingId === c.id || campuses.length <= 1}
+                        className="btn-secondary inline-flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 hover:border-red-200 disabled:opacity-50 px-3"
+                        title={campuses.length <= 1 ? 'Cannot delete the only campus' : 'Delete campus'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => enterCampus(c.id)}
+                      className="campus-enter-btn flex-[1.4]"
+                      disabled={inactive && !isManager}
+                    >
+                      {t('staffDash.campuses.openDashboard')}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
 
         {isManager && campuses.length > 0 && (
-          <div className="mt-10 p-6 rounded-xl bg-white border border-gray-200">
+          <div className="campuses-guide">
             <h3 className="font-semibold text-gray-900 mb-2">{t('staffDash.campuses.managerGuide')}</h3>
             <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
               <li>{t('staffDash.campuses.guide1')}</li>
@@ -385,6 +503,7 @@ export default function Campuses() {
               <li>{t('staffDash.campuses.guide3')}</li>
               <li>{t('staffDash.campuses.guide4')}</li>
             </ol>
+            <p className="text-xs text-gray-400 mt-3">{t('staffDash.campuses.statsNote')}</p>
           </div>
         )}
       </div>

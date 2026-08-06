@@ -251,6 +251,10 @@ Vite proxies `/api` and `/socket.io` to the backend.
 | `CLIENT_URL` | Frontend origin (CORS, verify links) | `http://localhost:3000` |
 | `SMTP_USER` | SMTP account for email | — |
 | `SMTP_PASS` | SMTP password / app password | — |
+| `SMS_ENABLED` | Enable BulkSMS parent broadcasts | `false` |
+| `BULKSMS_TOKEN_ID` | BulkSMS API token ID | — |
+| `BULKSMS_TOKEN_SECRET` | BulkSMS API token secret | — |
+| `BULKSMS_SENDER_ID` | Optional approved sender ID | `LaRACINE` |
 
 The client talks to `/api` on the same origin in development (Vite proxy). For production (or a remote API), set `VITE_API_URL` in `client/.env` / `client/.env.production` — see [Client env](#client-env-vite).
 

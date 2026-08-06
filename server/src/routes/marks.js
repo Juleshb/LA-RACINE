@@ -5,7 +5,7 @@ import { assertTeacherCourseAccess, resolveTeacherId } from '../lib/teacherAcces
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
-import { isNurseryGrade } from '../config/grades.js';
+import { isCrecheGrade, usesNurseryCompetence } from '../config/grades.js';
 import {
   ensureSubjectAssessments,
   resolveTotalMax,
@@ -166,7 +166,13 @@ router.get('/report', async (req, res) => {
       return res.status(403).json({ error: 'You cannot view this student bulletin' });
     }
 
-    if (isNurseryGrade(cls.grade)) {
+    if (isCrecheGrade(cls.grade)) {
+      return res.status(400).json({
+        error: 'La Crèche n\'utilise pas de notes ni de bulletin',
+      });
+    }
+
+    if (usesNurseryCompetence(cls.grade)) {
       const report = await buildNurseryBulletinReport(prisma, {
         classId,
         studentId,
@@ -407,7 +413,10 @@ router.get('/competence', async (req, res) => {
       },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
-    if (!isNurseryGrade(cls.grade)) {
+    if (isCrecheGrade(cls.grade)) {
+      return res.status(400).json({ error: 'La Crèche n\'utilise pas de notes de compétence' });
+    }
+    if (!usesNurseryCompetence(cls.grade)) {
       return res.status(400).json({ error: 'This class does not use competence grading' });
     }
 
@@ -501,7 +510,10 @@ router.put('/competence/bulk', async (req, res) => {
       include: { subjects: { select: { id: true, teacherId: true } } },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
-    if (!isNurseryGrade(cls.grade)) {
+    if (isCrecheGrade(cls.grade)) {
+      return res.status(400).json({ error: 'La Crèche n\'utilise pas de notes de compétence' });
+    }
+    if (!usesNurseryCompetence(cls.grade)) {
       return res.status(400).json({ error: 'This class does not use competence grading' });
     }
 
@@ -648,7 +660,7 @@ router.post('/bulk', async (req, res) => {
     if (['PARENT', 'STUDENT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot edit marks' });
     }
-    const { subjectId, term, assessment, catNumber, records } = req.body;
+    const { subjectId, term, assessment, catNumber, records, assessedOn } = req.body;
     if (!subjectId || !Array.isArray(records)) {
       return res.status(400).json({ error: 'subjectId and records are required' });
     }
@@ -656,6 +668,12 @@ router.post('/bulk', async (req, res) => {
     const termValue = term || 'Term 1';
     const assessmentValue = assessment || 'Final';
     const catNumberValue = resolveCatNumber(assessmentValue, catNumber);
+    let assessedOnDate = null;
+    if (assessedOn) {
+      const parsed = new Date(assessedOn);
+      if (!Number.isNaN(parsed.getTime())) assessedOnDate = parsed;
+    }
+    if (!assessedOnDate) assessedOnDate = new Date();
 
     const course = await prisma.subject.findFirst({
       where: { id: subjectId, campusId: req.campusId, class: { academicYearId: req.academicYearId } },
@@ -687,6 +705,13 @@ router.post('/bulk', async (req, res) => {
       const maxScore = Number(record.maxScore) || 100;
       if (Number.isNaN(score) || score < 0 || score > maxScore) continue;
 
+      const rowAssessedOn = record.assessedOn
+        ? (() => {
+          const d = new Date(record.assessedOn);
+          return Number.isNaN(d.getTime()) ? assessedOnDate : d;
+        })()
+        : assessedOnDate;
+
       await prisma.mark.upsert({
         where: {
           studentId_subjectId_term_assessment_catNumber: {
@@ -706,11 +731,13 @@ router.post('/bulk', async (req, res) => {
           score,
           maxScore,
           notes: record.notes || null,
+          assessedOn: rowAssessedOn,
         },
         update: {
           score,
           maxScore,
           notes: record.notes || null,
+          assessedOn: rowAssessedOn,
         },
       });
       saved += 1;
@@ -721,6 +748,7 @@ router.post('/bulk', async (req, res) => {
       term: termValue,
       assessment: assessmentValue,
       catNumber: catNumberValue,
+      assessedOn: assessedOnDate,
       label: formatAssessmentLabel(assessmentValue, catNumberValue),
     });
   } catch (error) {

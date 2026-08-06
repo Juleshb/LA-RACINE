@@ -1,5 +1,6 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import ProgramCard from '../../components/public/ProgramCard';
+import PageHero from '../../components/public/PageHero';
 
 export default function PublicAcademics() {
   const { page } = useOutletContext();
@@ -8,13 +9,7 @@ export default function PublicAcademics() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero label={c.label} title={c.title} lead={c.lead} imageUrl={c.heroImageUrl} />
 
       <section className="ps-section">
         <div className="ps-program-grid ps-program-grid-rich">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Plus, Trash2, Paperclip, Video } from 'lucide-react';
 import { api } from '../lib/api';
@@ -14,6 +14,7 @@ import AppIcon from '../components/icons/AppIcon';
 import { useTranslation } from '../context/LanguageContext';
 import { formatDueDateLabel } from '../i18n/studentQuiz';
 import { isValidYouTubeUrl } from '../lib/youtube';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const EMPTY_VIDEO = { title: '', videoUrl: '' };
 
@@ -162,6 +163,23 @@ export default function Homework() {
       alert(err.message);
     }
   };
+
+  const getHomeworkSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'title': return row.title || '';
+      case 'class': return row.class?.name || '';
+      case 'questions': return row._count?.questions ?? 0;
+      case 'dueDate': return row.dueDate ? new Date(row.dueDate) : null;
+      case 'status': return row.mySubmission ? 1 : 0;
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    items,
+    getHomeworkSortValue,
+    { initialKey: 'dueDate' },
+  );
 
   return (
     <div className={isStudent ? 'student-page' : ''}>
@@ -377,17 +395,17 @@ export default function Homework() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.assignment')}</th>
-                  <th className="pb-3 font-medium">{t('ui.class')}</th>
-                  <th className="pb-3 font-medium">{t('ui.questions')}</th>
-                  <th className="pb-3 font-medium">{t('ui.due')}</th>
-                  {isParent && <th className="pb-3 font-medium">{t('ui.status')}</th>}
+                  <SortableTh label={t('ui.assignment')} columnKey="title" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.class')} columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.questions')} columnKey="questions" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.due')} columnKey="dueDate" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  {isParent && <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />}
                   {isParent && <th className="pb-3 font-medium">{t('ui.score')}</th>}
                   {canEdit && <th className="pb-3 font-medium">{t('ui.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => {
+                {sorted.map((item) => {
                   const done = item.mySubmission;
                   const detailLink = isParent && selectedChildId
                     ? `/campus/${campusId}/homework/${item.id}?studentId=${selectedChildId}`

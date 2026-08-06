@@ -5,23 +5,26 @@ export default function ModernStatCard({
   sub,
   trend,
   accent = 'brand',
+  index = 0,
 }) {
   return (
-    <div className={`dashboard-kpi dashboard-kpi-${accent}`}>
-      <div className="dashboard-kpi-glow" aria-hidden="true" />
-      <div className="dashboard-kpi-top">
-        <div className="dashboard-kpi-icon">
-          <Icon className="w-5 h-5" />
-        </div>
-        {trend != null && (
-          <span className={`dashboard-kpi-trend ${trend >= 0 ? 'dashboard-kpi-trend-up' : 'dashboard-kpi-trend-down'}`}>
-            {trend >= 0 ? '+' : ''}{trend}%
-          </span>
-        )}
+    <div
+      className={`dash-metric dash-metric-${accent}`}
+      style={{ '--dash-delay': `${index * 70}ms` }}
+    >
+      <div className="dash-metric-icon">
+        <Icon className="w-4 h-4" />
       </div>
-      <p className="dashboard-kpi-value">{value}</p>
-      <p className="dashboard-kpi-label">{label}</p>
-      {sub && <p className="dashboard-kpi-sub">{sub}</p>}
+      <div className="dash-metric-copy">
+        <p className="dash-metric-label">{label}</p>
+        <p className="dash-metric-value">{value}</p>
+        {sub && <p className="dash-metric-sub">{sub}</p>}
+      </div>
+      {trend != null && (
+        <span className={`dash-metric-trend ${trend >= 0 ? 'is-up' : 'is-down'}`}>
+          {trend >= 0 ? '+' : ''}{trend}%
+        </span>
+      )}
     </div>
   );
 }

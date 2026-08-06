@@ -121,6 +121,7 @@ export function translateStudentNavItem(item, t) {
   const keyMap = {
     '': { label: 'nav.home', shortLabel: 'nav.home' },
     homework: { label: 'nav.myHomework', shortLabel: 'nav.homework' },
+    'ai-tutor': { label: 'nav.aiTutor', shortLabel: 'nav.ai' },
     'online-classes': { label: 'nav.liveClasses', shortLabel: 'nav.live' },
     'e-library': { label: 'nav.elibrary', shortLabel: 'nav.elibrary' },
     'e-learning': { label: 'nav.elearning', shortLabel: 'nav.elearning' },

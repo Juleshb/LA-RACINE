@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   Bus, MapPin, Users, Clock, Bell, Wallet, Plus, Trash2, Pencil, Check,
 } from 'lucide-react';
@@ -8,6 +8,8 @@ import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
+import StudentSelect from '../components/StudentSelect';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const TABS = [
   { id: 'overview', labelKey: 'pages.transport.tabOverview', icon: Bus },
@@ -233,6 +235,59 @@ export default function Transport() {
   );
 
   const routeStops = selectedRoute?.stops || routes.find((r) => r.id === form.routeId)?.stops || [];
+
+  const getPassengerSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'student': return `${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim();
+      case 'class': return row.student?.class?.name || '';
+      case 'route': return row.route?.name || '';
+      case 'stop': return row.stop?.name || '';
+      case 'monthlyFee': return Number(row.monthlyFee) || 0;
+      default: return '';
+    }
+  }, []);
+
+  const getAttendanceSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'student': return row.name || '';
+      case 'class': return row.className || '';
+      case 'stop': return row.stopName || '';
+      case 'status': return row.status || '';
+      default: return '';
+    }
+  }, []);
+
+  const getFeeSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'student': return `${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim();
+      case 'class': return row.student?.class?.name || '';
+      case 'amount': return Number(row.amount) || 0;
+      case 'due': return row.dueDate ? new Date(row.dueDate) : null;
+      case 'status': return row.status || '';
+      default: return '';
+    }
+  }, []);
+
+  const {
+    sorted: sortedPassengers,
+    sortKey: passengerSortKey,
+    sortDir: passengerSortDir,
+    toggleSort: togglePassengerSort,
+  } = useTableSort(passengers, getPassengerSortValue, { initialKey: 'student' });
+
+  const {
+    sorted: sortedAttendance,
+    sortKey: attendanceSortKey,
+    sortDir: attendanceSortDir,
+    toggleSort: toggleAttendanceSort,
+  } = useTableSort(attendanceRows, getAttendanceSortValue, { initialKey: 'student' });
+
+  const {
+    sorted: sortedFees,
+    sortKey: feeSortKey,
+    sortDir: feeSortDir,
+    toggleSort: toggleFeeSort,
+  } = useTableSort(fees, getFeeSortValue, { initialKey: 'student' });
 
   return (
     <div className="transport-page">
@@ -509,16 +564,16 @@ export default function Transport() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-400 border-b">
-                  <th className="p-3">Student</th>
-                  <th className="p-3">Class</th>
-                  <th className="p-3">Route</th>
-                  <th className="p-3">Stop</th>
-                  <th className="p-3">Monthly fee</th>
+                  <SortableTh label="Student" columnKey="student" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  <SortableTh label="Class" columnKey="class" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  <SortableTh label="Route" columnKey="route" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  <SortableTh label="Stop" columnKey="stop" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  <SortableTh label="Monthly fee" columnKey="monthlyFee" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
                   <th className="p-3" />
                 </tr>
               </thead>
               <tbody>
-                {passengers.map((p) => (
+                {sortedPassengers.map((p) => (
                   <tr key={p.id} className="border-b border-gray-50">
                     <td className="p-3 font-medium">{p.student.firstName} {p.student.lastName}</td>
                     <td className="p-3">{p.student.class?.name}</td>
@@ -567,14 +622,14 @@ export default function Transport() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-gray-400 border-b">
-                      <th className="p-3">Student</th>
-                      <th className="p-3">Class</th>
-                      <th className="p-3">Stop</th>
-                      <th className="p-3">Status</th>
+                      <SortableTh label="Student" columnKey="student" sortKey={attendanceSortKey} sortDir={attendanceSortDir} onSort={toggleAttendanceSort} className="p-3" />
+                      <SortableTh label="Class" columnKey="class" sortKey={attendanceSortKey} sortDir={attendanceSortDir} onSort={toggleAttendanceSort} className="p-3" />
+                      <SortableTh label="Stop" columnKey="stop" sortKey={attendanceSortKey} sortDir={attendanceSortDir} onSort={toggleAttendanceSort} className="p-3" />
+                      <SortableTh label="Status" columnKey="status" sortKey={attendanceSortKey} sortDir={attendanceSortDir} onSort={toggleAttendanceSort} className="p-3" />
                     </tr>
                   </thead>
                   <tbody>
-                    {attendanceRows.map((row, i) => (
+                    {sortedAttendance.map((row) => (
                       <tr key={row.studentId} className="border-b border-gray-50">
                         <td className="p-3">{row.name}</td>
                         <td className="p-3">{row.className}</td>
@@ -584,9 +639,10 @@ export default function Transport() {
                             className="input input-sm"
                             value={row.status}
                             onChange={(e) => {
-                              const next = [...attendanceRows];
-                              next[i] = { ...row, status: e.target.value };
-                              setAttendanceRows(next);
+                              const status = e.target.value;
+                              setAttendanceRows((prev) => prev.map((r) => (
+                                r.studentId === row.studentId ? { ...r, status } : r
+                              )));
                             }}
                           >
                             {ATTENDANCE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -634,15 +690,15 @@ export default function Transport() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 border-b">
-                <th className="p-3">Student</th>
-                <th className="p-3">Class</th>
-                <th className="p-3">Amount</th>
-                <th className="p-3">Due</th>
-                <th className="p-3">Status</th>
+                <SortableTh label="Student" columnKey="student" sortKey={feeSortKey} sortDir={feeSortDir} onSort={toggleFeeSort} className="p-3" />
+                <SortableTh label="Class" columnKey="class" sortKey={feeSortKey} sortDir={feeSortDir} onSort={toggleFeeSort} className="p-3" />
+                <SortableTh label="Amount" columnKey="amount" sortKey={feeSortKey} sortDir={feeSortDir} onSort={toggleFeeSort} className="p-3" />
+                <SortableTh label="Due" columnKey="due" sortKey={feeSortKey} sortDir={feeSortDir} onSort={toggleFeeSort} className="p-3" />
+                <SortableTh label="Status" columnKey="status" sortKey={feeSortKey} sortDir={feeSortDir} onSort={toggleFeeSort} className="p-3" />
               </tr>
             </thead>
             <tbody>
-              {fees.map((f) => (
+              {sortedFees.map((f) => (
                 <tr key={f.id} className="border-b border-gray-50">
                   <td className="p-3">{f.student.firstName} {f.student.lastName}</td>
                   <td className="p-3">{f.student.class?.name}</td>
@@ -714,10 +770,14 @@ export default function Transport() {
         <FormSection title="Assignment">
           <div>
             <label className="label">Student *</label>
-            <select className="input" required value={form.studentId || ''} onChange={(e) => setForm({ ...form, studentId: e.target.value })}>
-              <option value="">Select student</option>
-              {students.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} — {s.class?.name}</option>)}
-            </select>
+            <StudentSelect
+              required
+              students={students}
+              value={form.studentId || ''}
+              onChange={(studentId) => setForm({ ...form, studentId })}
+              emptyLabel="Select student"
+              getLabel={(s) => `${s.firstName} ${s.lastName} — ${s.class?.name || ''}`}
+            />
           </div>
           <div>
             <label className="label">Route *</label>

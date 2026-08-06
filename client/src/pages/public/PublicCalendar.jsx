@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { getApiOrigin } from '../../lib/config';
+import PageHero from '../../components/public/PageHero';
 
 function resolveFileUrl(url) {
   if (!url) return '';
@@ -34,14 +35,14 @@ export default function PublicCalendar() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          {c.academicYearLabel ? <p className="ps-calendar-year">{c.academicYearLabel}</p> : null}
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero
+        label={c.label}
+        title={c.title}
+        lead={c.lead}
+        imageUrl={c.heroImageUrl}
+      >
+        {c.academicYearLabel ? <p className="ps-calendar-year">{c.academicYearLabel}</p> : null}
+      </PageHero>
 
       <section className="ps-section ps-calendar-section">
         {levels.length > 0 && (

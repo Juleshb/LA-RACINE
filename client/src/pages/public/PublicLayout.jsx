@@ -189,7 +189,6 @@ function PublicShell() {
             <img src="/logo.png" alt={school?.name || 'École La RACINE'} />
             <div>
               <div className="ps-brand-name">{brandName}</div>
-              <div className="ps-brand-tag">{nav.brandTag || 'School'}</div>
             </div>
           </Link>
 

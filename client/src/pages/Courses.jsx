@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Edit2, BookOpen, Layers, BookMarked, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import BulletinLayoutPanel from '../components/bulletin/BulletinLayoutPanel';
 import FormModeModal from '../components/form/FormModeModal';
 import SegmentedControl from '../components/form/SegmentedControl';
 import CourseFormFields from '../components/courses/CourseFormFields';
+import { SortableTh, sortRows } from '../hooks/useTableSort';
 
 const EMPTY_FORM = {
   entryMode: 'template',
@@ -103,6 +104,8 @@ export default function Courses() {
   ]);
   const [bulletinSaving, setBulletinSaving] = useState(false);
   const [bulletinMessage, setBulletinMessage] = useState('');
+  const [sortKey, setSortKey] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
 
   const isEditing = formMode === 'edit';
   const selectedClass = classes.find((c) => c.id === classId);
@@ -125,6 +128,28 @@ export default function Courses() {
     () => buildDomainOptions(curriculumDomains, allGrouped),
     [curriculumDomains, allGrouped],
   );
+
+  const getCourseSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'name': return row.name || '';
+      case 'code': return row.code || '';
+      case 'gradingScale': return formatGradingScale(row) || '';
+      case 'teacher': return row.teacher?.name || '';
+      default: return '';
+    }
+  }, []);
+
+  const toggleSort = useCallback((key) => {
+    if (!key) return;
+    setSortKey((prev) => {
+      if (prev === key) {
+        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
+      setSortDir('asc');
+      return key;
+    });
+  }, []);
 
   const selectedDomain = useMemo(() => {
     if (form.domainIndex === '') return null;
@@ -544,15 +569,15 @@ export default function Courses() {
                   <table className="table-report">
                     <thead>
                       <tr>
-                        <th>{t('pages.courses.colSubSubject')}</th>
-                        <th>{t('pages.courses.colCode')}</th>
-                        <th>{t('pages.courses.colGradingScale')}</th>
-                        <th>{t('pages.courses.colTeacher')}</th>
+                        <SortableTh label={t('pages.courses.colSubSubject')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                        <SortableTh label={t('pages.courses.colCode')} columnKey="code" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                        <SortableTh label={t('pages.courses.colGradingScale')} columnKey="gradingScale" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                        <SortableTh label={t('pages.courses.colTeacher')} columnKey="teacher" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                         {!isTeacher && <th className="text-right">{t('pages.courses.colActions')}</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {group.courses.map((course) => {
+                      {sortRows(group.courses, sortKey, sortDir, getCourseSortValue).map((course) => {
                         const isActive = editingId === course.id;
                         return (
                           <tr key={course.id} className={isActive ? 'table-row-active' : ''}>

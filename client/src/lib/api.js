@@ -220,8 +220,25 @@ export const api = {
     request(`/students/${id}/documents/${docId}`, { method: 'DELETE' }),
 
   getTeachers: () => request('/teachers'),
+  getTeacher: (id) => request(`/teachers/${id}`),
+  getTeacherPhotoUrl: async (teacherId) => {
+    const token = getToken();
+    const campusId = getCampusId();
+    const res = await fetch(`${API_BASE}/teachers/${teacherId}/photo`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(campusId ? { 'X-Campus-Id': campusId } : {}),
+        ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
+      },
+    });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  },
   createTeacher: (data) => request('/teachers', { method: 'POST', body: JSON.stringify(data) }),
   updateTeacher: (id, data) => request(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  uploadTeacherPhoto: (id, data) =>
+    request(`/teachers/${id}/photo`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteTeacherPhoto: (id) => request(`/teachers/${id}/photo`, { method: 'DELETE' }),
   deleteTeacher: (id) => request(`/teachers/${id}`, { method: 'DELETE' }),
 
   getClasses: (params = {}) => {
@@ -282,6 +299,21 @@ export const api = {
   },
   getMarksStats: () => request('/marks/stats'),
   saveMarks: (data) => request('/marks/bulk', { method: 'POST', body: JSON.stringify(data) }),
+  getMidtermWindows: (term) => {
+    const q = new URLSearchParams();
+    if (term) q.set('term', term);
+    return request(`/midterms/windows?${q}`);
+  },
+  updateMidtermWindow: (id, data) =>
+    request(`/midterms/windows/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  publishMidtermWindow: (id, data = {}) =>
+    request(`/midterms/windows/${id}/publish`, { method: 'POST', body: JSON.stringify(data) }),
+  getMidtermReport: (windowId, classId) => {
+    const q = new URLSearchParams({ classId });
+    return request(`/midterms/windows/${windowId}/report?${q}`);
+  },
+  getMidtermStudent: (windowId, studentId) =>
+    request(`/midterms/windows/${windowId}/students/${studentId}`),
   getCompetenceMarks: (classId, term) => {
     const params = new URLSearchParams({ classId });
     if (term) params.set('term', term);
@@ -486,6 +518,55 @@ export const api = {
 
   getTeacherDashboard: () => request('/teacher/dashboard'),
   getStudentDashboard: () => request('/student/dashboard'),
+  getStudentAiStatus: () => request('/student/ai-status'),
+  getStudentAiChats: () => request('/student/ai-chats'),
+  getStudentAiChat: (id) => request(`/student/ai-chats/${id}`),
+  saveStudentAiChat: (data) => request('/student/ai-chats', { method: 'POST', body: JSON.stringify(data) }),
+  deleteStudentAiChat: (id) => request(`/student/ai-chats/${id}`, { method: 'DELETE' }),
+  streamStudentAiChat: async ({ messages }, { onChunk } = {}) => {
+    const token = getToken();
+    const campusId = getCampusId();
+    const res = await fetch(`${API_BASE}/student/ai-chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(campusId ? { 'X-Campus-Id': campusId } : {}),
+        ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
+      },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('campusId');
+      localStorage.removeItem('academicYearId');
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'AI tutor failed' }));
+      throw new Error(error.error || 'AI tutor failed');
+    }
+
+    if (!res.body) {
+      throw new Error('AI tutor returned an empty response');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (!chunk) continue;
+      full += chunk;
+      onChunk?.(chunk);
+    }
+    return full;
+  },
   getMyStudentPhotoUrl: async () => {
     const token = getToken();
     const campusId = getCampusId();
@@ -502,6 +583,7 @@ export const api = {
 
   getCommunicationInbox: () => request('/communication/inbox'),
   getCommunicationUnreadCount: () => request('/communication/unread-count'),
+  getCommunicationChannels: () => request('/communication/channels'),
   getCommunicationChildren: () => request('/communication/children'),
   getCommunicationBroadcasts: () => request('/communication/broadcasts'),
   createCommunicationBroadcast: (data) => request('/communication/broadcasts', { method: 'POST', body: JSON.stringify(data) }),
@@ -534,8 +616,14 @@ export function getAcademicYearId() {
 }
 
 export function setActiveCampus(campusId) {
+  const previous = localStorage.getItem('campusId');
   if (campusId) localStorage.setItem('campusId', campusId);
   else localStorage.removeItem('campusId');
+  // Academic year IDs are per-campus — drop stale year when switching
+  if (previous && campusId && previous !== campusId) {
+    localStorage.removeItem('academicYearId');
+  }
+  if (!campusId) localStorage.removeItem('academicYearId');
 }
 
 export function getActiveCampus() {

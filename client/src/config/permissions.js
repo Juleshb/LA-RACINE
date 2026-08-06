@@ -23,6 +23,7 @@ export const PERMISSIONS = {
   ONLINE_CLASSES: 'online_classes',
   REPORTS: 'reports',
   WEBSITE: 'website',
+  AI_TUTOR: 'ai_tutor',
 };
 
 export const ROLE_LABELS = {
@@ -157,6 +158,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.ONLINE_CLASSES,
     PERMISSIONS.E_LIBRARY,
     PERMISSIONS.E_LEARNING,
+    PERMISSIONS.AI_TUTOR,
   ],
 };
 
@@ -166,9 +168,11 @@ export const NAV_ITEMS = [
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Communication' },
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'Students' },
   { to: 'teachers', permission: PERMISSIONS.TEACHERS, icon: 'GraduationCap', label: 'Teachers' },
+  { to: 'id-cards', permission: PERMISSIONS.STUDENTS, icon: 'CreditCard', label: 'ID Cards' },
   { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'Classes' },
   { to: 'courses', permission: PERMISSIONS.COURSES, icon: 'BookMarked', label: 'Courses' },
   { to: 'marks', permission: PERMISSIONS.MARKS, icon: 'Award', label: 'Marks' },
+  { to: 'midterms', permission: PERMISSIONS.MARKS, icon: 'Calendar', label: 'Périodes' },
   { to: 'bulletin-report', permission: PERMISSIONS.MARKS, icon: 'FileText', label: 'Bulletin' },
   { to: 'attendance', permission: PERMISSIONS.ATTENDANCE, icon: 'ClipboardCheck', label: 'Attendance' },
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees' },
@@ -195,6 +199,7 @@ export const PARENT_NAV_ITEMS = [
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
   { to: 'attendance', permission: PERMISSIONS.ATTENDANCE, icon: 'ClipboardCheck', label: 'Attendance' },
   { to: 'bulletin-report', permission: PERMISSIONS.MARKS, icon: 'Award', label: 'Report cards' },
+  { to: 'midterms', permission: PERMISSIONS.MARKS, icon: 'Calendar', label: 'Périodes' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'BookOpen', label: 'Homework' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes' },
@@ -239,13 +244,14 @@ export const TEACHER_NAV_GROUPS = [
 export const STUDENT_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home', shortLabel: 'Home' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'BookOpen', label: 'My homework', shortLabel: 'Homework' },
+  { to: 'ai-tutor', permission: PERMISSIONS.AI_TUTOR, icon: 'Bot', label: 'Ask AI', shortLabel: 'AI' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes', shortLabel: 'Live' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library', shortLabel: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning', shortLabel: 'Learning' },
 ];
 
 export const STUDENT_NAV_GROUPS = [
-  { id: 'learning', title: 'My learning', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.HOMEWORK, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.E_LIBRARY, PERMISSIONS.E_LEARNING] },
+  { id: 'learning', title: 'My learning', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.HOMEWORK, PERMISSIONS.AI_TUTOR, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.E_LIBRARY, PERMISSIONS.E_LEARNING] },
 ];
 
 const STAFF_ROLES = new Set([

@@ -4,7 +4,23 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 
 function sanitizeFilename(name) {
-  return String(name || 'report').replace(/[^\w\-]+/g, '_').slice(0, 80);
+  return String(name || 'report')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 80) || 'report';
+}
+
+/** Excel worksheet names: max 31 chars, no \ / ? * [ ] */
+function sanitizeSheetName(name) {
+  const cleaned = String(name || 'Report')
+    .replace(/[:\\/?*[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 31);
+  return cleaned || 'Report';
 }
 
 function cellValue(row, key) {
@@ -14,16 +30,41 @@ function cellValue(row, key) {
 }
 
 export function exportReportExcel({ title, columns, rows, filename }) {
+  if (!columns?.length) {
+    throw new Error('Aucune colonne à exporter');
+  }
+
   const headers = columns.map((c) => c.label);
-  const data = rows.map((row) => columns.map((c) => cellValue(row, c.key)));
+  const data = (rows || []).map((row) => columns.map((c) => cellValue(row, c.key)));
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+  // Reasonable column widths
+  sheet['!cols'] = columns.map((c) => ({
+    wch: Math.min(28, Math.max(8, String(c.label || '').length + 2)),
+  }));
+
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, (title || 'Report').slice(0, 31));
+  XLSX.utils.book_append_sheet(workbook, sheet, sanitizeSheetName(title));
   const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  saveAs(
-    new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `${sanitizeFilename(filename || title)}.xlsx`,
-  );
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const outName = `${sanitizeFilename(filename || title)}.xlsx`;
+
+  // Prefer direct anchor download (more reliable after async loads than some saveAs cases)
+  try {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = outName;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (err) {
+    saveAs(blob, outName);
+  }
 }
 
 export async function exportReportWord({ title, columns, rows, meta, filename }) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { api } from '../lib/api';
@@ -7,7 +7,9 @@ import PageHeader from '../components/PageHeader';
 import StudentPageHeader from '../components/student/StudentPageHeader';
 import ParentChildFilter from '../components/parent/ParentChildFilter';
 import AppIcon from '../components/icons/AppIcon';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const statusOptions = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
 const statusColors = {
@@ -51,6 +53,7 @@ export default function Attendance() {
   const [selectedChildId, setSelectedChildId] = useState('');
   const [records, setRecords] = useState({});
   const [students, setStudents] = useState([]);
+  const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageSuccess, setMessageSuccess] = useState(false);
@@ -111,6 +114,37 @@ export default function Attendance() {
 
   const studentRecord = isStudent && students[0] ? records[students[0].id] : null;
   const studentStatus = studentRecord ? STUDENT_STATUS[studentRecord] : null;
+
+  const filteredStudents = useMemo(() => students.filter((s) => {
+    const status = records[s.id];
+    const statusLabel = status ? t(ATTENDANCE_STATUS_I18N[status] || 'ui.notRecorded') : '';
+    return matchesSearch(
+      search,
+      s.studentId,
+      s.firstName,
+      s.lastName,
+      s.postName,
+      s.class?.name,
+      status,
+      statusLabel,
+    );
+  }), [students, search, records, t]);
+
+  const getAttendanceSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'studentId': return row.studentId || '';
+      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'class': return row.class?.name || '';
+      case 'status': return records[row.id] || '';
+      default: return '';
+    }
+  }, [records]);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    filteredStudents,
+    getAttendanceSortValue,
+    { initialKey: 'name' },
+  );
 
   return (
     <div className={isStudent ? 'student-page' : ''}>
@@ -190,7 +224,7 @@ export default function Attendance() {
         </>
       ) : (
         <>
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-4 mb-6 items-end">
         <div>
           <label className="label">{t('ui.date')}</label>
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -206,24 +240,34 @@ export default function Attendance() {
             </select>
           </div>
         )}
+        <ListSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={t('ui.searchStudent')}
+          className="min-w-[220px] flex-1 max-w-md"
+        />
       </div>
 
       <div className="card">
-        {students.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">{t('pageBody.attendance.noStudentsForFilters')}</p>
+        {filteredStudents.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">
+            {students.length > 0 && search.trim()
+              ? t('ui.noSearchResults')
+              : t('pageBody.attendance.noStudentsForFilters')}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.studentId')}</th>
-                  <th className="pb-3 font-medium">{t('ui.name')}</th>
-                  <th className="pb-3 font-medium">{t('ui.class')}</th>
-                  <th className="pb-3 font-medium">{t('ui.status')}</th>
+                  <SortableTh label={t('ui.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.class')} columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
+                {sorted.map((s) => (
                   <tr key={s.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3 text-brand-600">{s.studentId}</td>
                     <td className="py-3 font-medium">{s.firstName} {s.lastName}</td>

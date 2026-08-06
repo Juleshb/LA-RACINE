@@ -13,6 +13,7 @@ import Teachers from './pages/Teachers';
 import Classes from './pages/Classes';
 import Courses from './pages/Courses';
 import Marks from './pages/Marks';
+import Midterms from './pages/Midterms';
 import BulletinReport from './pages/BulletinReport';
 import Attendance from './pages/Attendance';
 import Fees from './pages/Fees';
@@ -39,6 +40,8 @@ import ResetPassword from './pages/ResetPassword';
 import SetNewPassword from './pages/SetNewPassword';
 import StudentRegistration from './pages/StudentRegistration';
 import StudentDetail from './pages/StudentDetail';
+import StudentAiTutor from './pages/StudentAiTutor';
+import IdCards from './pages/IdCards';
 import VerifyBulletin from './pages/VerifyBulletin';
 import Profile from './pages/Profile';
 import ProfileShell from './components/ProfileShell';
@@ -103,10 +106,12 @@ export default function App() {
             <Route path="students" element={<RequirePermission permission={PERMISSIONS.STUDENTS}><Students /></RequirePermission>} />
             <Route path="students/register" element={<RequirePermission permission={PERMISSIONS.STUDENTS}><StudentRegistration /></RequirePermission>} />
             <Route path="students/:id" element={<RequirePermission permission={PERMISSIONS.STUDENTS}><StudentDetail /></RequirePermission>} />
+            <Route path="id-cards" element={<RequirePermission permission={PERMISSIONS.STUDENTS}><IdCards /></RequirePermission>} />
             <Route path="teachers" element={<RequirePermission permission={PERMISSIONS.TEACHERS}><Teachers /></RequirePermission>} />
             <Route path="classes" element={<RequirePermission permission={PERMISSIONS.CLASSES}><Classes /></RequirePermission>} />
             <Route path="courses" element={<RequirePermission permission={PERMISSIONS.COURSES}><Courses /></RequirePermission>} />
             <Route path="marks" element={<RequirePermission permission={PERMISSIONS.MARKS}><Marks /></RequirePermission>} />
+            <Route path="midterms" element={<RequirePermission permission={PERMISSIONS.MARKS}><Midterms /></RequirePermission>} />
             <Route path="bulletin-report" element={<RequirePermission permission={PERMISSIONS.MARKS} denyRoles={['TEACHER']}><BulletinReport /></RequirePermission>} />
             <Route path="attendance" element={<RequirePermission permission={PERMISSIONS.ATTENDANCE}><Attendance /></RequirePermission>} />
             <Route path="fees" element={<RequirePermission permission={PERMISSIONS.FEES}><Fees /></RequirePermission>} />
@@ -117,6 +122,7 @@ export default function App() {
             <Route path="e-library/:bookId" element={<RequirePermission permission={PERMISSIONS.E_LIBRARY}><ELibraryBook /></RequirePermission>} />
             <Route path="e-learning" element={<RequirePermission permission={PERMISSIONS.E_LEARNING}><ELearning /></RequirePermission>} />
             <Route path="e-learning/:courseId" element={<RequirePermission permission={PERMISSIONS.E_LEARNING}><ELearningCourse /></RequirePermission>} />
+            <Route path="ai-tutor" element={<RequirePermission permission={PERMISSIONS.AI_TUTOR}><StudentAiTutor /></RequirePermission>} />
             <Route path="timetable" element={<RequirePermission permission={PERMISSIONS.TIMETABLE}><Timetable /></RequirePermission>} />
             <Route path="homework" element={<RequirePermission permission={PERMISSIONS.HOMEWORK}><Homework /></RequirePermission>} />
             <Route path="homework/:homeworkId" element={<RequirePermission permission={PERMISSIONS.HOMEWORK}><HomeworkDetail /></RequirePermission>} />

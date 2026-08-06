@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Plus, Calendar, PlayCircle, Copy, RotateCcw } from 'lucide-react';
 import { api, setActiveAcademicYear } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
@@ -6,6 +6,7 @@ import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 export default function AcademicYears() {
   const { campus, academicYear, reloadAcademicYear } = useCampus();
@@ -117,6 +118,24 @@ export default function AcademicYears() {
       return next;
     });
   };
+
+  const getYearSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'name': return row.name || '';
+      case 'period': return row.startDate ? new Date(row.startDate) : null;
+      case 'status': return row.isActive ? 1 : 0;
+      case 'students': return row._count?.students || 0;
+      case 'teachers': return row._count?.teachers || 0;
+      case 'classes': return row._count?.classes || 0;
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    years,
+    getYearSortValue,
+    { initialKey: 'period', initialDir: 'desc' },
+  );
 
   return (
     <div>
@@ -272,17 +291,17 @@ export default function AcademicYears() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">Year</th>
-                  <th className="pb-3 font-medium">Period</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Students</th>
-                  <th className="pb-3 font-medium">Teachers</th>
-                  <th className="pb-3 font-medium">Classes</th>
+                  <SortableTh label="Year" columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Period" columnKey="period" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Students" columnKey="students" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Teachers" columnKey="teachers" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Classes" columnKey="classes" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   <th className="pb-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {years.map((y) => (
+                {sorted.map((y) => (
                   <tr key={y.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3 font-medium">{y.name}</td>
                     <td className="py-3 text-gray-500 text-sm">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Plus, Trash2, Eye, FileText, FileSpreadsheet, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, FileText, FileSpreadsheet, X, CreditCard, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,39 @@ const STATUS_I18N = {
   REJECTED: 'ui.rejected',
 };
 
+function studentFullName(s) {
+  return [s?.lastName, s?.postName, s?.firstName].filter(Boolean).join(' ');
+}
+
+function compareStudents(a, b, sortKey) {
+  if (sortKey === 'studentId') {
+    return String(a.studentId || '').localeCompare(String(b.studentId || ''), 'fr', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+  }
+  if (sortKey === 'name') {
+    return studentFullName(a).localeCompare(studentFullName(b), 'fr', { sensitivity: 'base' });
+  }
+  if (sortKey === 'class') {
+    const ca = a.class?.name || a.registrationClass || '';
+    const cb = b.class?.name || b.registrationClass || '';
+    return String(ca).localeCompare(String(cb), 'fr', { sensitivity: 'base' });
+  }
+  if (sortKey === 'status') {
+    return String(a.registrationStatus || '').localeCompare(String(b.registrationStatus || ''), 'fr');
+  }
+  if (sortKey === 'source') {
+    return Number(Boolean(a.parentSubmitted)) - Number(Boolean(b.parentSubmitted));
+  }
+  if (sortKey === 'parent') {
+    const pa = a.fatherName || a.parentName || '';
+    const pb = b.fatherName || b.parentName || '';
+    return String(pa).localeCompare(String(pb), 'fr', { sensitivity: 'base' });
+  }
+  return 0;
+}
+
 export default function Students() {
   const { campusId } = useCampus();
   const { user } = useAuth();
@@ -32,6 +65,8 @@ export default function Students() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteRequiresOtp, setDeleteRequiresOtp] = useState(true);
@@ -54,13 +89,22 @@ export default function Students() {
 
   useEffect(() => { loadStudents(); }, [filterClass, filterStatus]);
 
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(key);
+    setSortDir('asc');
+  };
+
   const displayed = useMemo(() => {
     const bySource = filterSource === 'PARENT'
       ? students.filter((s) => s.parentSubmitted)
       : filterSource === 'SCHOOL'
         ? students.filter((s) => !s.parentSubmitted)
         : students;
-    return bySource.filter((s) => matchesSearch(
+    const filtered = bySource.filter((s) => matchesSearch(
       search,
       s.studentId,
       s.lastName,
@@ -73,7 +117,31 @@ export default function Students() {
       s.fatherPhone,
       s.motherPhone,
     ));
-  }, [students, filterSource, search]);
+
+    return filtered.slice().sort((a, b) => {
+      const cmp = compareStudents(a, b, sortKey);
+      if (cmp !== 0) return sortDir === 'asc' ? cmp : -cmp;
+      return studentFullName(a).localeCompare(studentFullName(b), 'fr', { sensitivity: 'base' });
+    });
+  }, [students, filterSource, search, sortKey, sortDir]);
+
+  const SortHeader = ({ label, columnKey }) => {
+    const active = sortKey === columnKey;
+    const Icon = !active ? ArrowUpDown : (sortDir === 'asc' ? ArrowUp : ArrowDown);
+    return (
+      <th className="pb-3 font-medium">
+        <button
+          type="button"
+          className={`students-sort-btn ${active ? 'is-active' : ''}`}
+          onClick={() => toggleSort(columnKey)}
+          title={`Trier par ${label}`}
+        >
+          <span>{label}</span>
+          <Icon className="w-3.5 h-3.5 shrink-0" />
+        </button>
+      </th>
+    );
+  };
 
   const closeDeleteModal = () => {
     setDeleteTarget(null);
@@ -162,6 +230,10 @@ export default function Students() {
           : t('pages.students.description')}
         action={!isTeacher && (
           <div className="flex flex-wrap items-center gap-2">
+            <Link to={`/campus/${campusId}/id-cards`} className="btn-secondary flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              ID Cards
+            </Link>
             <button
               type="button"
               className="btn-secondary flex items-center gap-2"
@@ -232,12 +304,12 @@ export default function Students() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.studentId')}</th>
-                  <th className="pb-3 font-medium">{t('ui.name')}</th>
-                  <th className="pb-3 font-medium">{t('ui.class')}</th>
-                  {!isTeacher && <th className="pb-3 font-medium">{t('ui.status')}</th>}
-                  {!isTeacher && <th className="pb-3 font-medium">{t('ui.source')}</th>}
-                  <th className="pb-3 font-medium">{t('ui.parent')}</th>
+                  <SortHeader label={t('ui.studentId')} columnKey="studentId" />
+                  <SortHeader label={t('ui.name')} columnKey="name" />
+                  <SortHeader label={t('ui.class')} columnKey="class" />
+                  {!isTeacher && <SortHeader label={t('ui.status')} columnKey="status" />}
+                  {!isTeacher && <SortHeader label={t('ui.source')} columnKey="source" />}
+                  <SortHeader label={t('ui.parent')} columnKey="parent" />
                   <th className="pb-3 font-medium">{t('ui.actions')}</th>
                 </tr>
               </thead>
@@ -269,6 +341,15 @@ export default function Students() {
                         <Link to={`/campus/${campusId}/students/${s.id}`} className="p-1.5 text-gray-400 hover:text-brand-600" title={t('ui.view')}>
                           <Eye className="w-4 h-4" />
                         </Link>
+                        {!isTeacher && s.registrationStatus === 'APPROVED' && (
+                          <Link
+                            to={`/campus/${campusId}/id-cards?student=${s.id}`}
+                            className="p-1.5 text-gray-400 hover:text-brand-600"
+                            title="Student card"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                          </Link>
+                        )}
                         {!isTeacher && (
                           <button type="button" onClick={() => openDeleteModal(s)} className="p-1.5 text-gray-400 hover:text-red-400" title={t('ui.delete')}>
                             <Trash2 className="w-4 h-4" />

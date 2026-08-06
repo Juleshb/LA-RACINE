@@ -23,6 +23,7 @@ export const PERMISSIONS = {
   ONLINE_CLASSES: 'online_classes',
   REPORTS: 'reports',
   WEBSITE: 'website',
+  AI_TUTOR: 'ai_tutor',
 };
 
 export const ROLE_LABELS = {
@@ -157,6 +158,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.ONLINE_CLASSES,
     PERMISSIONS.E_LIBRARY,
     PERMISSIONS.E_LEARNING,
+    PERMISSIONS.AI_TUTOR,
   ],
 };
 

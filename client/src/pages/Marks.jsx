@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
-  Plus, Save, ChevronDown, ChevronUp, Info, FileText, Users, BookOpen, Calendar, Award,
-  CheckCircle2, Loader2, Cloud,
+  Plus, Save, ChevronDown, ChevronUp, Info, FileText, Users, BookOpen, Calendar,
+  CheckCircle2, Loader2, Cloud, Search, Settings2, ArrowRight, FileSpreadsheet, Download,
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -12,9 +12,11 @@ import { useTranslation } from '../context/LanguageContext';
 import BulletinSteps from '../components/bulletin/BulletinSteps';
 import SubjectTestManager from '../components/marks/SubjectTestManager';
 import NurseryCompetenceMarks from '../components/marks/NurseryCompetenceMarks';
+import MarksExcelImportModal from '../components/marks/MarksExcelImportModal';
+import { downloadMarksImportTemplate } from '../lib/marksExcelImport';
 import ScoreBadge from '../components/bulletin/ScoreBadge';
 import { formatGradingScale, groupCoursesByCategory } from '../lib/curriculum';
-import { isNurseryGrade } from '../lib/grades';
+import { isCrecheGrade, usesNurseryCompetence } from '../lib/grades';
 import {
   getMaxForAssessment,
   courseUsesBulletinScale,
@@ -22,6 +24,7 @@ import {
   parseAssessmentStepId,
   DEFAULT_TERMS,
 } from '../lib/bulletin';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const LEGACY_TERMS = ['Term 1', 'Term 2', 'Term 3'];
 const LEGACY_ASSESSMENTS = ['CAT', 'Mid-term', 'Final'];
@@ -51,6 +54,7 @@ export default function Marks() {
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [term, setTerm] = useState('Trimestre 1');
+  const [assessedOn, setAssessedOn] = useState(() => new Date().toISOString().slice(0, 10));
   const [assessment, setAssessment] = useState('TEST1');
   const [catNumber, setCatNumber] = useState(1);
   const [catOptions, setCatOptions] = useState([]);
@@ -63,6 +67,9 @@ export default function Marks() {
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [showTestsSetup, setShowTestsSetup] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
   const [subjectTests, setSubjectTests] = useState([]);
   const [testsMarkMax, setTestsMarkMax] = useState('');
   const [examMax, setExamMax] = useState('');
@@ -345,6 +352,7 @@ export default function Marks() {
           maxScore,
           notes: records[s.id]?.notes || null,
         })),
+        assessedOn,
       };
       const result = await api.saveMarks(payload);
       lastSavedRef.current = serializeRecords(records);
@@ -380,6 +388,7 @@ export default function Marks() {
     students,
     records,
     term,
+    assessedOn,
     assessment,
     activeAssessment.assessment,
     activeAssessment.catNumber,
@@ -483,8 +492,129 @@ export default function Marks() {
 
   const handleSave = () => performSave({ auto: false });
 
-  const filledCount = students.filter((s) => records[s.id]?.score !== '' && records[s.id]?.score != null).length;
+  const filledCount = students.filter((s) => {
+    const score = records[s.id]?.score;
+    return score !== '' && score != null && !Number.isNaN(Number(score));
+  }).length;
+  const progressPct = students.length ? Math.round((filledCount / students.length) * 100) : 0;
   const currentAssessmentLabel = bulletinAssessments.find((a) => a.key === assessment)?.label || assessment;
+
+  const handleDownloadMarksTemplate = () => {
+    if (!students.length) return;
+    downloadMarksImportTemplate({
+      className: selectedClass?.name,
+      subjectName: selectedCourse?.name,
+      term,
+      assessmentLabel: currentAssessmentLabel,
+      assessmentKey: assessment,
+      maxScore,
+      assessedOn,
+      students,
+      records,
+    });
+  };
+
+  const handleImportMarks = async (rows) => {
+    const next = { ...records };
+    for (const row of rows) {
+      next[row.studentId] = {
+        score: row.score,
+        maxScore: row.maxScore || maxScore,
+        notes: row.notes || next[row.studentId]?.notes || '',
+      };
+    }
+    setRecords(next);
+
+    // Save immediately with imported values (don't wait for state flush)
+    if (!subjectId) throw new Error('Select a subject first');
+    if (savingRef.current) throw new Error('Save already in progress — try again');
+    savingRef.current = true;
+    setSaving(true);
+    setMessage('');
+    try {
+      const payload = {
+        subjectId,
+        term,
+        assessment: activeAssessment.assessment,
+        catNumber: activeAssessment.assessment === 'CAT'
+          ? catNumber
+          : activeAssessment.assessment === 'TEST'
+            ? activeAssessment.catNumber
+            : 0,
+        records: students.map((s) => ({
+          studentId: s.id,
+          score: next[s.id]?.score,
+          maxScore,
+          notes: next[s.id]?.notes || null,
+        })),
+        assessedOn,
+      };
+      const result = await api.saveMarks(payload);
+      lastSavedRef.current = serializeRecords(next);
+      hydratedRef.current = true;
+      setAutoSaveStatus('saved');
+      await refreshSavedAssessments();
+      setMessage(`Imported and saved ${rows.length} mark(s) — ${result.label || currentAssessmentLabel}.`);
+    } catch (err) {
+      setAutoSaveStatus('error');
+      setMessage(err.message);
+      throw err;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const visibleStudents = useMemo(() => {
+    const q = studentSearch.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter((s) => {
+      const hay = `${s.firstName || ''} ${s.lastName || ''} ${s.studentId || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [students, studentSearch]);
+
+  const getMarksSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'studentId': return row.studentId || '';
+      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'score': {
+        const score = records[row.id]?.score;
+        if (score === '' || score == null || Number.isNaN(Number(score))) return null;
+        return Number(score);
+      }
+      case 'pct': {
+        const score = records[row.id]?.score;
+        if (score === '' || score == null || Number.isNaN(Number(score)) || !maxScore) return null;
+        return Number(score) / Number(maxScore);
+      }
+      default: return '';
+    }
+  }, [records, maxScore]);
+
+  const { sorted: sortedStudents, sortKey, sortDir, toggleSort } = useTableSort(
+    visibleStudents,
+    getMarksSortValue,
+    { initialKey: 'name' },
+  );
+
+  const focusScoreInput = (index) => {
+    const el = document.querySelector(`[data-mark-score="${index}"]`);
+    if (el) {
+      el.focus();
+      el.select?.();
+    }
+  };
+
+  const onScoreKeyDown = (e, index) => {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusScoreInput(index + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusScoreInput(index - 1);
+    }
+  };
 
   const autoSaveLabel = {
     idle: null,
@@ -500,15 +630,48 @@ export default function Marks() {
 
   const AutoSaveIcon = autoSaveIcon;
 
+  useEffect(() => {
+    if (isBulletinCourse && selectedCourse && !testsLoading && testsDraft.length === 0) {
+      setShowTestsSetup(true);
+    }
+  }, [isBulletinCourse, selectedCourse, testsLoading, testsDraft.length]);
+
   if (user?.role === 'PARENT') {
     return <Navigate to={`/campus/${campusId}/bulletin-report`} replace />;
   }
 
-  if (isNurseryGrade(selectedClass?.grade)) {
+  if (isCrecheGrade(selectedClass?.grade)) {
+    return (
+      <div>
+        <PageHeader
+          title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
+          description="Crèche — pas de notes ni de bulletin"
+        />
+        <div className="card empty-state py-16 text-center">
+          <p className="text-gray-800 font-semibold text-lg">Crèche</p>
+          <p className="text-gray-500 mt-2 max-w-md mx-auto">
+            Aucune note ni bulletin n&apos;est requis pour la Crèche.
+            Choisissez une autre classe (maternelle M1–TOP ou primaire) pour saisir des notes.
+          </p>
+          <div className="mt-6 max-w-sm mx-auto text-left">
+            <label className="label">{t('ui.class')}</label>
+            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Select class</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.grade})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (usesNurseryCompetence(selectedClass?.grade)) {
     return (
       <NurseryCompetenceMarks
         campusId={campusId}
-        classes={classes}
+        classes={classes.filter((c) => usesNurseryCompetence(c.grade))}
         classId={classId}
         onClassChange={setClassId}
         t={t}
@@ -518,7 +681,7 @@ export default function Marks() {
   }
 
   return (
-    <div>
+    <div className="pm-page">
       <PageHeader
         title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
         description={isTeacher
@@ -526,18 +689,38 @@ export default function Marks() {
           : t('pages.marks.description')}
         action={(
           <div className="flex gap-2 flex-wrap items-center">
-            {autoSaveLabel && students.length > 0 && (
-              <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
-                <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                {autoSaveLabel}
-              </span>
-            )}
             {!isTeacher && (
-              <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                {t('pages.bulletin.title')}
-              </Link>
+              <>
+                <Link to={`/campus/${campusId}/midterms`} className="btn-secondary flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Périodes
+                </Link>
+                <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  {t('pages.bulletin.title')}
+                </Link>
+              </>
             )}
+            <button
+              type="button"
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+              disabled={students.length === 0}
+              onClick={handleDownloadMarksTemplate}
+              title={t('pages.marks.downloadTemplate')}
+            >
+              <Download className="w-4 h-4" />
+              {t('pages.marks.template')}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+              disabled={students.length === 0}
+              onClick={() => setImportOpen(true)}
+              title={t('pages.marks.importExcel')}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              {t('pages.marks.import')}
+            </button>
             <button
               onClick={handleSave}
               disabled={saving || !subjectId || students.length === 0 || !hasSavableMarks(records)}
@@ -551,31 +734,29 @@ export default function Marks() {
         )}
       />
 
-      {classBulletinConfig && (
-        <div className="bulletin-context-bar">
-          <span className="bulletin-context-chip">
-            <BookOpen className="w-4 h-4" />
-            {selectedClass?.name || 'Class'}
-          </span>
-          <span className="bulletin-context-chip">
-            <Award className="w-4 h-4" />
-            {classBulletinConfig.label}
-          </span>
-          <span className="text-sm text-gray-400 hidden sm:inline">→</span>
-          {classBulletinConfig.assessments.map((a) => (
-            <span key={a.key} className="layout-flow-chip layout-flow-chip-lg">{a.label || a.key}</span>
-          ))}
+      {/* Step 1 — Context */}
+      <section className="pm-setup card">
+        <div className="pm-setup-head">
+          <div>
+            <p className="pm-kicker">{t('pages.marks.stepSetup')}</p>
+            <h2 className="pm-setup-title">{t('pages.marks.selectWhatToRecord')}</h2>
+          </div>
+          {classBulletinConfig && (
+            <span className="pm-layout-chip">{classBulletinConfig.label}</span>
+          )}
         </div>
-      )}
 
-      <div className="filter-panel">
-        <p className="filter-panel-title">{t('pages.marks.selectWhatToRecord')}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="pm-setup-grid">
           <div>
             <label className="label flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-gray-400" /> {t('ui.class')}
             </label>
-            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)} disabled={classes.length === 0}>
+            <select
+              className="input"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              disabled={classes.length === 0}
+            >
               {classes.length === 0 ? (
                 <option value="">{t('pages.marks.noClasses')}</option>
               ) : (
@@ -585,11 +766,17 @@ export default function Marks() {
               )}
             </select>
           </div>
-          <div className="lg:col-span-2">
+
+          <div className="pm-setup-subject">
             <label className="label flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-gray-400" /> {t('pages.marks.subSubject')}
             </label>
-            <select className="input" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} disabled={coursesLoading || courses.length === 0}>
+            <select
+              className="input"
+              value={subjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
+              disabled={coursesLoading || courses.length === 0}
+            >
               {coursesLoading ? (
                 <option value="">{t('pages.marks.loadingCourses')}</option>
               ) : courses.length === 0 ? (
@@ -616,14 +803,36 @@ export default function Marks() {
               })}</p>
             )}
           </div>
+
           <div>
             <label className="label flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('pages.marks.trimestre')}
             </label>
-            <select className="input" value={term} onChange={(e) => setTerm(e.target.value)}>
-              {terms.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <div className="pm-term-segment" role="group" aria-label={t('pages.marks.trimestre')}>
+              {terms.map((termOption) => (
+                <button
+                  key={termOption}
+                  type="button"
+                  className={`pm-term-btn ${term === termOption ? 'is-active' : ''}`}
+                  onClick={() => setTerm(termOption)}
+                >
+                  {termOption.replace('Trimestre ', 'T')}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div>
+            <label className="label">{t('pages.marks.assessmentDate')}</label>
+            <input
+              type="date"
+              className="input"
+              value={assessedOn}
+              onChange={(e) => setAssessedOn(e.target.value)}
+            />
+            <p className="field-hint">{t('pages.marks.assessmentDateHint')}</p>
+          </div>
+
           {!isBulletinCourse && (
             <>
               <div>
@@ -668,50 +877,89 @@ export default function Marks() {
             </>
           )}
         </div>
-      </div>
+      </section>
 
+      {/* Tests setup — collapsible */}
       {isBulletinCourse && selectedCourse && (
-        <SubjectTestManager
-          tests={testsDraft}
-          testsMarkMax={testsMarkMax}
-          examMax={examMax}
-          totalMax={totalMax}
-          onChange={(nextTests, nextTestsMarkMax, nextExamMax) => {
-            setTestsDraft(nextTests);
-            setTestsMarkMax(nextTestsMarkMax);
-            setExamMax(nextExamMax);
-          }}
-          onSave={handleSaveTests}
-          saving={testsSaving}
-          canEdit
-        />
+        <section className="pm-tests-wrap card">
+          <button
+            type="button"
+            className="pm-tests-toggle"
+            onClick={() => setShowTestsSetup((v) => !v)}
+            aria-expanded={showTestsSetup}
+          >
+            <span className="pm-tests-toggle-left">
+              <Settings2 className="w-4 h-4" />
+              <span>
+                <strong>{t('pages.marks.testsSetup')}</strong>
+                <span className="pm-tests-toggle-meta">
+                  {testsDraft.length} test{testsDraft.length !== 1 ? 's' : ''}
+                  {testsMarkMax !== '' ? ` · TEST/${testsMarkMax}` : ''}
+                  {examMax !== '' ? ` · EX/${examMax}` : ''}
+                </span>
+              </span>
+            </span>
+            {showTestsSetup ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showTestsSetup && (
+            <div className="pm-tests-body">
+              <SubjectTestManager
+                tests={testsDraft}
+                testsMarkMax={testsMarkMax}
+                examMax={examMax}
+                totalMax={totalMax}
+                onChange={(nextTests, nextTestsMarkMax, nextExamMax) => {
+                  setTestsDraft(nextTests);
+                  setTestsMarkMax(nextTestsMarkMax);
+                  setExamMax(nextExamMax);
+                }}
+                onSave={handleSaveTests}
+                saving={testsSaving}
+                canEdit
+                embedded
+              />
+            </div>
+          )}
+        </section>
       )}
 
+      {/* Step 2 — Assessment + entry */}
       {isBulletinCourse && selectedCourse && !testsLoading && (
-        <div className="marks-context-card">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <section className="pm-session card">
+          <div className="pm-session-head">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600 mb-1">{t('pages.marks.nowRecording')}</p>
-              <h2 className="text-lg font-bold text-gray-900">
+              <p className="pm-kicker">{t('pages.marks.stepRecord')}</p>
+              <h2 className="pm-session-title">
                 {currentAssessmentLabel}
-                <span className="text-gray-400 font-normal"> · </span>
-                {selectedCourse.name}
+                <ArrowRight className="pm-session-arrow" aria-hidden />
+                <span className="pm-session-subject">{selectedCourse.name}</span>
               </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {selectedCourse.category} · {formatGradingScale(selectedCourse)} · {term}
+              <p className="pm-session-meta">
+                {selectedClass?.name} · {formatGradingScale(selectedCourse)} · {term}
               </p>
             </div>
-            <div className="flex gap-2 flex-wrap items-center">
-              <span className="layout-flow-chip layout-flow-chip-lg">{t('pages.marks.maxPts', { max: maxScore })}</span>
-              <span className="layout-flow-chip layout-flow-chip-lg">{t('pages.marks.enteredCount', { filled: filledCount, total: students.length })}</span>
-              {autoSaveLabel && (
-                <span className={`autosave-status autosave-status-${autoSaveStatus} text-xs`}>
-                  <AutoSaveIcon className={`w-3 h-3 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                  {autoSaveLabel}
-                </span>
-              )}
+            <div className="pm-session-stats">
+              <div className="pm-stat">
+                <span className="pm-stat-value">{maxScore}</span>
+                <span className="pm-stat-label">{t('pages.marks.maxScore')}</span>
+              </div>
+              <div className="pm-stat">
+                <span className="pm-stat-value">{filledCount}/{students.length}</span>
+                <span className="pm-stat-label">{t('pages.marks.enteredShort')}</span>
+              </div>
             </div>
           </div>
+
+          <div className="pm-progress">
+            <div className="pm-progress-meta">
+              <span>{t('pages.marks.classProgress')}</span>
+              <strong>{progressPct}%</strong>
+            </div>
+            <div className="pm-progress-track">
+              <div className="pm-progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+          </div>
+
           <BulletinSteps
             assessments={bulletinAssessments}
             savedAssessments={savedAssessments}
@@ -719,47 +967,46 @@ export default function Marks() {
             onSelect={setAssessment}
             course={courseWithTests}
           />
-        </div>
+        </section>
       )}
 
       {selectedCourse && !isBulletinCourse && (
-        <div className="bulletin-context-bar mb-6">
+        <div className="pm-legacy-bar">
           <span className="text-sm text-gray-500">{t('pages.marks.recording')}</span>
-          <span className="bulletin-context-chip">{term}</span>
-          <span className="bulletin-context-chip">{assessment === 'CAT' ? `CAT ${catNumber}` : assessment}</span>
-          <span className="bulletin-context-chip">Max {maxScore}</span>
+          <span className="pm-layout-chip">{term}</span>
+          <span className="pm-layout-chip">{assessment === 'CAT' ? `CAT ${catNumber}` : assessment}</span>
+          <span className="pm-layout-chip">Max {maxScore}</span>
         </div>
       )}
 
-      <div className="card mb-6 border-brand-100">
+      <div className="pm-help card">
         <button
           type="button"
+          className="pm-help-summary"
           onClick={() => setShowGuide((v) => !v)}
-          className="w-full flex items-center justify-between text-left"
+          aria-expanded={showGuide}
         >
-          <div className="flex items-center gap-2 text-brand-700 font-semibold text-sm">
+          <span className="flex items-center gap-2">
             <Info className="w-4 h-4" />
             {t('pages.marks.howToRecord')}
-          </div>
+          </span>
           {showGuide ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </button>
         {showGuide && (
-          <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600 space-y-3">
+          <div className="pm-help-body">
             <p>{t('pages.marks.autoSaveHint')}</p>
-            {isBulletinCourse && (
-              <p>{t('pages.marks.bulletinRecordHint')}</p>
-            )}
+            {isBulletinCourse && <p>{t('pages.marks.bulletinRecordHint')}</p>}
+            <p>{t('pages.marks.keyboardHint')}</p>
+            <p>{t('pages.marks.excelHint')}</p>
             {isTeacher && (
-              <p className="text-amber-700 bg-amber-50 rounded-lg px-3 py-2 text-xs">
-                {t('pages.marks.teachersOnlyHint')}
-              </p>
+              <p className="pm-help-teacher">{t('pages.marks.teachersOnlyHint')}</p>
             )}
           </div>
         )}
       </div>
 
       {message && (
-        <div className={`mb-6 p-4 rounded-xl text-sm border ${message.toLowerCase().includes('saved') || message.includes('Next:') ? 'bg-brand-50 text-brand-700 border-brand-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+        <div className={`pm-message ${message.toLowerCase().includes('saved') || message.includes('Next:') || message.includes('setup') ? 'is-ok' : 'is-error'}`}>
           {message}
         </div>
       )}
@@ -772,57 +1019,102 @@ export default function Marks() {
         </div>
       )}
 
-      <div className="card p-0 overflow-hidden">
+      {/* Score grid */}
+      <section className="pm-grid card">
+        <div className="pm-grid-toolbar">
+          <div className="pm-grid-title-wrap">
+            <h3 className="pm-grid-title">
+              {students.length === 0
+                ? t('pages.marks.selectClassAndSubject')
+                : t('pages.marks.enterScores', { assessment: currentAssessmentLabel, max: maxScore })}
+            </h3>
+            {students.length > 0 && (
+              <p className="pm-grid-hint">{t('pages.marks.enterScoresHint')}</p>
+            )}
+          </div>
+          {students.length > 0 && (
+            <div className="pm-search">
+              <Search className="w-4 h-4" aria-hidden />
+              <input
+                type="search"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder={t('ui.searchStudent')}
+                aria-label={t('ui.searchStudent')}
+              />
+            </div>
+          )}
+          {autoSaveLabel && students.length > 0 && (
+            <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
+              <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
+              {autoSaveLabel}
+            </span>
+          )}
+        </div>
+
         {students.length === 0 ? (
-          <div className="empty-state py-16">
-            <div className="empty-state-icon"><Users className="w-6 h-6" /></div>
-            <p className="text-gray-600 font-medium">
-              {!subjectId ? t('pages.marks.selectClassAndSubject') : t('pages.marks.noStudentsInClass')}
-            </p>
+          <div className="pm-empty">
+            <Users className="w-8 h-8 text-gray-300" />
+            <p>{!subjectId ? t('pages.marks.selectClassAndSubject') : t('pages.marks.noStudentsInClass')}</p>
+          </div>
+        ) : visibleStudents.length === 0 ? (
+          <div className="pm-empty">
+            <Search className="w-8 h-8 text-gray-300" />
+            <p>{t('ui.noSearchResults')}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table-report">
+          <div className="pm-grid-scroll">
+            <table className="pm-table">
               <thead>
                 <tr>
-                  <th>{t('pages.marks.studentId')}</th>
-                  <th>{t('ui.name')}</th>
-                  <th className="text-center">{currentAssessmentLabel} / {maxScore}</th>
-                  <th className="text-center">%</th>
-                  <th>{t('ui.notes')}</th>
+                  <th className="pm-col-idx">#</th>
+                  <SortableTh label={t('pages.marks.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-id" />
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-name" />
+                  <SortableTh label={`${currentAssessmentLabel} / ${maxScore}`} columnKey="score" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-score text-center" align="center" />
+                  <SortableTh label="%" columnKey="pct" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-pct text-center" align="center" />
+                  <th className="pm-col-notes">{t('ui.notes')}</th>
                 </tr>
               </thead>
               <tbody>
-                {students.map((s, idx) => {
+                {sortedStudents.map((s, idx) => {
                   const score = records[s.id]?.score;
-                  const pct = score !== '' && score !== undefined && !Number.isNaN(Number(score))
-                    ? Math.round((Number(score) / maxScore) * 100)
-                    : null;
+                  const hasScore = score !== '' && score !== undefined && score != null && !Number.isNaN(Number(score));
+                  const pct = hasScore ? Math.round((Number(score) / maxScore) * 100) : null;
+                  const overMax = hasScore && Number(score) > Number(maxScore);
                   return (
-                    <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
-                      <td className="text-gray-500 font-mono text-xs">{s.studentId}</td>
-                      <td className="font-medium text-gray-900">{s.firstName} {s.lastName}</td>
-                      <td className="text-center">
+                    <tr
+                      key={s.id}
+                      className={`${hasScore ? 'is-filled' : 'is-empty'} ${overMax ? 'is-over' : ''}`}
+                    >
+                      <td className="pm-col-idx text-gray-400 tabular-nums">{idx + 1}</td>
+                      <td className="pm-col-id font-mono text-xs text-gray-500">{s.studentId}</td>
+                      <td className="pm-col-name font-medium text-gray-900">
+                        {s.firstName} {s.lastName}
+                      </td>
+                      <td className="pm-col-score text-center">
                         <input
-                          className="marks-table-input mx-auto"
+                          className={`pm-score-input ${hasScore ? 'has-value' : ''} ${overMax ? 'is-invalid' : ''}`}
                           type="number"
                           min="0"
                           max={maxScore}
                           step="0.5"
+                          data-mark-score={idx}
                           value={records[s.id]?.score ?? ''}
                           onChange={(e) => setScore(s.id, e.target.value)}
+                          onKeyDown={(e) => onScoreKeyDown(e, idx)}
                           placeholder="—"
+                          aria-label={`${s.firstName} ${s.lastName} score`}
                         />
                       </td>
-                      <td className="text-center">
+                      <td className="pm-col-pct text-center">
                         <ScoreBadge percent={pct} />
                       </td>
-                      <td>
+                      <td className="pm-col-notes">
                         <input
-                          className="input input-sm"
+                          className="pm-notes-input"
                           value={records[s.id]?.notes ?? ''}
                           onChange={(e) => setNotes(s.id, e.target.value)}
-                          placeholder="Optional note"
+                          placeholder={t('pages.marks.optionalNote')}
                         />
                       </td>
                     </tr>
@@ -832,7 +1124,55 @@ export default function Marks() {
             </table>
           </div>
         )}
-      </div>
+      </section>
+
+      {students.length > 0 && (
+        <div className="pm-dock">
+          <div className="pm-dock-progress">
+            <div className="pm-progress-track">
+              <div className="pm-progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="pm-dock-count">
+              {t('pages.marks.enteredCount', { filled: filledCount, total: students.length })}
+            </span>
+          </div>
+          <div className="pm-dock-actions">
+            {autoSaveLabel && (
+              <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
+                <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
+                {autoSaveLabel}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !hasSavableMarks(records)}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? t('ui.saving') : t('ui.save')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <MarksExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApply={handleImportMarks}
+        context={{
+          className: selectedClass?.name,
+          subjectName: selectedCourse?.name,
+          subjectId,
+          term,
+          assessmentLabel: currentAssessmentLabel,
+          assessmentKey: assessment,
+          maxScore,
+          assessedOn,
+          students,
+          records,
+        }}
+      />
     </div>
   );
 }

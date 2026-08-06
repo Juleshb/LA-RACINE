@@ -13,6 +13,7 @@ const TILE_COLORS = {
   Library: 'student-tile-indigo',
   GraduationCap: 'student-tile-violet',
   Video: 'student-tile-cyan',
+  Bot: 'student-tile-teal',
 };
 
 const TILE_ICONS = {
@@ -21,6 +22,7 @@ const TILE_ICONS = {
   Library: 'library',
   GraduationCap: 'learning',
   Video: 'video',
+  Bot: 'ai',
 };
 
 export default function StudentDashboard({ campusId, data, userName }) {
@@ -85,7 +87,13 @@ export default function StudentDashboard({ campusId, data, userName }) {
   });
 
   return (
-    <div className="student-dashboard">
+    <div className="student-dashboard dash-page">
+      <div className="dash-mesh" aria-hidden>
+        <span className="dash-mesh-glow dash-mesh-a" />
+        <span className="dash-mesh-glow dash-mesh-b" />
+        <span className="dash-mesh-grid" />
+      </div>
+
       <section className="student-hero">
         <div className="student-hero-content">
           <p className="student-hero-wave inline-flex items-center gap-2">

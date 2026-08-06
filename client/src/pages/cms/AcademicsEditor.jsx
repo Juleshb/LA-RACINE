@@ -153,6 +153,7 @@ export default function AcademicsEditor({ data, onChange }) {
           <Field label="Title"><TextInput value={d.title} onChange={(v) => set({ title: v })} /></Field>
         </div>
         <Field label="Lead"><TextInput long value={d.lead} onChange={(v) => set({ lead: v })} /></Field>
+        <ImageField label="Hello section photo" value={d.heroImageUrl} onChange={(v) => set({ heroImageUrl: v })} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="Placement CTA"><TextInput value={d.ctaPlacement} onChange={(v) => set({ ctaPlacement: v })} /></Field>
           <Field label="Portal CTA"><TextInput value={d.ctaPortal} onChange={(v) => set({ ctaPortal: v })} /></Field>

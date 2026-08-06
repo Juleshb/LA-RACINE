@@ -1,6 +1,7 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import AppIcon from '../../components/icons/AppIcon';
 import { SchoolMapBlock, DEFAULT_MAP_URL } from './SchoolMapBlock';
+import PageHero from '../../components/public/PageHero';
 
 export default function PublicCampuses() {
   const { campuses = [], page } = useOutletContext();
@@ -9,13 +10,7 @@ export default function PublicCampuses() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero label={c.label} title={c.title} lead={c.lead} imageUrl={c.heroImageUrl} />
 
       <section className="ps-section">
         <div className="ps-campus-grid">

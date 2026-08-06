@@ -1,4 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
+import PageHero from '../../components/public/PageHero';
 
 export default function PublicAbout() {
   const { school, motto, page } = useOutletContext();
@@ -6,13 +7,7 @@ export default function PublicAbout() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero label={c.label} title={c.title} lead={c.lead} imageUrl={c.heroImageUrl} />
 
       <section className="ps-section">
         <div className="ps-split">

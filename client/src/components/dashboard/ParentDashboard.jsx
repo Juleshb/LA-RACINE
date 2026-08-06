@@ -1,59 +1,64 @@
 import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Wallet, ClipboardCheck, Clock, FileText,
-  Bus, Sparkles, ChevronRight, AlertCircle, GraduationCap,
+  Bus, Sparkles, AlertCircle, GraduationCap, CalendarDays,
 } from 'lucide-react';
-import PageHeader from '../PageHeader';
 import ModernStatCard from './ModernStatCard';
+import DashboardShell from './DashboardShell';
+import DashboardPanel from './DashboardPanel';
+import DashQuickLink from './DashQuickLink';
 import { formatCurrency } from '../../hooks/useDashboardData';
 import { useTranslation } from '../../context/LanguageContext';
 
-function QuickLink({ to, icon: Icon, label, badge }) {
-  return (
-    <Link to={to} className="parent-quick-link">
-      <div className="parent-quick-link-icon">
-        <Icon className="w-5 h-5" />
-      </div>
-      <span className="flex-1 font-medium text-sm">{label}</span>
-      {badge > 0 && (
-        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-          {badge > 9 ? '9+' : badge}
-        </span>
-      )}
-      <ChevronRight className="w-4 h-4 text-gray-300" />
-    </Link>
-  );
-}
-
 export default function ParentDashboard({ campusId, data, userName }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const base = `/campus/${campusId}`;
-  const { children, unreadCount, recentMessages, pendingFees, upcomingHomework, homeworkGrades, eLearningGrades, transport, pendingRegistrations, childrenWithoutLogin } = data;
+  const {
+    children, unreadCount, recentMessages, pendingFees, upcomingHomework,
+    homeworkGrades, eLearningGrades, transport, pendingRegistrations, childrenWithoutLogin,
+  } = data;
 
   const presentToday = children.filter((c) => c.todayStatus === 'PRESENT').length;
   const feeTotal = pendingFees.reduce((sum, f) => sum + (f.amount || 0), 0);
+  const todayLabel = new Date().toLocaleDateString(
+    language === 'en' ? undefined : language,
+    { weekday: 'long', month: 'long', day: 'numeric' },
+  );
 
   const statusLabels = {
-    PRESENT: { label: t('staffDash.attendance.present'), className: 'bg-green-100 text-green-800' },
-    ABSENT: { label: t('staffDash.attendance.absent'), className: 'bg-red-100 text-red-800' },
-    LATE: { label: t('staffDash.attendance.late'), className: 'bg-amber-100 text-amber-800' },
-    EXCUSED: { label: t('staffDash.attendance.excused'), className: 'bg-blue-100 text-blue-800' },
+    PRESENT: { label: t('staffDash.attendance.present'), className: 'is-present' },
+    ABSENT: { label: t('staffDash.attendance.absent'), className: 'is-absent' },
+    LATE: { label: t('staffDash.attendance.late'), className: 'is-late' },
+    EXCUSED: { label: t('staffDash.attendance.excused'), className: 'is-excused' },
   };
-  const notRecordedStatus = { label: t('staffDash.attendance.notRecorded'), className: 'bg-gray-100 text-gray-600' };
+  const notRecordedStatus = { label: t('staffDash.attendance.notRecorded'), className: 'is-none' };
 
   return (
-    <div className="parent-dashboard">
-      <PageHeader
-        title={t('staffDash.welcome', { name: userName })}
-        description={t('staffDash.parent.description')}
-      />
-
+    <DashboardShell
+      kicker={t('pages.dashboard.kickerParent')}
+      title={t('staffDash.welcome', { name: userName })}
+      description={t('staffDash.parent.description')}
+      actions={(
+        <span className="dash-date-chip">
+          <CalendarDays className="w-3.5 h-3.5" aria-hidden />
+          {todayLabel}
+        </span>
+      )}
+      heroAside={(
+        <div className="dash-pulse is-family">
+          <div className="dash-pulse-core">
+            <p className="dash-pulse-value">{presentToday}/{children.length || 0}</p>
+            <p className="dash-pulse-label">{t('pages.dashboard.presentToday')}</p>
+          </div>
+        </div>
+      )}
+    >
       {children.length === 0 && !pendingRegistrations?.length && (
-        <div className="card mb-6 flex items-start gap-3 border-amber-200 bg-amber-50/80">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="dash-alert is-warn">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
-            <p className="font-semibold text-amber-900 text-sm">{t('staffDash.parent.noChildrenTitle')}</p>
-            <p className="text-sm text-amber-800 mt-1">
+            <p className="dash-alert-title">{t('staffDash.parent.noChildrenTitle')}</p>
+            <p className="dash-alert-body">
               {t('staffDash.parent.noChildrenBeforeLink')}{' '}
               <Link to={`${base}/register-child`} className="font-semibold underline">{t('pages.registerChild.title')}</Link>{' '}
               {t('staffDash.parent.noChildrenAfterLink')}
@@ -63,11 +68,11 @@ export default function ParentDashboard({ campusId, data, userName }) {
       )}
 
       {childrenWithoutLogin > 0 && (
-        <div className="card mb-6 flex items-start gap-3 border-sky-200 bg-sky-50/80">
-          <AlertCircle className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+        <div className="dash-alert is-info">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
-            <p className="font-semibold text-sky-900 text-sm">{t('staffDash.parent.portalTitle')}</p>
-            <p className="text-sm text-sky-800 mt-1">
+            <p className="dash-alert-title">{t('staffDash.parent.portalTitle')}</p>
+            <p className="dash-alert-body">
               {childrenWithoutLogin > 1
                 ? t('staffDash.parent.portalManyChildren', { count: childrenWithoutLogin })
                 : t('staffDash.parent.portalOneChild', { count: childrenWithoutLogin })}
@@ -80,35 +85,32 @@ export default function ParentDashboard({ campusId, data, userName }) {
       )}
 
       {pendingRegistrations?.length > 0 && (
-        <div className="card mb-6 border-amber-200 bg-amber-50/50">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <h3 className="font-semibold text-amber-900">{t('staffDash.parent.applicationsTitle')}</h3>
-              <p className="text-sm text-amber-800 mt-0.5">{t('staffDash.parent.applicationsPending', { count: pendingRegistrations.length })}</p>
-            </div>
-            <Link to={`${base}/my-registrations`} className="text-sm link">{t('staffDash.viewAll')}</Link>
-          </div>
-          <div className="space-y-2">
+        <DashboardPanel
+          className="dash-applications"
+          title={t('staffDash.parent.applicationsTitle')}
+          description={t('staffDash.parent.applicationsPending', { count: pendingRegistrations.length })}
+          action={<Link to={`${base}/my-registrations`} className="dash-link">{t('staffDash.viewAll')}</Link>}
+        >
+          <div className="dash-app-list">
             {pendingRegistrations.map((r) => (
               <Link
                 key={r.id}
                 to={`${base}/my-registrations/${r.id}`}
-                className="block p-3 rounded-lg bg-white border border-amber-100 hover:border-amber-200 transition-colors"
+                className="dash-app-item"
               >
-                <p className="font-medium text-sm text-gray-900">
-                  {r.firstName} {r.lastName}
-                </p>
-                <p className="text-xs text-gray-500">
+                <p className="dash-list-title">{r.firstName} {r.lastName}</p>
+                <p className="dash-list-meta">
                   {r.registrationClass || t('staffDash.parent.classTbd')} · {t('staffDash.parent.submitted', { date: new Date(r.createdAt).toLocaleDateString() })}
                 </p>
               </Link>
             ))}
           </div>
-        </div>
+        </DashboardPanel>
       )}
 
-      <div className="dashboard-kpi-grid">
+      <div className="dash-metric-strip">
         <ModernStatCard
+          index={0}
           icon={Users}
           label={t('staffDash.parent.myChildren')}
           value={children.length}
@@ -116,6 +118,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
           accent="green"
         />
         <ModernStatCard
+          index={1}
           icon={ClipboardCheck}
           label={t('staffDash.parent.presentToday')}
           value={presentToday}
@@ -123,13 +126,15 @@ export default function ParentDashboard({ campusId, data, userName }) {
           accent="blue"
         />
         <ModernStatCard
+          index={2}
           icon={MessageSquare}
           label={t('staffDash.parent.unreadMessages')}
           value={unreadCount}
           sub={t('staffDash.parent.announcementsReplies')}
-          accent="purple"
+          accent="teal"
         />
         <ModernStatCard
+          index={3}
           icon={Wallet}
           label={t('staffDash.parent.feesDue')}
           value={formatCurrency(feeTotal)}
@@ -138,125 +143,115 @@ export default function ParentDashboard({ campusId, data, userName }) {
         />
       </div>
 
-      <div className="parent-dashboard-grid">
-        <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">{t('staffDash.parent.myChildren')}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.todaysAttendance')}</p>
-            </div>
-            <Link to={`${base}/attendance`} className="text-xs link">{t('staffDash.parent.viewAttendance')}</Link>
-          </div>
+      <div className="dash-role-grid">
+        <DashboardPanel
+          title={t('staffDash.parent.myChildren')}
+          description={t('staffDash.parent.todaysAttendance')}
+          action={<Link to={`${base}/attendance`} className="dash-link">{t('staffDash.parent.viewAttendance')}</Link>}
+          flush
+        >
           {children.length === 0 ? (
-            <p className="p-6 text-sm text-gray-500 text-center">{t('staffDash.parent.noChildrenOnAccount')}</p>
+            <p className="dash-empty">{t('staffDash.parent.noChildrenOnAccount')}</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="dash-list">
               {children.map((child) => {
                 const status = statusLabels[child.todayStatus] || notRecordedStatus;
                 return (
-                  <div key={child.id} className="p-4 flex items-center gap-3">
-                    <div className="dashboard-list-avatar">
+                  <div key={child.id} className="dash-list-row">
+                    <div className="dash-list-avatar">
                       {(child.firstName?.[0] || '') + (child.lastName?.[0] || '?')}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-gray-900 truncate">
-                        {child.firstName} {child.lastName}
-                      </p>
-                      <p className="text-xs text-gray-500">{child.studentId} · {child.class?.name || t('ui.unassigned')}</p>
+                    <div className="dash-list-main">
+                      <p className="dash-list-title">{child.firstName} {child.lastName}</p>
+                      <p className="dash-list-meta">{child.studentId} · {child.class?.name || t('ui.unassigned')}</p>
                     </div>
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-semibold ${status.className}`}>
-                      {status.label}
-                    </span>
+                    <span className={`dash-status-chip ${status.className}`}>{status.label}</span>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
+        </DashboardPanel>
 
-        <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">{t('staffDash.parent.schoolMessages')}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.announcementsConversations')}</p>
-            </div>
-            <Link to={`${base}/communication`} className="text-xs link">{t('staffDash.parent.openInbox')}</Link>
-          </div>
+        <DashboardPanel
+          title={t('staffDash.parent.schoolMessages')}
+          description={t('staffDash.parent.announcementsConversations')}
+          action={<Link to={`${base}/communication`} className="dash-link">{t('staffDash.parent.openInbox')}</Link>}
+          flush
+        >
           {recentMessages.length === 0 ? (
-            <p className="p-6 text-sm text-gray-500 text-center">{t('staffDash.parent.noMessagesYet')}</p>
+            <p className="dash-empty">{t('staffDash.parent.noMessagesYet')}</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="dash-list">
               {recentMessages.map((item) => (
                 <Link
                   key={`${item.type}-${item.id}`}
                   to={`${base}/communication`}
-                  className={`block p-4 hover:bg-gray-50 transition-colors ${!item.isRead ? 'bg-brand-50/30' : ''}`}
+                  className={`dash-list-row is-link ${!item.isRead ? 'is-unread' : ''}`}
                 >
-                  <p className="font-medium text-sm text-gray-900 truncate">{item.title}</p>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{item.body}</p>
+                  <div className="dash-list-main">
+                    <p className="dash-list-title">{item.title}</p>
+                    <p className="dash-list-meta">{item.body}</p>
+                  </div>
                 </Link>
               ))}
             </div>
           )}
-        </div>
+        </DashboardPanel>
 
-        <div className="card p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">{t('staffDash.parent.quickAccess')}</h3>
-          <div className="space-y-1">
-            <QuickLink to={`${base}/register-child`} icon={FileText} label={t('pages.registerChild.title')} />
-            <QuickLink to={`${base}/my-registrations`} icon={ClipboardCheck} label={t('pages.myRegistrations.title')} badge={pendingRegistrations?.length || 0} />
-            <QuickLink to={`${base}/communication`} icon={MessageSquare} label={t('pages.communication.titleMessages')} badge={unreadCount} />
-            <QuickLink to={`${base}/marks`} icon={FileText} label={t('staffDash.parent.marksBulletin')} />
-            <QuickLink to={`${base}/fees`} icon={Wallet} label={t('staffDash.parent.feesPayments')} badge={pendingFees.length} />
-            <QuickLink to={`${base}/timetable`} icon={Clock} label={t('pages.timetable.titleParent')} />
-            <QuickLink to={`${base}/homework`} icon={FileText} label={t('pages.homework.title')} badge={upcomingHomework.length} />
-            <QuickLink to={`${base}/e-learning`} icon={GraduationCap} label={t('pages.elearning.title')} />
-            <QuickLink to={`${base}/extracurricular`} icon={Sparkles} label={t('pages.activities.titleShort')} />
-            {transport && <QuickLink to={`${base}/transport`} icon={Bus} label={t('staffDash.parent.schoolTransport')} />}
+        <DashboardPanel title={t('staffDash.parent.quickAccess')}>
+          <div className="dash-quick-list">
+            <DashQuickLink to={`${base}/register-child`} icon={FileText} label={t('pages.registerChild.title')} />
+            <DashQuickLink to={`${base}/my-registrations`} icon={ClipboardCheck} label={t('pages.myRegistrations.title')} badge={pendingRegistrations?.length || 0} />
+            <DashQuickLink to={`${base}/communication`} icon={MessageSquare} label={t('pages.communication.titleMessages')} badge={unreadCount} />
+            <DashQuickLink to={`${base}/marks`} icon={FileText} label={t('staffDash.parent.marksBulletin')} />
+            <DashQuickLink to={`${base}/fees`} icon={Wallet} label={t('staffDash.parent.feesPayments')} badge={pendingFees.length} />
+            <DashQuickLink to={`${base}/timetable`} icon={Clock} label={t('pages.timetable.titleParent')} />
+            <DashQuickLink to={`${base}/homework`} icon={FileText} label={t('pages.homework.title')} badge={upcomingHomework.length} />
+            <DashQuickLink to={`${base}/e-learning`} icon={GraduationCap} label={t('pages.elearning.title')} />
+            <DashQuickLink to={`${base}/extracurricular`} icon={Sparkles} label={t('pages.activities.titleShort')} />
+            {transport && <DashQuickLink to={`${base}/transport`} icon={Bus} label={t('staffDash.parent.schoolTransport')} />}
           </div>
-        </div>
+        </DashboardPanel>
 
-        <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900">{t('staffDash.parent.upcomingHomework')}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.dueSoonHomework')}</p>
-            </div>
-            <Link to={`${base}/homework`} className="text-xs link">{t('staffDash.viewAll')}</Link>
-          </div>
+        <DashboardPanel
+          title={t('staffDash.parent.upcomingHomework')}
+          description={t('staffDash.parent.dueSoonHomework')}
+          action={<Link to={`${base}/homework`} className="dash-link">{t('staffDash.viewAll')}</Link>}
+          flush
+        >
           {upcomingHomework.length === 0 ? (
-            <p className="p-6 text-sm text-gray-500 text-center">{t('staffDash.parent.noUpcomingHomework')}</p>
+            <p className="dash-empty">{t('staffDash.parent.noUpcomingHomework')}</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="dash-list">
               {upcomingHomework.map((hw) => (
-                <div key={hw.id} className="p-4">
-                  <p className="font-medium text-sm text-gray-900">{hw.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {hw.class?.name} · {t('staffDash.parent.dueDate', { date: new Date(hw.dueDate).toLocaleDateString() })}
-                  </p>
+                <div key={hw.id} className="dash-list-row">
+                  <div className="dash-list-main">
+                    <p className="dash-list-title">{hw.title}</p>
+                    <p className="dash-list-meta">
+                      {hw.class?.name} · {t('staffDash.parent.dueDate', { date: new Date(hw.dueDate).toLocaleDateString() })}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </DashboardPanel>
 
         {homeworkGrades?.length > 0 && (
-          <div className="card p-0 overflow-hidden md:col-span-2">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900">{t('staffDash.parent.homeworkPerformance')}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.homeworkPerformanceDesc')}</p>
-              </div>
-              <Link to={`${base}/homework`} className="text-xs link">{t('staffDash.parent.viewHomework')}</Link>
-            </div>
-            <div className="divide-y divide-gray-50">
+          <DashboardPanel
+            className="dash-span-2"
+            title={t('staffDash.parent.homeworkPerformance')}
+            description={t('staffDash.parent.homeworkPerformanceDesc')}
+            action={<Link to={`${base}/homework`} className="dash-link">{t('staffDash.parent.viewHomework')}</Link>}
+            flush
+          >
+            <div className="dash-list">
               {homeworkGrades.map((entry) => (
-                <div key={entry.student.id} className="p-4">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <p className="font-semibold text-sm text-gray-900">
-                      {entry.student.firstName} {entry.student.lastName}
-                    </p>
-                    <div className="text-sm text-gray-600">
+                <div key={entry.student.id} className="dash-grade-block">
+                  <div className="dash-grade-head">
+                    <p className="dash-list-title">{entry.student.firstName} {entry.student.lastName}</p>
+                    <p className="dash-grade-meta">
                       <span className="font-semibold text-gray-900">{entry.completed}</span> {t('staffDash.parent.done')}
                       {entry.pending > 0 && (
                         <> · <span className="text-amber-700">{entry.pending}</span> {t('ui.pending').toLowerCase()}</>
@@ -264,48 +259,42 @@ export default function ParentDashboard({ campusId, data, userName }) {
                       {entry.averagePercent != null && (
                         <> · <span className="font-semibold text-brand-700">{entry.averagePercent}%</span> {t('staffDash.parent.avg')}</>
                       )}
-                    </div>
+                    </p>
                   </div>
                   {entry.recentSubmissions?.length > 0 ? (
-                    <ul className="space-y-1.5">
+                    <ul className="dash-grade-subs">
                       {entry.recentSubmissions.slice(0, 3).map((s) => (
-                        <li key={s.homeworkId} className="flex items-center justify-between text-sm">
-                          <Link
-                            to={`${base}/homework/${s.homeworkId}?studentId=${entry.student.id}`}
-                            className="text-brand-700 hover:underline truncate"
-                          >
+                        <li key={s.homeworkId}>
+                          <Link to={`${base}/homework/${s.homeworkId}?studentId=${entry.student.id}`} className="dash-link">
                             {s.title}
                           </Link>
-                          <span className="font-semibold shrink-0 ml-2">{s.score}/{s.maxScore}</span>
+                          <span className="font-semibold">{s.score}/{s.maxScore}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-gray-500">{t('staffDash.parent.noSubmissionsYet')}</p>
+                    <p className="dash-list-meta">{t('staffDash.parent.noSubmissionsYet')}</p>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardPanel>
         )}
 
         {eLearningGrades?.length > 0 && (
-          <div className="card p-0 overflow-hidden md:col-span-2">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900">{t('staffDash.parent.eLearningPerformance')}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.eLearningPerformanceDesc')}</p>
-              </div>
-              <Link to={`${base}/e-learning`} className="text-xs link">{t('staffDash.parent.viewELearning')}</Link>
-            </div>
-            <div className="divide-y divide-gray-50">
+          <DashboardPanel
+            className="dash-span-2"
+            title={t('staffDash.parent.eLearningPerformance')}
+            description={t('staffDash.parent.eLearningPerformanceDesc')}
+            action={<Link to={`${base}/e-learning`} className="dash-link">{t('staffDash.parent.viewELearning')}</Link>}
+            flush
+          >
+            <div className="dash-list">
               {eLearningGrades.map((entry) => (
-                <div key={entry.student.id} className="p-4">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <p className="font-semibold text-sm text-gray-900">
-                      {entry.student.firstName} {entry.student.lastName}
-                    </p>
-                    <div className="text-sm text-gray-600">
+                <div key={entry.student.id} className="dash-grade-block">
+                  <div className="dash-grade-head">
+                    <p className="dash-list-title">{entry.student.firstName} {entry.student.lastName}</p>
+                    <p className="dash-grade-meta">
                       <span className="font-semibold text-gray-900">{entry.completed}</span> {t('staffDash.parent.done')}
                       {entry.pending > 0 && (
                         <> · <span className="text-amber-700">{entry.pending}</span> {t('ui.pending').toLowerCase()}</>
@@ -313,56 +302,50 @@ export default function ParentDashboard({ campusId, data, userName }) {
                       {entry.averagePercent != null && (
                         <> · <span className="font-semibold text-brand-700">{entry.averagePercent}%</span> {t('staffDash.parent.avg')}</>
                       )}
-                    </div>
+                    </p>
                   </div>
                   {entry.recentSubmissions?.length > 0 ? (
-                    <ul className="space-y-1.5">
+                    <ul className="dash-grade-subs">
                       {entry.recentSubmissions.slice(0, 3).map((s) => (
-                        <li key={s.courseId} className="flex items-center justify-between text-sm">
-                          <Link
-                            to={`${base}/e-learning/${s.courseId}?studentId=${entry.student.id}`}
-                            className="text-brand-700 hover:underline truncate"
-                          >
+                        <li key={s.courseId}>
+                          <Link to={`${base}/e-learning/${s.courseId}?studentId=${entry.student.id}`} className="dash-link">
                             {s.title}
                           </Link>
-                          <span className="font-semibold shrink-0 ml-2">{s.score}/{s.maxScore}</span>
+                          <span className="font-semibold">{s.score}/{s.maxScore}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-gray-500">{t('staffDash.parent.noExerciseSubmissions')}</p>
+                    <p className="dash-list-meta">{t('staffDash.parent.noExerciseSubmissions')}</p>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardPanel>
         )}
 
         {pendingFees.length > 0 && (
-          <div className="card p-0 overflow-hidden md:col-span-2">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900">{t('staffDash.parent.pendingFees')}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{t('staffDash.parent.outstandingPayments')}</p>
-              </div>
-              <Link to={`${base}/fees`} className="text-xs link">{t('staffDash.parent.payView')}</Link>
-            </div>
-            <div className="divide-y divide-gray-50">
+          <DashboardPanel
+            className="dash-span-2"
+            title={t('staffDash.parent.pendingFees')}
+            description={t('staffDash.parent.outstandingPayments')}
+            action={<Link to={`${base}/fees`} className="dash-link">{t('staffDash.parent.payView')}</Link>}
+            flush
+          >
+            <div className="dash-list">
               {pendingFees.slice(0, 4).map((fee) => (
-                <div key={fee.id} className="p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-sm text-gray-900">
-                      {fee.student?.firstName} {fee.student?.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500">{fee.feeType} · {fee.status}</p>
+                <div key={fee.id} className="dash-list-row">
+                  <div className="dash-list-main">
+                    <p className="dash-list-title">{fee.student?.firstName} {fee.student?.lastName}</p>
+                    <p className="dash-list-meta">{fee.feeType} · {fee.status}</p>
                   </div>
                   <span className="font-semibold text-sm text-gray-900">{formatCurrency(fee.amount)}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </DashboardPanel>
         )}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

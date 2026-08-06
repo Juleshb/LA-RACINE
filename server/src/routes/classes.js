@@ -4,7 +4,7 @@ import { classScopeWhere } from '../lib/scope.js';
 import { resolveTeacherId } from '../lib/teacherAccess.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { listBulletinPresets, resolveBulletinConfig } from '../config/bulletinPresets.js';
-import { isNurseryGrade } from '../config/grades.js';
+import { usesNurseryCompetence } from '../config/grades.js';
 import { ensureDefaultClasses, classSortKey } from '../lib/defaultClasses.js';
 
 const router = Router();
@@ -197,7 +197,7 @@ router.post('/', async (req, res) => {
         teacherId,
         campusId: req.campusId,
         academicYearId: req.academicYearId,
-        bulletinConfig: isNurseryGrade(grade)
+        bulletinConfig: usesNurseryCompetence(grade)
           ? { preset: 'COMPETENCE' }
           : { preset: 'STANDARD' },
       },

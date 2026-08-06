@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Plus, Trash2, Paperclip, Pencil } from 'lucide-react';
 import { api } from '../lib/api';
@@ -9,6 +9,7 @@ import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import AppIcon from '../components/icons/AppIcon';
 import { useTranslation } from '../context/LanguageContext';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const CATEGORIES = ['Stories', 'Science', 'Math', 'Fun', 'English', 'Other'];
 const LEVELS = ['Easy', 'Medium', 'Challenge'];
@@ -51,6 +52,23 @@ export default function ELibrary() {
   const filtered = categoryFilter
     ? items.filter((i) => i.category === categoryFilter)
     : items;
+
+  const getELibrarySortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'title': return row.title || '';
+      case 'author': return row.author || '';
+      case 'category': return row.category || '';
+      case 'readingLevel': return row.readingLevel || '';
+      case 'file': return row.storagePath || row.fileUrl ? 1 : 0;
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    filtered,
+    getELibrarySortValue,
+    { initialKey: 'title' },
+  );
 
   const closeForm = () => {
     setShowForm(false);
@@ -240,16 +258,16 @@ export default function ELibrary() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">Book</th>
-                  <th className="pb-3 font-medium">Author</th>
-                  <th className="pb-3 font-medium">Category</th>
-                  <th className="pb-3 font-medium">Level</th>
-                  <th className="pb-3 font-medium">File</th>
+                  <SortableTh label="Book" columnKey="title" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Author" columnKey="author" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Category" columnKey="category" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="Level" columnKey="readingLevel" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
+                  <SortableTh label="File" columnKey="file" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   {canManage && <th className="pb-3 font-medium">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
+                {sorted.map((item) => (
                   <tr key={item.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3">
                       <Link to={`${base}/${item.id}`} className="font-medium text-brand-700 hover:underline">

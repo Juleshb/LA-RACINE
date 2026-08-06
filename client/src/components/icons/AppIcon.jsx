@@ -6,6 +6,7 @@ export const APP_ICONS = {
   homework: 'mdi:book-open-page-variant',
   library: 'mdi:bookshelf',
   learning: 'mdi:school',
+  ai: 'mdi:creation',
   book: 'mdi:book-open-variant',
   video: 'mdi:television-play',
   play: 'mdi:play-circle',

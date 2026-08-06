@@ -1,5 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import PrismaPkg from '@prisma/client';
 
-const prisma = new PrismaClient();
+const { PrismaClient } = PrismaPkg;
+
+const prisma = globalThis.__laracinePrisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.__laracinePrisma = prisma;
+}
 
 export default prisma;

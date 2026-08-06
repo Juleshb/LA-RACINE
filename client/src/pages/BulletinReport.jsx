@@ -12,7 +12,8 @@ import ParentChildFilter from '../components/parent/ParentChildFilter';
 import BulletinScolaireSheet from '../components/bulletin/BulletinScolaireSheet';
 import NurseryBulletinSheet from '../components/bulletin/NurseryBulletinSheet';
 import { downloadBulletinPdf, downloadBulletinJpeg } from '../lib/bulletinPdf';
-import { isNurseryGrade } from '../lib/grades';
+import { isCrecheGrade, usesNurseryCompetence } from '../lib/grades';
+import StudentSelect from '../components/StudentSelect';
 
 const NURSERY_BULLETIN_TERM_OPTIONS = [
   { value: 'Trimestre 1', label: '1er Trimestre' },
@@ -116,12 +117,15 @@ export default function BulletinReport() {
   const selectedClass = isParent
     ? children.find((c) => c.id === studentId)?.class
     : classes.find((c) => c.id === classId);
-  const isCompetenceClass = isNurseryGrade(selectedClass?.grade);
+  const isCrecheClass = isCrecheGrade(selectedClass?.grade);
+  const isCompetenceClass = usesNurseryCompetence(selectedClass?.grade);
   const isCompetenceReport = report?.mode === 'COMPETENCE';
 
   useEffect(() => {
-    if (!classId || !studentId) {
+    if (!classId || !studentId || isCrecheClass) {
       setReport(null);
+      setLoading(false);
+      if (isCrecheClass) setError('');
       return;
     }
     setLoading(true);
@@ -133,7 +137,7 @@ export default function BulletinReport() {
         setReport(null);
       })
       .finally(() => setLoading(false));
-  }, [classId, studentId, term]);
+  }, [classId, studentId, term, isCrecheClass]);
 
   useEffect(() => {
     if (!isCompetenceClass) return;
@@ -208,7 +212,7 @@ export default function BulletinReport() {
             <button
               type="button"
               onClick={handlePrint}
-              disabled={!report}
+              disabled={!report || isCrecheClass}
               className="btn-secondary flex items-center gap-2 disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />
@@ -217,7 +221,7 @@ export default function BulletinReport() {
             <button
               type="button"
               onClick={handleDownloadPdf}
-              disabled={!report || pdfLoading || jpegLoading}
+              disabled={!report || pdfLoading || jpegLoading || isCrecheClass}
               className="btn-primary flex items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
@@ -226,7 +230,7 @@ export default function BulletinReport() {
             <button
               type="button"
               onClick={handleDownloadJpeg}
-              disabled={!report || pdfLoading || jpegLoading}
+              disabled={!report || pdfLoading || jpegLoading || isCrecheClass}
               className="btn-secondary flex items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
@@ -274,15 +278,15 @@ export default function BulletinReport() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <select className="input flex-1" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-                  {students.length === 0 ? (
-                    <option value="">{t('pages.bulletin.noStudents')}</option>
-                  ) : (
-                    students.map((s) => (
-                      <option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.studentId}</option>
-                    ))
-                  )}
-                </select>
+                <StudentSelect
+                  className="flex-1"
+                  students={students}
+                  value={studentId}
+                  onChange={setStudentId}
+                  allowEmpty={students.length === 0}
+                  emptyLabel={t('pages.bulletin.noStudents')}
+                  getLabel={(s) => `${s.firstName} ${s.lastName} · ${s.studentId}`}
+                />
                 <button
                   type="button"
                   className="student-nav-btn shrink-0"
@@ -324,14 +328,23 @@ export default function BulletinReport() {
         <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100 print:hidden">{error}</div>
       )}
 
-      {loading && (
+      {isCrecheClass && (
+        <div className="card empty-state py-16 text-center print:hidden">
+          <p className="text-gray-800 font-semibold text-lg">Crèche</p>
+          <p className="text-gray-500 mt-2 max-w-md mx-auto">
+            Aucun bulletin n&apos;est généré pour la Crèche. Les notes et bulletins concernent la maternelle (M1–TOP) et le primaire.
+          </p>
+        </div>
+      )}
+
+      {loading && !isCrecheClass && (
         <div className="card empty-state print:hidden">
           <Loader2 className="w-8 h-8 text-brand-500 animate-spin mb-2" />
           <p className="text-gray-500">{t('pages.bulletin.loadingBulletin')}</p>
         </div>
       )}
 
-      {!loading && report && (
+      {!loading && !isCrecheClass && report && (
         <div className="bulletin-preview-wrap print:p-0">
           <div ref={sheetRef}>
             {isCompetenceReport || report.mode === 'COMPETENCE' ? (

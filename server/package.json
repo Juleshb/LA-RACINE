@@ -14,7 +14,11 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.34",
+    "@ai-sdk/groq": "^4.0.22",
+    "@ai-sdk/openai": "^4.0.30",
     "@prisma/client": "^6.5.0",
+    "ai": "^7.0.52",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
+import StudentSelect from '../components/StudentSelect';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -53,14 +54,16 @@ export default function CreateFee() {
         <div className="card space-y-4">
           <div>
             <label className="label">Student *</label>
-            <select className="input" required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })}>
-              <option value="">Select student...</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.studentId} — {s.firstName} {s.lastName} {s.class ? `(${s.class.name})` : ''}
-                </option>
-              ))}
-            </select>
+            <StudentSelect
+              required
+              students={students}
+              value={form.studentId}
+              onChange={(studentId) => setForm({ ...form, studentId })}
+              emptyLabel="Select student..."
+              getLabel={(s) =>
+                `${s.studentId} — ${s.firstName} ${s.lastName}${s.class ? ` (${s.class.name})` : ''}`
+              }
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

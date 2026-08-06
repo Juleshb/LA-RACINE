@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3, Download, FileSpreadsheet, FileText, FileType, Loader2, RefreshCw, Filter,
+  BarChart3, Bus, ClipboardCheck, Download, FileSpreadsheet, FileText, FileType,
+  Filter, GraduationCap, Library, Loader2, RefreshCw, Sparkles, Users, Wallet,
 } from 'lucide-react';
 import { api } from '../lib/api';
-import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
 import { exportReportExcel, exportReportPdf, exportReportWord } from '../lib/reportExport';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const DEFAULT_TERMS = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'];
 
@@ -17,6 +18,20 @@ const FEE_TYPE_OPTIONS = [
   { value: 'UNIFORM', labelKey: 'pageBody.fees.types.UNIFORM' },
   { value: 'OTHER', labelKey: 'pageBody.fees.types.OTHER' },
 ];
+
+const CATEGORY_ICONS = {
+  People: Users,
+  Academic: GraduationCap,
+  Assessment: ClipboardCheck,
+  Finance: Wallet,
+  Library,
+  Transport: Bus,
+  Activities: Sparkles,
+};
+
+function categoryIcon(category) {
+  return CATEGORY_ICONS[category] || BarChart3;
+}
 
 export default function Reports() {
   const { t } = useTranslation();
@@ -48,6 +63,14 @@ export default function Reports() {
     });
     return Object.entries(groups);
   }, [catalog]);
+
+  const reportRows = report?.rows || [];
+  const rowCount = report?.meta?.rowCount ?? report?.rows?.length ?? 0;
+  const getReportSortValue = useCallback((row, key) => row?.[key] ?? '', []);
+  const { sorted: sortedReportRows, sortKey, sortDir, toggleSort } = useTableSort(
+    reportRows,
+    getReportSortValue,
+  );
 
   useEffect(() => {
     setLoadingCatalog(true);
@@ -133,300 +156,329 @@ export default function Reports() {
       else if (format === 'pdf') exportReportPdf(payload);
       else if (format === 'word') await exportReportWord(payload);
     } catch (err) {
-      setError(err.message || 'Export failed');
+      setError(err.message || t('pages.reports.exportFailed'));
     } finally {
       setExporting('');
     }
   };
 
   const filters = selectedDef?.filters || [];
+  const canExport = Boolean(report?.rows?.length) && !exporting;
 
   return (
-    <div>
-      <PageHeader
-        title={t('pages.reports.title')}
-        description={t('pages.reports.description')}
-        action={(
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => loadReport()}
-              disabled={loadingReport || !selectedId}
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
-              {t('ui.refresh')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('excel')}
-              disabled={!report?.rows?.length || !!exporting}
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              {exporting === 'excel' ? t('ui.exporting') : t('pages.reports.formatExcel')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('pdf')}
-              disabled={!report?.rows?.length || !!exporting}
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
-            >
-              <FileText className="w-4 h-4" />
-              {exporting === 'pdf' ? t('ui.exporting') : t('pages.reports.formatPdf')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('word')}
-              disabled={!report?.rows?.length || !!exporting}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-            >
-              <FileType className="w-4 h-4" />
-              {exporting === 'word' ? t('ui.exporting') : t('pages.reports.formatWord')}
-            </button>
-          </div>
-        )}
-      />
+    <div className="reports-page">
+      <div className="reports-ambient" aria-hidden>
+        <span className="reports-blob reports-blob-a" />
+        <span className="reports-blob reports-blob-b" />
+      </div>
+
+      <header className="reports-header">
+        <div className="reports-header-copy">
+          <p className="reports-kicker">{t('pages.reports.reportTypes')}</p>
+          <h1 className="reports-title">{t('pages.reports.title')}</h1>
+          <p className="reports-desc">{t('pages.reports.description')}</p>
+        </div>
+
+        <div className="reports-header-actions">
+          {report && !loadingReport && (
+            <span className="reports-row-pill">
+              {t('pages.reports.rowCount', { count: rowCount })}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => loadReport()}
+            disabled={loadingReport || !selectedId}
+            className="reports-action-btn"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
+            <span>{t('ui.refresh')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('excel')}
+            disabled={!canExport}
+            className="reports-action-btn"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>{exporting === 'excel' ? t('ui.exporting') : t('pages.reports.formatExcel')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('pdf')}
+            disabled={!canExport}
+            className="reports-action-btn"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{exporting === 'pdf' ? t('ui.exporting') : t('pages.reports.formatPdf')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('word')}
+            disabled={!canExport}
+            className="reports-action-btn reports-action-btn-primary"
+          >
+            <FileType className="w-4 h-4" />
+            <span>{exporting === 'word' ? t('ui.exporting') : t('pages.reports.formatWord')}</span>
+          </button>
+        </div>
+      </header>
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>
+        <div className="reports-error" role="alert">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6">
-        <aside className="card p-0 overflow-hidden h-fit">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+      <div className="reports-layout">
+        <aside className="reports-catalog" aria-label={t('pages.reports.reportTypes')}>
+          <div className="reports-catalog-head">
             <BarChart3 className="w-4 h-4 text-brand-600" />
-            <h2 className="font-semibold text-gray-900 text-sm">{t('pages.reports.reportTypes')}</h2>
+            <h2>{t('pages.reports.reportTypes')}</h2>
           </div>
           {loadingCatalog ? (
-            <div className="p-8 flex justify-center">
+            <div className="reports-catalog-loading">
               <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
             </div>
           ) : catalog.length === 0 ? (
-            <p className="p-4 text-sm text-gray-500">{t('pages.reports.noReportsForRole')}</p>
+            <p className="reports-catalog-empty">{t('pages.reports.noReportsForRole')}</p>
           ) : (
-            <div className="max-h-[70vh] overflow-y-auto">
-              {groupedCatalog.map(([category, items]) => (
-                <div key={category}>
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    {category}
-                  </p>
-                  {items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedId(item.id)}
-                      className={`w-full text-left px-4 py-2.5 text-sm border-l-2 transition-colors ${
-                        selectedId === item.id
-                          ? 'border-brand-500 bg-brand-50 text-brand-800 font-medium'
-                          : 'border-transparent text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {item.title}
-                    </button>
-                  ))}
-                </div>
-              ))}
+            <div className="reports-catalog-scroll">
+              {groupedCatalog.map(([category, items]) => {
+                const Icon = categoryIcon(category);
+                return (
+                  <div key={category} className="reports-catalog-group">
+                    <p className="reports-catalog-category">
+                      <Icon className="w-3.5 h-3.5" />
+                      {category}
+                    </p>
+                    {items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedId(item.id)}
+                        className={`reports-catalog-item ${selectedId === item.id ? 'is-active' : ''}`}
+                      >
+                        {item.title}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </aside>
 
-        <div className="space-y-4">
+        <div className="reports-workspace">
           {selectedDef && (
-            <div className="filter-panel">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                <div>
-                  <p className="filter-panel-title flex items-center gap-1.5">
+            <section className="reports-filters">
+              <div className="reports-filters-head">
+                <div className="min-w-0">
+                  <p className="reports-filters-title">
                     <Filter className="w-3.5 h-3.5" />
                     {selectedDef.title}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">{selectedDef.description}</p>
+                  <p className="reports-filters-desc">{selectedDef.description}</p>
                 </div>
-                {report && (
-                  <span className="layout-flow-chip layout-flow-chip-lg">
-                    {report.meta?.rowCount ?? report.rows?.length ?? 0} rows
-                  </span>
-                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {filters.includes('classId') && (
-                  <div>
-                    <label className="label">{t('ui.class')}</label>
-                    <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
-                      <option value="">{t('ui.allClasses')}</option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {filters.includes('status') && (
-                  <div>
-                    <label className="label">{t('ui.status')}</label>
-                    <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-                      <option value="">{t('ui.all')}</option>
-                      {selectedId === 'fees' ? (
-                        <>
-                          <option value="PAID">{t('pages.reports.statusPaid')}</option>
-                          <option value="PENDING">{t('pages.reports.statusPending')}</option>
-                          <option value="OVERDUE">{t('pages.reports.statusOverdue')}</option>
-                          <option value="WAIVED">{t('pages.reports.statusWaived')}</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="PENDING">{t('pages.reports.statusPending')}</option>
-                          <option value="APPROVED">{t('pages.reports.statusApproved')}</option>
-                          <option value="REJECTED">{t('pages.reports.statusRejected')}</option>
-                        </>
+              {filters.length > 0 && (
+                <>
+                  <div className="reports-filters-grid">
+                    {filters.includes('classId') && (
+                      <div>
+                        <label className="label">{t('ui.class')}</label>
+                        <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+                          <option value="">{t('ui.allClasses')}</option>
+                          {classes.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {filters.includes('status') && (
+                      <div>
+                        <label className="label">{t('ui.status')}</label>
+                        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                          <option value="">{t('ui.all')}</option>
+                          {selectedId === 'fees' ? (
+                            <>
+                              <option value="PAID">{t('pages.reports.statusPaid')}</option>
+                              <option value="PENDING">{t('pages.reports.statusPending')}</option>
+                              <option value="OVERDUE">{t('pages.reports.statusOverdue')}</option>
+                              <option value="WAIVED">{t('pages.reports.statusWaived')}</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="PENDING">{t('pages.reports.statusPending')}</option>
+                              <option value="APPROVED">{t('pages.reports.statusApproved')}</option>
+                              <option value="REJECTED">{t('pages.reports.statusRejected')}</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    )}
+                    {filters.includes('feeType') && (
+                      <div>
+                        <label className="label">{t('ui.feeType')}</label>
+                        <select className="input" value={feeType} onChange={(e) => setFeeType(e.target.value)}>
+                          <option value="">{t('ui.all')}</option>
+                          {FEE_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {filters.includes('dateRange') && (
+                      <>
+                        <div>
+                          <label className="label">{selectedDef.dateFieldLabel || t('pages.reports.fromDate')}</label>
+                          <input
+                            className="input"
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">{t('pages.reports.toDate')}</label>
+                          <input
+                            className="input"
+                            type="date"
+                            value={dateTo}
+                            min={dateFrom || undefined}
+                            onChange={(e) => setDateTo(e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
+                    {filters.includes('date') && !filters.includes('dateRange') && (
+                      <div>
+                        <label className="label">{t('ui.date')}</label>
+                        <input
+                          className="input"
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {filters.includes('term') && (
+                      <div>
+                        <label className="label">{t('pages.marks.trimestre')}</label>
+                        <select className="input" value={term} onChange={(e) => setTerm(e.target.value)}>
+                          <option value="">{t('pages.reports.allTerms')}</option>
+                          {DEFAULT_TERMS.map((termOpt) => (
+                            <option key={termOpt} value={termOpt}>{termOpt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div className="reports-filters-actions">
+                      {(dateFrom || dateTo) && filters.includes('dateRange') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDateFrom('');
+                            setDateTo('');
+                          }}
+                          className="reports-action-btn"
+                        >
+                          {t('pages.reports.clearDates')}
+                        </button>
                       )}
-                    </select>
-                  </div>
-                )}
-                {filters.includes('feeType') && (
-                  <div>
-                    <label className="label">{t('ui.feeType')}</label>
-                    <select className="input" value={feeType} onChange={(e) => setFeeType(e.target.value)}>
-                      <option value="">{t('ui.all')}</option>
-                      {FEE_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {filters.includes('dateRange') && (
-                  <>
-                    <div>
-                      <label className="label">{selectedDef.dateFieldLabel || 'From date'}</label>
-                      <input
-                        className="input"
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="label">{t('pages.reports.toDate')}</label>
-                      <input
-                        className="input"
-                        type="date"
-                        value={dateTo}
-                        min={dateFrom || undefined}
-                        onChange={(e) => setDateTo(e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
-                {filters.includes('date') && !filters.includes('dateRange') && (
-                  <div>
-                    <label className="label">{t('ui.date')}</label>
-                    <input
-                      className="input"
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                    />
-                  </div>
-                )}
-                {filters.includes('term') && (
-                  <div>
-                    <label className="label">{t('pages.marks.trimestre')}</label>
-                    <select className="input" value={term} onChange={(e) => setTerm(e.target.value)}>
-                      <option value="">{t('pages.reports.allTerms')}</option>
-                      {DEFAULT_TERMS.map((termOpt) => (
-                        <option key={termOpt} value={termOpt}>{termOpt}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {filters.length > 0 && (
-                  <div className="flex items-end gap-2">
-                    {(dateFrom || dateTo) && filters.includes('dateRange') && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setDateFrom('');
-                          setDateTo('');
-                        }}
-                        className="btn-secondary"
+                        onClick={() => loadReport()}
+                        disabled={loadingReport}
+                        className="reports-action-btn reports-action-btn-primary"
                       >
-                        Clear dates
+                        <Download className="w-4 h-4" />
+                        {t('pages.reports.applyFilters')}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => loadReport()}
-                      disabled={loadingReport}
-                      className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <Download className="w-4 h-4" />
-                      Apply filters
-                    </button>
+                    </div>
                   </div>
-                )}
-              </div>
-              {filters.includes('dateRange') && (
-                <p className="text-xs text-gray-500 mt-3">
-                  {selectedId === 'attendance' || selectedId === 'transport-attendance'
-                    ? 'Pick a from/to date range. Defaults to today for a daily register.'
-                    : 'Optional: filter by from/to dates. Leave blank to include all dates.'}
-                  {(dateFrom || dateTo) && (
-                    <>
-                      {' '}Current range:
-                      {dateFrom ? ` ${dateFrom}` : ' …'}
-                      {' → '}
-                      {dateTo || '…'}
-                    </>
+
+                  {filters.includes('dateRange') && (
+                    <p className="reports-filters-hint">
+                      {selectedId === 'attendance' || selectedId === 'transport-attendance'
+                        ? t('pages.reports.dateHintDaily')
+                        : t('pages.reports.dateHintOptional')}
+                      {(dateFrom || dateTo) && (
+                        <>
+                          {' '}
+                          {t('pages.reports.currentRange', {
+                            from: dateFrom || '…',
+                            to: dateTo || '…',
+                          })}
+                        </>
+                      )}
+                    </p>
                   )}
-                </p>
+                </>
               )}
-            </div>
+            </section>
           )}
 
-          <div className="card p-0 overflow-hidden">
+          <section className="reports-preview">
             {loadingReport ? (
-              <div className="empty-state py-16">
-                <Loader2 className="w-8 h-8 text-brand-500 animate-spin mb-2" />
-                <p className="text-gray-500">{t('pages.reports.loadingReport')}</p>
+              <div className="reports-preview-empty">
+                <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+                <p>{t('pages.reports.loadingReport')}</p>
               </div>
             ) : !report ? (
-              <div className="empty-state py-16">
-                <BarChart3 className="w-8 h-8 text-gray-300 mb-2" />
-                <p className="text-gray-500">{t('pages.reports.selectReportType')}</p>
+              <div className="reports-preview-empty">
+                <span className="reports-preview-empty-icon" aria-hidden>
+                  <BarChart3 className="w-7 h-7" />
+                </span>
+                <p className="reports-preview-empty-title">{t('pages.reports.selectReportType')}</p>
               </div>
             ) : report.rows.length === 0 ? (
-              <div className="empty-state py-16">
-                <p className="text-gray-600 font-medium">{t('pages.reports.noDataForReport')}</p>
-                <p className="text-sm text-gray-400 mt-1">{t('pages.reports.tryDifferentFilters')}</p>
+              <div className="reports-preview-empty">
+                <span className="reports-preview-empty-icon" aria-hidden>
+                  <Filter className="w-7 h-7" />
+                </span>
+                <p className="reports-preview-empty-title">{t('pages.reports.noDataForReport')}</p>
+                <p className="reports-preview-empty-sub">{t('pages.reports.tryDifferentFilters')}</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="table-report">
-                  <thead>
-                    <tr>
-                      {report.columns.map((col) => (
-                        <th key={col.key}>{col.label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.rows.slice(0, 200).map((row, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+              <>
+                <div className="reports-table-wrap">
+                  <table className="reports-table">
+                    <thead>
+                      <tr>
                         {report.columns.map((col) => (
-                          <td key={col.key}>{row[col.key] ?? ''}</td>
+                          <SortableTh
+                            key={col.key}
+                            label={col.label}
+                            columnKey={col.key}
+                            sortKey={sortKey}
+                            sortDir={sortDir}
+                            onSort={toggleSort}
+                          />
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {sortedReportRows.slice(0, 200).map((row, index) => (
+                        <tr key={index}>
+                          {report.columns.map((col) => (
+                            <td key={col.key}>{row[col.key] ?? ''}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 {report.rows.length > 200 && (
-                  <p className="px-4 py-3 text-xs text-gray-500 border-t border-gray-100">
-                    Showing first 200 of {report.rows.length} rows. Export includes the full dataset.
+                  <p className="reports-table-foot">
+                    {t('pages.reports.showingFirst', {
+                      shown: 200,
+                      total: report.rows.length,
+                    })}
                   </p>
                 )}
-              </div>
+              </>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </div>

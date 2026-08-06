@@ -3,6 +3,14 @@ import prisma from '../lib/prisma.js';
 import { campusYearWhere, studentScopeWhere } from '../lib/scope.js';
 import { getTeacherClassIdsForReq, resolveTeacherId } from '../lib/teacherAccess.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
+import {
+  buildBroadcastSmsBody,
+  dedupePhones,
+  getSmsSkipReason,
+  isSmsConfigured,
+  sendBulkSms,
+} from '../lib/sms.js';
+import { getMailSkipReason, isMailConfigured, sendMail } from '../lib/mailer.js';
 
 const router = Router();
 
@@ -43,6 +51,201 @@ async function getParentUserIdsForTarget(req, { targetType, targetClassId, targe
     select: { id: true },
   });
   return users.map((u) => u.id);
+}
+
+/**
+ * Resolve unique parent phone numbers for a broadcast target.
+ * Includes students without a portal parent account when contact phones exist.
+ */
+async function getParentPhonesForTarget(req, { targetType, targetClassId, targetStudentId }) {
+  const base = campusYearWhere(req);
+  let studentWhere = { ...base };
+
+  if (targetType === 'CLASS' && targetClassId) {
+    studentWhere = { ...base, classId: targetClassId };
+  } else if (targetType === 'STUDENT' && targetStudentId) {
+    studentWhere = { ...base, id: targetStudentId };
+  }
+
+  const students = await prisma.student.findMany({
+    where: studentWhere,
+    select: {
+      parentPhone: true,
+      fatherPhone: true,
+      motherPhone: true,
+      parentId: true,
+      parent: { select: { phone: true } },
+    },
+  });
+
+  const parentIds = [...new Set(students.map((s) => s.parentId).filter(Boolean))];
+  let userPhones = [];
+  if (parentIds.length) {
+    const users = await prisma.user.findMany({
+      where: { parentId: { in: parentIds }, role: 'PARENT', isActive: true },
+      select: { phone: true },
+    });
+    userPhones = users.map((u) => u.phone);
+  }
+
+  const raw = [];
+  for (const s of students) {
+    if (s.parent?.phone) raw.push(s.parent.phone);
+    if (s.parentPhone) raw.push(s.parentPhone);
+    if (s.fatherPhone) raw.push(s.fatherPhone);
+    if (s.motherPhone) raw.push(s.motherPhone);
+  }
+  raw.push(...userPhones);
+
+  return dedupePhones(raw);
+}
+
+function normalizeEmail(raw) {
+  const email = String(raw || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
+function dedupeEmails(emails = []) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of emails) {
+    const email = normalizeEmail(raw);
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    out.push(email);
+  }
+  return out;
+}
+
+/**
+ * Resolve unique parent portal emails for a broadcast target.
+ */
+async function getParentEmailsForTarget(req, { targetType, targetClassId, targetStudentId }) {
+  const base = campusYearWhere(req);
+  let studentWhere = { ...base };
+
+  if (targetType === 'CLASS' && targetClassId) {
+    studentWhere = { ...base, classId: targetClassId };
+  } else if (targetType === 'STUDENT' && targetStudentId) {
+    studentWhere = { ...base, id: targetStudentId };
+  }
+
+  const students = await prisma.student.findMany({
+    where: studentWhere,
+    select: {
+      parentId: true,
+      fatherEmail: true,
+      motherEmail: true,
+      parent: {
+        select: {
+          user: { select: { email: true, isActive: true, role: true } },
+        },
+      },
+    },
+  });
+
+  const parentIds = [...new Set(students.map((s) => s.parentId).filter(Boolean))];
+  const fromUsers = [];
+  if (parentIds.length) {
+    const users = await prisma.user.findMany({
+      where: { parentId: { in: parentIds }, role: 'PARENT', isActive: true },
+      select: { email: true },
+    });
+    fromUsers.push(...users.map((u) => u.email));
+  }
+
+  const fromStudentParents = students.flatMap((s) => [
+    s.parent?.user?.role === 'PARENT' && s.parent?.user?.isActive ? s.parent.user.email : null,
+    s.fatherEmail,
+    s.motherEmail,
+  ]);
+
+  return dedupeEmails([...fromUsers, ...fromStudentParents]);
+}
+
+async function getEmailsForParentId(parentId) {
+  if (!parentId) return [];
+  const [users, students] = await Promise.all([
+    prisma.user.findMany({
+      where: { parentId, role: 'PARENT', isActive: true },
+      select: { email: true },
+    }),
+    prisma.student.findMany({
+      where: { parentId },
+      select: { fatherEmail: true, motherEmail: true },
+    }),
+  ]);
+  return dedupeEmails([
+    ...users.map((u) => u.email),
+    ...students.flatMap((s) => [s.fatherEmail, s.motherEmail]),
+  ]);
+}
+
+function buildBroadcastEmailHtml(title, body) {
+  const safeTitle = String(title || '').replace(/</g, '&lt;');
+  const safeBody = String(body || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;">
+      <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0284c7;">École La RACINE</p>
+      <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;">${safeTitle}</h1>
+      <div style="font-size:15px;line-height:1.6;color:#334155;">${safeBody}</div>
+      <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">Open your parent portal to read and reply in Messages.</p>
+    </div>
+  `;
+}
+
+async function sendBroadcastEmails({ emails, title, body }) {
+  const requested = emails.length;
+  if (!requested) {
+    return { requested: 0, sent: 0, failed: 0, skipped: 0, error: 'No parent emails found for this target' };
+  }
+  if (!isMailConfigured()) {
+    return {
+      requested,
+      sent: 0,
+      failed: 0,
+      skipped: requested,
+      error: getMailSkipReason() || 'Email not configured',
+    };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const errors = [];
+  const html = buildBroadcastEmailHtml(title, body);
+  const text = `${title}\n\n${body}\n\n— École La RACINE`;
+
+  for (const to of emails) {
+    try {
+      await sendMail({ to, subject: `La RACINE: ${title}`, text, html });
+      sent += 1;
+    } catch (err) {
+      failed += 1;
+      if (errors.length < 3) errors.push(err.message || 'Send failed');
+    }
+  }
+
+  return {
+    requested,
+    sent,
+    failed,
+    skipped: 0,
+    error: failed ? (errors[0] || `${failed} email(s) failed`) : undefined,
+  };
+}
+
+/** Notify parent(s) by email when school staff messages them (best-effort). */
+async function notifyParentEmails({ parentId, title, body }) {
+  if (!isMailConfigured() || !parentId) {
+    return { requested: 0, sent: 0, failed: 0, skipped: 0 };
+  }
+  const emails = await getEmailsForParentId(parentId);
+  return sendBroadcastEmails({ emails, title, body });
 }
 
 async function broadcastAppliesToUser(req, broadcast) {
@@ -216,6 +419,7 @@ router.get('/inbox', async (req, res) => {
         reads: ['PARENT', 'STUDENT'].includes(req.user.role)
           ? { where: { userId: req.user.id } }
           : false,
+        _count: { select: { reads: true } },
       },
     });
 
@@ -224,6 +428,10 @@ router.get('/inbox', async (req, res) => {
         const applies = await broadcastAppliesToUser(req, b);
         if (!applies) continue;
       }
+
+      const deliveryMeta = b.deliveryMeta && typeof b.deliveryMeta === 'object' ? b.deliveryMeta : {};
+      const recipientsCount = Number(deliveryMeta.recipientsCount) || 0;
+      const readCount = b._count?.reads ?? (Array.isArray(b.reads) ? b.reads.length : 0);
 
       items.push({
         id: b.id,
@@ -238,6 +446,14 @@ router.get('/inbox', async (req, res) => {
         createdAt: b.createdAt,
         createdBy: senderLabel(b.createdBy),
         isRead: ['PARENT', 'STUDENT'].includes(req.user.role) ? b.reads?.length > 0 : true,
+        delivery: isSchoolStaff(req.user.role) || req.user.role === 'TEACHER'
+          ? {
+              recipientsCount,
+              readCount,
+              sms: deliveryMeta.sms || null,
+              email: deliveryMeta.email || null,
+            }
+          : undefined,
       });
     }
 
@@ -309,6 +525,27 @@ router.get('/inbox', async (req, res) => {
 
 // ─── Broadcasts ───────────────────────────────────────────────────────────────
 
+router.get('/channels', async (req, res) => {
+  try {
+    if (!isSchoolStaff(req.user.role)) {
+      return res.json({ inApp: true, sms: { configured: false }, email: { configured: false } });
+    }
+    res.json({
+      inApp: true,
+      sms: {
+        configured: isSmsConfigured(),
+        reason: getSmsSkipReason(),
+      },
+      email: {
+        configured: isMailConfigured(),
+        reason: getMailSkipReason(),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/broadcasts', async (req, res) => {
   try {
     const broadcasts = await prisma.communicationBroadcast.findMany({
@@ -333,7 +570,7 @@ router.post('/broadcasts', async (req, res) => {
     }
 
     const {
-      title, body, category, priority, targetType, targetClassId, targetStudentId,
+      title, body, category, priority, targetType, targetClassId, targetStudentId, sendSms, sendEmail,
     } = req.body;
 
     if (!title?.trim() || !body?.trim()) {
@@ -365,7 +602,86 @@ router.post('/broadcasts', async (req, res) => {
       targetStudentId: broadcast.targetStudentId,
     });
 
-    res.status(201).json({ broadcast, recipientsCount: recipientIds.length });
+    let sms = null;
+    if (sendSms) {
+      const phones = await getParentPhonesForTarget(req, {
+        targetType: broadcast.targetType,
+        targetClassId: broadcast.targetClassId,
+        targetStudentId: broadcast.targetStudentId,
+      });
+
+      if (!phones.length) {
+        sms = {
+          requested: 0,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+          error: 'No parent phone numbers found for this target',
+        };
+      } else if (!isSmsConfigured()) {
+        sms = {
+          requested: phones.length,
+          sent: 0,
+          failed: 0,
+          skipped: phones.length,
+          error: getSmsSkipReason() || 'SMS not configured',
+        };
+      } else {
+        const smsBody = buildBroadcastSmsBody(broadcast.title, broadcast.body);
+        const result = await sendBulkSms({ recipients: phones, body: smsBody });
+        sms = {
+          requested: result.requested,
+          sent: result.sent,
+          failed: result.failed,
+          skipped: result.skipped,
+          error: result.error || undefined,
+        };
+      }
+    }
+
+    let email = null;
+    // Default ON when Gmail SMTP is configured (unless staff explicitly unchecks sendEmail)
+    const wantEmail = sendEmail === true || (sendEmail !== false && isMailConfigured());
+    if (wantEmail) {
+      const emails = await getParentEmailsForTarget(req, {
+        targetType: broadcast.targetType,
+        targetClassId: broadcast.targetClassId,
+        targetStudentId: broadcast.targetStudentId,
+      });
+      email = await sendBroadcastEmails({
+        emails,
+        title: broadcast.title,
+        body: broadcast.body,
+      });
+    }
+
+    const deliveryMeta = {
+      recipientsCount: recipientIds.length,
+      sms,
+      email,
+      sentAt: new Date().toISOString(),
+    };
+
+    await prisma.communicationBroadcast.update({
+      where: { id: broadcast.id },
+      data: { deliveryMeta },
+    });
+
+    res.status(201).json({
+      broadcast: { ...broadcast, deliveryMeta },
+      recipientsCount: recipientIds.length,
+      sms,
+      email,
+      delivery: {
+        inApp: {
+          recipientsCount: recipientIds.length,
+          readable: true,
+          note: 'Parents/students see this in Messages when they open the portal',
+        },
+        sms,
+        email,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -532,7 +848,16 @@ router.post('/threads', async (req, res) => {
       },
     });
 
-    res.status(201).json(thread);
+    let email = null;
+    if (isSchoolStaff(req.user.role) && parentId && isMailConfigured()) {
+      email = await notifyParentEmails({
+        parentId,
+        title: subject.trim(),
+        body: body.trim(),
+      });
+    }
+
+    res.status(201).json({ ...thread, email });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -573,10 +898,20 @@ router.post('/threads/:id/messages', async (req, res) => {
       data: { lastMessageAt: new Date(), status: 'OPEN' },
     });
 
+    let email = null;
+    if (isSchoolStaff(req.user.role) && thread.parentId && isMailConfigured()) {
+      email = await notifyParentEmails({
+        parentId: thread.parentId,
+        title: thread.subject,
+        body: body.trim(),
+      });
+    }
+
     res.status(201).json({
       ...message,
       senderLabel: senderLabel(message.sender),
       isMine: true,
+      email,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

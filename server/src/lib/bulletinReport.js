@@ -7,6 +7,8 @@ import {
   buildSubjectMarkSummary,
   ensureSubjectAssessments,
 } from './subjectAssessments.js';
+import { isPrimaryGrade } from '../config/grades.js';
+import { getPublishedMidtermsForTerm } from './midterms.js';
 
 function assessmentValue(rows, key) {
   const row = rows.find((r) => r.key === key);
@@ -53,6 +55,7 @@ function buildFlexibleSubject(subject, assessments, markMap) {
       exam: summary.exam,
       total: summary.total,
     },
+    testsMarkMax: summary.testsCombined.max,
     obtained: summary.hasAny ? summary.total.score : null,
     max: summary.total.max,
     total: summary.hasAny ? summary.total.score : null,
@@ -81,6 +84,9 @@ function buildLegacySubject(subject, config, markMap) {
       exam: ex,
       total: { score: hasAny ? obtained : null, max },
     },
+    test1Max: t1.max,
+    test2Max: t2.max,
+    testsMarkMax: (t1.max || 0) + (t2.max || 0),
     obtained: hasAny ? obtained : null,
     max,
     total: hasAny ? obtained : null,
@@ -381,6 +387,16 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
         total: { score: grandMax ? grandObtained : null, max: grandMax },
       };
 
+  let midterms = null;
+  if (isPrimaryGrade(cls.grade) && campusId && academicYearId) {
+    midterms = await getPublishedMidtermsForTerm({
+      campusId,
+      academicYearId,
+      term,
+      studentId,
+    });
+  }
+
   return {
     class: { id: cls.id, name: cls.name, grade: cls.grade, section: cls.section },
     student: {
@@ -406,6 +422,7 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       columns: summaryColumns,
     },
     rank,
+    midterms,
     meta,
     photoUrl,
     verification: {

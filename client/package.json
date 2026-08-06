@@ -20,8 +20,10 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.4.0",
     "recharts": "^3.9.2",
+    "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.3",
     "xlsx": "^0.18.5"
   },

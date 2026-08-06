@@ -14,6 +14,20 @@ export function getMailTransporter() {
   });
 }
 
+export function isMailConfigured() {
+  return Boolean(
+    String(process.env.SMTP_USER || '').trim()
+    && String(process.env.SMTP_PASS || '').replace(/\s+/g, ''),
+  );
+}
+
+export function getMailSkipReason() {
+  if (!String(process.env.SMTP_USER || '').trim() || !String(process.env.SMTP_PASS || '').replace(/\s+/g, '')) {
+    return 'Gmail SMTP credentials missing (SMTP_USER / SMTP_PASS)';
+  }
+  return null;
+}
+
 export function getClientBaseUrl() {
   return String(process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
 }

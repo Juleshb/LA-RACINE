@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { User } from 'lucide-react';
 import BulletinQrCode from './BulletinQrCode';
+import BulletinDirectorStamp from './BulletinDirectorStamp';
 
 const GRADE_COLORS = {
   A: 'nursery-grade-a',
@@ -75,7 +76,8 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
     (n, d) => n + d.subdomains.reduce((m, s) => m + s.items.length, 0),
     0,
   );
-  const density = skillCount > 48 ? 'dense' : skillCount > 36 ? 'normal' : 'roomy';
+  // Prefer readable type; PDF may span 2 pages rather than crushing text
+  const density = skillCount > 60 ? 'dense' : skillCount > 42 ? 'normal' : 'roomy';
 
   return (
     <div
@@ -213,8 +215,9 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
             <div className="nursery-sig">
               <p className="nursery-sig-label">Signature du parent / responsable</p>
             </div>
-            <div className="nursery-sig">
+            <div className="nursery-sig nursery-sig-director">
               <p className="nursery-sig-label">Sceau et signature de la direction</p>
+              <BulletinDirectorStamp compact />
             </div>
             {verification?.verifyUrl && (
               <div className="nursery-bulletin-qr">
@@ -224,6 +227,7 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
           </div>
         </div>
       </div>
+      <div className="bulletin-print-folio" aria-hidden="true" />
     </div>
   );
 }

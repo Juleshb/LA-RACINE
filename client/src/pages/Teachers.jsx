@@ -1,16 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Trash2, Edit2, CreditCard, Camera, User, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
+import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const EMPTY_FORM = { name: '', email: '', phone: '', subject: '' };
 
 export default function Teachers() {
   const { t } = useTranslation();
+  const { campusId } = useCampus();
   const [teachers, setTeachers] = useState([]);
   const [search, setSearch] = useState('');
   const [formMode, setFormMode] = useState(null);
@@ -18,12 +23,55 @@ export default function Teachers() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [clearPhoto, setClearPhoto] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState({});
+  const fileInputRef = useRef(null);
 
   const isEditing = formMode === 'edit';
 
   const loadTeachers = () => api.getTeachers().then(setTeachers).catch(console.error);
 
   useEffect(() => { loadTeachers(); }, []);
+
+  // Load thumbnails for staff who have photos
+  useEffect(() => {
+    let cancelled = false;
+    const withPhotos = teachers.filter((t) => t.hasPhoto);
+    if (!withPhotos.length) {
+      setPhotoUrls({});
+      return undefined;
+    }
+
+    Promise.all(
+      withPhotos.map(async (teacher) => {
+        const url = await api.getTeacherPhotoUrl(teacher.id);
+        return [teacher.id, url];
+      }),
+    ).then((pairs) => {
+      if (cancelled) {
+        pairs.forEach(([, url]) => { if (url) URL.revokeObjectURL(url); });
+        return;
+      }
+      const next = {};
+      pairs.forEach(([id, url]) => {
+        if (url) next[id] = url;
+      });
+      setPhotoUrls((prev) => {
+        Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teachers]);
+
+  useEffect(() => () => {
+    Object.values(photoUrls).forEach((url) => URL.revokeObjectURL(url));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayed = useMemo(
     () => teachers.filter((teacher) => matchesSearch(
@@ -36,14 +84,39 @@ export default function Teachers() {
     [teachers, search],
   );
 
+  const getTeacherSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'name': return row.name || '';
+      case 'subject': return row.subject || '';
+      case 'email': return row.email || '';
+      case 'phone': return row.phone || '';
+      case 'classes': return row._count?.classes || 0;
+      default: return '';
+    }
+  }, []);
+
+  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+    displayed,
+    getTeacherSortValue,
+    { initialKey: 'name' },
+  );
+
+  const resetPhotoState = () => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setClearPhoto(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const openCreate = () => {
     setForm({ ...EMPTY_FORM });
     setEditingId(null);
     setFormMode('create');
     setError('');
+    resetPhotoState();
   };
 
-  const openEdit = (teacher) => {
+  const openEdit = async (teacher) => {
     setForm({
       name: teacher.name,
       email: teacher.email || '',
@@ -53,6 +126,15 @@ export default function Teachers() {
     setEditingId(teacher.id);
     setFormMode('edit');
     setError('');
+    resetPhotoState();
+    if (teacher.hasPhoto) {
+      try {
+        const detail = await api.getTeacher(teacher.id);
+        if (detail.photoUrl) setPhotoPreview(detail.photoUrl);
+      } catch {
+        if (photoUrls[teacher.id]) setPhotoPreview(photoUrls[teacher.id]);
+      }
+    }
   };
 
   const closeForm = () => {
@@ -61,6 +143,33 @@ export default function Teachers() {
     setFormMode(null);
     setError('');
     setSubmitting(false);
+    resetPhotoState();
+  };
+
+  const handlePhotoPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setError(`Photo is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+    setError('');
+    setPhotoFile(file);
+    setClearPhoto(false);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setClearPhoto(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e) => {
@@ -68,10 +177,21 @@ export default function Teachers() {
     setError('');
     setSubmitting(true);
     try {
+      const payload = { ...form };
+      if (photoFile) {
+        payload.photo = {
+          fileName: photoFile.name,
+          mimeType: photoFile.type,
+          contentBase64: await fileToBase64(photoFile),
+        };
+      } else if (isEditing && clearPhoto) {
+        payload.clearPhoto = true;
+      }
+
       if (isEditing) {
-        await api.updateTeacher(editingId, form);
+        await api.updateTeacher(editingId, payload);
       } else {
-        await api.createTeacher(form);
+        await api.createTeacher(payload);
       }
       closeForm();
       loadTeachers();
@@ -99,10 +219,16 @@ export default function Teachers() {
         title={t('pages.teachers.title')}
         description={t('pages.teachers.description')}
         action={(
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            {t('pages.teachers.add')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to={`/campus/${campusId}/id-cards?tab=staff`} className="btn-secondary flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Staff cards
+            </Link>
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              {t('pages.teachers.add')}
+            </button>
+          </div>
         )}
       />
 
@@ -128,23 +254,65 @@ export default function Teachers() {
         error={error}
       >
         <FormSection title={t('ui.personalDetails')}>
-          <div>
-            <label className="label">{t('ui.fullName')} *</label>
-            <input
-              className="input"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">{t('ui.subjectSpecialty')}</label>
-            <input
-              className="input"
-              placeholder={t('pageBody.teachers.subjectPlaceholder')}
-              value={form.subject}
-              onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            />
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <div className="shrink-0">
+              <label className="label">Profile photo</label>
+              <div className="relative w-28 h-32 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-10 h-10 text-gray-300" />
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  {photoPreview ? 'Change' : 'Upload'}
+                </button>
+                {photoPreview && (
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1 py-1.5"
+                    onClick={handleRemovePhoto}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handlePhotoPick}
+              />
+              <p className="text-[11px] text-gray-400 mt-1.5">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
+            </div>
+            <div className="flex-1 w-full space-y-4">
+              <div>
+                <label className="label">{t('ui.fullName')} *</label>
+                <input
+                  className="input"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">{t('ui.subjectSpecialty')}</label>
+                <input
+                  className="input"
+                  placeholder={t('pageBody.teachers.subjectPlaceholder')}
+                  value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                />
+              </div>
+            </div>
           </div>
         </FormSection>
         <FormSection title={t('ui.contact')}>
@@ -187,26 +355,38 @@ export default function Teachers() {
             <table className="table-report">
               <thead>
                 <tr>
-                  <th>{t('ui.name')}</th>
-                  <th>{t('ui.subject')}</th>
-                  <th>{t('ui.email')}</th>
-                  <th>{t('ui.phone')}</th>
-                  <th>{t('ui.classes')}</th>
+                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.subject')} columnKey="subject" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.email')} columnKey="email" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.phone')} columnKey="phone" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label={t('ui.classes')} columnKey="classes" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <th className="text-right">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((teacher) => {
+                {sorted.map((teacher) => {
                   const isActive = editingId === teacher.id;
+                  const thumb = photoUrls[teacher.id];
                   return (
                     <tr key={teacher.id} className={isActive ? 'table-row-active' : ''}>
                       <td className="font-medium text-gray-900">
-                        {teacher.name}
-                        {isActive && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                            {t('ui.editing')}
+                        <div className="flex items-center gap-3">
+                          <span className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                            {thumb ? (
+                              <img src={thumb} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-4 h-4 text-gray-400" />
+                            )}
                           </span>
-                        )}
+                          <span>
+                            {teacher.name}
+                            {isActive && (
+                              <span className="ml-2 text-[10px] font-bold uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                {t('ui.editing')}
+                              </span>
+                            )}
+                          </span>
+                        </div>
                       </td>
                       <td className="text-gray-500">{teacher.subject || '—'}</td>
                       <td className="text-gray-500">{teacher.email || '—'}</td>
@@ -214,6 +394,13 @@ export default function Teachers() {
                       <td>{teacher._count?.classes || 0}</td>
                       <td className="text-right">
                         <div className="flex gap-1 justify-end">
+                          <Link
+                            to={`/campus/${campusId}/id-cards?staff=${teacher.id}`}
+                            className="p-2 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                            title="Staff card"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                          </Link>
                           <button
                             type="button"
                             onClick={() => (isActive ? closeForm() : openEdit(teacher))}

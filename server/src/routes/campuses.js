@@ -5,7 +5,78 @@ import { authorizeRoles, isManagerRole } from '../config/permissions.js';
 
 const router = Router();
 
+const STAFF_ROLES = [
+  'SCHOOL_MANAGER',
+  'SCHOOL_ADMIN',
+  'TEACHER',
+  'HEAD_OF_STUDIES',
+  'HEAD_OF_DISCIPLINE',
+  'SECRETARY',
+  'ACCOUNTANT',
+  'LIBRARIAN',
+];
+
 router.use(authenticate);
+
+async function campusStats(campusId) {
+  const activeYear = await prisma.academicYear.findFirst({
+    where: { campusId, isActive: true },
+    select: { id: true, name: true },
+  });
+
+  const yearFilter = activeYear ? { academicYearId: activeYear.id } : {};
+
+  const [students, pending, teachers, classes, staffUsers] = await Promise.all([
+    prisma.student.count({
+      where: {
+        campusId,
+        registrationStatus: 'APPROVED',
+        ...yearFilter,
+      },
+    }),
+    prisma.student.count({
+      where: {
+        campusId,
+        registrationStatus: 'PENDING',
+        ...yearFilter,
+      },
+    }),
+    // Teachers may be copied per year; hub shows all staff linked to the campus
+    prisma.teacher.count({ where: { campusId } }),
+    prisma.class.count({
+      where: {
+        campusId,
+        ...yearFilter,
+      },
+    }),
+    prisma.user.count({
+      where: {
+        campusId,
+        isActive: true,
+        role: { in: STAFF_ROLES },
+      },
+    }),
+  ]);
+
+  return {
+    students,
+    pending,
+    teachers,
+    classes,
+    staffUsers,
+    activeYear: activeYear?.name || null,
+    activeYearId: activeYear?.id || null,
+  };
+}
+
+async function attachCampusStats(campuses) {
+  return Promise.all(
+    campuses.map(async (campus) => ({
+      ...campus,
+      stats: await campusStats(campus.id),
+    })),
+  );
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -21,7 +92,7 @@ router.get('/', async (req, res) => {
         _count: { select: { users: true, students: true, teachers: true, classes: true } },
       },
     });
-    res.json(campuses);
+    res.json(await attachCampusStats(campuses));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,7 +118,8 @@ router.get('/:id', async (req, res) => {
       }
     }
 
-    res.json(campus);
+    const stats = await campusStats(campus.id);
+    res.json({ ...campus, stats });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

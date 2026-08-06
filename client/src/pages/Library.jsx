@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, BookOpen, RotateCcw } from 'lucide-react';
 import { api } from '../lib/api';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
+import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 export default function Library() {
   const { t } = useTranslation();
@@ -90,6 +91,41 @@ export default function Library() {
       alert(err.message);
     }
   };
+
+  const getBookSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'title': return row.title || '';
+      case 'available': return Number(row.available) || 0;
+      default: return '';
+    }
+  }, []);
+
+  const getLoanSortValue = useCallback((row, key) => {
+    switch (key) {
+      case 'book': return row.book?.title || '';
+      case 'borrower': return row.borrowerName || '';
+      case 'status': {
+        if (row.status === 'RETURNED') return 'returned';
+        if (row.dueDate && new Date(row.dueDate) < new Date()) return 'overdue';
+        return 'active';
+      }
+      default: return '';
+    }
+  }, []);
+
+  const {
+    sorted: sortedBooks,
+    sortKey: bookSortKey,
+    sortDir: bookSortDir,
+    toggleSort: toggleBookSort,
+  } = useTableSort(books, getBookSortValue, { initialKey: 'title' });
+
+  const {
+    sorted: sortedLoans,
+    sortKey: loanSortKey,
+    sortDir: loanSortDir,
+    toggleSort: toggleLoanSort,
+  } = useTableSort(loans, getLoanSortValue, { initialKey: 'book' });
 
   return (
     <div>
@@ -187,13 +223,13 @@ export default function Library() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.titleField')}</th>
-                  <th className="pb-3 font-medium">{t('ui.available')}</th>
+                  <SortableTh label={t('ui.titleField')} columnKey="title" sortKey={bookSortKey} sortDir={bookSortDir} onSort={toggleBookSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.available')} columnKey="available" sortKey={bookSortKey} sortDir={bookSortDir} onSort={toggleBookSort} className="pb-3 font-medium" />
                   <th className="pb-3 font-medium">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {books.map((b) => (
+                {sortedBooks.map((b) => (
                   <tr key={b.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3">
                       <p className="font-medium">{b.title}</p>
@@ -216,14 +252,14 @@ export default function Library() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <th className="pb-3 font-medium">{t('ui.book')}</th>
-                  <th className="pb-3 font-medium">{t('ui.borrower')}</th>
-                  <th className="pb-3 font-medium">{t('ui.status')}</th>
+                  <SortableTh label={t('ui.book')} columnKey="book" sortKey={loanSortKey} sortDir={loanSortDir} onSort={toggleLoanSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.borrower')} columnKey="borrower" sortKey={loanSortKey} sortDir={loanSortDir} onSort={toggleLoanSort} className="pb-3 font-medium" />
+                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={loanSortKey} sortDir={loanSortDir} onSort={toggleLoanSort} className="pb-3 font-medium" />
                   <th className="pb-3 font-medium">{t('ui.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {loans.map((l) => (
+                {sortedLoans.map((l) => (
                   <tr key={l.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3">{l.book.title}</td>
                     <td className="py-3">

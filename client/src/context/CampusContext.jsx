@@ -28,6 +28,8 @@ export function CampusProvider() {
   useEffect(() => {
     if (!campusId) return;
     setActiveCampus(campusId);
+    // Clear year immediately so child requests never send another campus's year id
+    setActiveAcademicYear(null);
     setLoading(true);
     Promise.all([
       api.getCampus(campusId),
@@ -37,6 +39,7 @@ export function CampusProvider() {
         setCampus(campusData);
         setAcademicYear(yearData);
         if (yearData?.id) setActiveAcademicYear(yearData.id);
+        else setActiveAcademicYear(null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

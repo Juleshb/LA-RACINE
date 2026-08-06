@@ -1,4 +1,5 @@
 import { useOutletContext, Link } from 'react-router-dom';
+import PageHero from '../../components/public/PageHero';
 
 export default function PublicNews() {
   const { page } = useOutletContext();
@@ -24,13 +25,7 @@ export default function PublicNews() {
 
   return (
     <>
-      <div className="ps-page-hero">
-        <div className="ps-page-hero-inner">
-          <p className="ps-section-label">{c.label}</p>
-          <h1>{c.title}</h1>
-          <p>{c.lead}</p>
-        </div>
-      </div>
+      <PageHero label={c.label} title={c.title} lead={c.lead} imageUrl={c.heroImageUrl} />
 
       <section className="ps-section">
         {list.length === 0 && (

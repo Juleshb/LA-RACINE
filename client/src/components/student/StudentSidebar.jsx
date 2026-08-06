@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, Library, GraduationCap, Video, LogOut,
+  LayoutDashboard, BookOpen, Library, GraduationCap, Video, LogOut, Bot,
 } from 'lucide-react';
 import { STUDENT_NAV_ITEMS } from '../../config/permissions';
 import { translateStudentNavItem, useTranslation } from '../../context/LanguageContext';
@@ -13,6 +13,7 @@ const iconMap = {
   Library,
   GraduationCap,
   Video,
+  Bot,
 };
 
 const NAV_ACCENTS = {
@@ -21,6 +22,7 @@ const NAV_ACCENTS = {
   Video: 'student-side-item-cyan',
   Library: 'student-side-item-indigo',
   GraduationCap: 'student-side-item-violet',
+  Bot: 'student-side-item-teal',
 };
 
 function SidebarNavItem({ to, icon, label, badge, isLive, end }) {

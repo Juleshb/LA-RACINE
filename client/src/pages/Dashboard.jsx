@@ -1,7 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useCampus } from '../context/CampusContext';
 import ManagerDashboard from './ManagerDashboard';
-import PageHeader from '../components/PageHeader';
 import DashboardOverview from '../components/dashboard/DashboardOverview';
 import ParentDashboard from '../components/dashboard/ParentDashboard';
 import TeacherDashboard from '../components/dashboard/TeacherDashboard';
@@ -10,7 +9,6 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useParentDashboardData } from '../hooks/useParentDashboardData';
 import { useTeacherDashboardData } from '../hooks/useTeacherDashboardData';
 import { useStudentDashboardData } from '../hooks/useStudentDashboardData';
-import { useTranslation } from '../context/LanguageContext';
 
 function DashboardLoading() {
   return (
@@ -22,7 +20,6 @@ function DashboardLoading() {
 
 function StaffDashboard() {
   const { campusId } = useCampus();
-  const { t } = useTranslation();
   const { data, loading, error } = useDashboardData({ campusId });
 
   if (loading) return <DashboardLoading />;
@@ -30,15 +27,7 @@ function StaffDashboard() {
     return <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>;
   }
 
-  return (
-    <div>
-      <PageHeader
-        title={t('pages.dashboard.title')}
-        description={t('pages.dashboard.description')}
-      />
-      <DashboardOverview campusId={campusId} data={data} />
-    </div>
-  );
+  return <DashboardOverview campusId={campusId} data={data} />;
 }
 
 function ParentDashboardPage() {

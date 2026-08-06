@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import HeroImageField from '../../components/cms/HeroImageField';
 import { api } from '../../lib/api';
 import { getApiOrigin } from '../../lib/config';
 
@@ -135,6 +136,7 @@ export default function CalendarEditor({ data, onChange }) {
         </div>
         <Field label="Title"><TextInput value={d.title} onChange={(v) => set({ title: v })} /></Field>
         <Field label="Lead"><TextInput long value={d.lead} onChange={(v) => set({ lead: v })} /></Field>
+        <HeroImageField value={d.heroImageUrl} onChange={(v) => set({ heroImageUrl: v })} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="View PDF button"><TextInput value={d.viewPdf} onChange={(v) => set({ viewPdf: v })} /></Field>
           <Field label="Empty level message"><TextInput value={d.emptyLevel} onChange={(v) => set({ emptyLevel: v })} /></Field>
