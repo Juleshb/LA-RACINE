@@ -29,6 +29,7 @@ model Campus {
   timetableTemplates TimetableTemplate[]
   homework      Homework[]
   extracurricularActivities ExtracurricularActivity[]
+  externalInstructors ExternalInstructor[]
   transportRoutes     TransportRoute[]
   transportVehicles   TransportVehicle[]
   transportDrivers    TransportDriver[]
@@ -70,6 +71,9 @@ model AcademicYear {
   eLearningLessons  ELearningLesson[]
   onlineClassSessions OnlineClassSession[]
   midtermWindows MidtermWindow[]
+  /// Frais de confirmation for returning students in this year (RWF).
+  confirmationFeeAmount   Float?
+  confirmationFeeDueDate  DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -95,6 +99,9 @@ model User {
   preferredLanguage  String?             @default("en")
   mustChangePassword Boolean             @default(false)
   phone              String?
+  identityNumber     String?             @unique
+  photoPath          String?
+  photoMimeType      String?
   passwordResetTokens PasswordResetToken[]
   authOtpChallenges   AuthOtpChallenge[]
   broadcastsCreated   CommunicationBroadcast[] @relation("BroadcastCreator")
@@ -190,12 +197,14 @@ model Teacher {
   name           String
   email          String?
   phone          String?
+  identityNumber String?      @unique
   subject        String?
   photoPath      String?
   photoMimeType  String?
   user           User?
   classes        Class[]
   subjects       Subject[]
+  extracurricularActivities ExtracurricularActivity[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
@@ -315,10 +324,15 @@ model Student {
   /// Free-text notes / other information (editable by school staff)
   additionalInfo       String?          @db.Text
 
+  /// End-of-year council: PROMOTE, REPEAT, GRADUATE, REJECTED
+  deliberationDecision String?
+  deliberatedAt        DateTime?
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   @@unique([campusId, academicYearId, studentId])
+  @@index([academicYearId, deliberationDecision])
 }
 
 model StudentDocument {
@@ -578,12 +592,37 @@ model ExtracurricularActivity {
   schedule       String?
   location       String?
   instructor     String?
+  instructorKind String?
+  instructorTeacherId String?
+  instructorTeacher   Teacher? @relation(fields: [instructorTeacherId], references: [id], onDelete: SetNull)
+  externalInstructorId String?
+  externalInstructor   ExternalInstructor? @relation(fields: [externalInstructorId], references: [id], onDelete: SetNull)
   maxStudents    Int?
   allowedGrades  Json                        @default("[\"P1\",\"P2\",\"P3\",\"P4\",\"P5\",\"P6\"]")
   isActive       Boolean                     @default(true)
   enrollments    ExtracurricularEnrollment[]
   createdAt      DateTime                    @default(now())
   updatedAt      DateTime                    @updatedAt
+
+  @@index([instructorTeacherId])
+  @@index([externalInstructorId])
+}
+
+model ExternalInstructor {
+  id         String                    @id @default(uuid())
+  campusId   String
+  campus     Campus                    @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String?
+  email      String?
+  specialty  String?
+  notes      String?
+  isActive   Boolean                   @default(true)
+  activities ExtracurricularActivity[]
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+
+  @@index([campusId])
 }
 
 model ExtracurricularEnrollment {
@@ -1109,6 +1148,7 @@ enum AttendanceStatus {
 enum FeeType {
   TUITION
   REGISTRATION
+  CONFIRMATION
   EXAM
   TRANSPORT
   UNIFORM
@@ -1124,6 +1164,7 @@ enum FeeStatus {
 
 enum RegistrationStatus {
   PENDING
+  AWAITING_CONFIRMATION
   APPROVED
   REJECTED
 }

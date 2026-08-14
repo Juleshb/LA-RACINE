@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   User, Mail, Shield, KeyRound, Save, GraduationCap, Users, BookOpen, Building2,
-  Calendar, Phone, Eye, EyeOff, CheckCircle2, Languages, Link2,
+  Calendar, Phone, Eye, EyeOff, CheckCircle2, Languages, Link2, Camera, X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ import StudentProfileView from '../components/student/StudentProfileView';
 import { useStudentPhotoUrl } from '../hooks/useStudentPhotoUrl';
 import { ROLE_LABELS } from '../config/permissions';
 import { PASSWORD_POLICY_HINT, passwordStrengthLabel, validateStrongPassword } from '../lib/passwordPolicy';
+import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -55,6 +56,10 @@ export default function Profile() {
   const [mounted, setMounted] = useState(false);
 
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '' });
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [clearPhoto, setClearPhoto] = useState(false);
+  const fileInputRef = useRef(null);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -66,6 +71,7 @@ export default function Profile() {
   const studentPhotoUrl = useStudentPhotoUrl(user?.role === 'STUDENT');
 
   const needsPhone = user?.role && user.role !== 'STUDENT';
+  const canEditPhoto = user?.role && !['STUDENT', 'PARENT'].includes(user.role);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -77,6 +83,14 @@ export default function Profile() {
         lastName: data.user.lastName || '',
         phone: data.user.phone || data.user.parent?.phone || '',
       });
+      setPhotoFile(null);
+      setClearPhoto(false);
+      if (data.user.hasPhoto) {
+        const url = await api.getMyPhotoUrl();
+        setPhotoPreview(url);
+      } else {
+        setPhotoPreview(null);
+      }
     } catch (err) {
       setProfileError(err.message || 'Failed to load profile');
     } finally {
@@ -106,9 +120,22 @@ export default function Profile() {
       if (needsPhone) {
         payload.phone = form.phone.trim();
       }
+      if (canEditPhoto) {
+        if (photoFile) {
+          payload.photo = {
+            fileName: photoFile.name,
+            mimeType: photoFile.type,
+            contentBase64: await fileToBase64(photoFile),
+          };
+        } else if (clearPhoto) {
+          payload.clearPhoto = true;
+        }
+      }
       const data = await api.updateMe(payload);
       setProfile(data.user);
       await refreshUser();
+      setPhotoFile(null);
+      setClearPhoto(false);
       setProfileMessage(t('ui.profileUpdated'));
     } catch (err) {
       setProfileError(err.message || 'Failed to update profile');
@@ -164,8 +191,10 @@ export default function Profile() {
       form.firstName !== (profile.firstName || '')
       || form.lastName !== (profile.lastName || '')
       || (needsPhone && form.phone !== phoneNow)
+      || Boolean(photoFile)
+      || clearPhoto
     );
-  }, [form, profile, needsPhone]);
+  }, [form, profile, needsPhone, photoFile, clearPhoto]);
 
   if (loading) {
     return (
@@ -204,7 +233,11 @@ export default function Profile() {
         <div className="profile-hero-glow" />
         <div className="profile-hero-inner">
           <div className="profile-avatar" aria-hidden>
-            {initials || <User className="w-8 h-8" />}
+            {photoPreview ? (
+              <img src={photoPreview} alt="" />
+            ) : (
+              initials || <User className="w-8 h-8" />
+            )}
           </div>
           <div className="profile-hero-copy">
             <p className="profile-hero-kicker">{t('app.profileTitle')}</p>
@@ -272,6 +305,61 @@ export default function Profile() {
             )}
 
             <div className="profile-fields">
+              {canEditPhoto && (
+                <div>
+                  <label className="label">Profile photo</label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      {photoPreview ? 'Change photo' : 'Upload photo'}
+                    </button>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                          setClearPhoto(true);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith('image/')) {
+                        setProfileError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
+                        return;
+                      }
+                      if (file.size > MAX_FILE_SIZE_BYTES) {
+                        setProfileError(`Photo is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+                        return;
+                      }
+                      setProfileError('');
+                      setPhotoFile(file);
+                      setClearPhoto(false);
+                      const reader = new FileReader();
+                      reader.onload = () => setPhotoPreview(reader.result);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <p className="field-hint mt-1">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
+                </div>
+              )}
               <div className="profile-field-grid">
                 <div>
                   <label className="label" htmlFor="profile-first">{t('ui.firstName')}</label>

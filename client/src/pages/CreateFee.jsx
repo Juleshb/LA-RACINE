@@ -75,6 +75,7 @@ export default function CreateFee() {
                 <option value="TRANSPORT">Transport</option>
                 <option value="UNIFORM">Uniform</option>
                 <option value="OTHER">Other</option>
+                <option value="CONFIRMATION">Confirmation (continue next year)</option>
               </select>
             </div>
             <div>

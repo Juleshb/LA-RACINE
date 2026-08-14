@@ -9,7 +9,7 @@ export function useLiveOnlineClasses(enabled = true) {
 
   const load = useCallback(() => {
     if (!enabled) return;
-    api.getOnlineClasses()
+    api.getOnlineClasses(undefined, { silent: true })
       .then((rows) => setSessions(Array.isArray(rows) ? rows : []))
       .catch(() => setSessions([]))
       .finally(() => setLoading(false));

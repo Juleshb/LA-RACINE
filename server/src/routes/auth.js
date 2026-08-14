@@ -8,8 +8,26 @@ import { issuePasswordReset } from '../lib/passwordReset.js';
 import { validateStrongPassword, PASSWORD_POLICY_HINT } from '../lib/passwordPolicy.js';
 import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
 import { isOtpEnabled } from '../lib/appSettings.js';
+import {
+  extractPhotoPayload,
+  removeUserPhotoFile,
+  resolveUserPhotoAbsPath,
+  saveUserPhotoFile,
+  serializeUserPhoto,
+  syncPhotoToLinkedTeacher,
+} from '../lib/userPhotos.js';
 
 const ALLOWED_LANGUAGES = ['en', 'rw', 'sw', 'fr'];
+const STAFF_ROLES = new Set([
+  'SCHOOL_MANAGER',
+  'SCHOOL_ADMIN',
+  'TEACHER',
+  'HEAD_OF_STUDIES',
+  'HEAD_OF_DISCIPLINE',
+  'SECRETARY',
+  'ACCOUNTANT',
+  'LIBRARIAN',
+]);
 
 const router = Router();
 
@@ -33,6 +51,8 @@ async function getCampusesForUser(user) {
 
 const meUserSelect = {
   ...userSelect,
+  photoPath: true,
+  photoMimeType: true,
   teacher: { select: { id: true, name: true, subject: true, email: true, phone: true, campusId: true } },
   student: {
     select: {
@@ -67,7 +87,7 @@ async function buildMeResponse(userId) {
   const campuses = await getCampusesForUser(user);
 
   return {
-    user,
+    user: serializeUserPhoto(user),
     campuses,
     defaultCampusId: user.campusId || campuses[0]?.id || null,
     roleLabel: ROLE_LABELS[user.role],
@@ -294,13 +314,31 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+router.get('/me/photo', authenticate, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { photoPath: true, photoMimeType: true, isActive: true },
+    });
+    if (!user?.isActive || !user.photoPath) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+    const absPath = resolveUserPhotoAbsPath(user.photoPath);
+    if (!absPath) return res.status(404).json({ error: 'Photo file missing' });
+    if (user.photoMimeType) res.setHeader('Content-Type', user.photoMimeType);
+    res.sendFile(absPath);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.patch('/me', authenticate, async (req, res) => {
   try {
     const { firstName, lastName, phone, preferredLanguage } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, isActive: true, parentId: true, role: true, teacherId: true },
+      select: { id: true, isActive: true, parentId: true, role: true, teacherId: true, photoPath: true },
     });
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'User not found or inactive' });
@@ -351,10 +389,35 @@ router.patch('/me', authenticate, async (req, res) => {
       }).catch(() => {});
     }
 
+    if (STAFF_ROLES.has(user.role)) {
+      const photoPayload = extractPhotoPayload(req.body);
+      const clearPhoto = req.body.clearPhoto === true;
+      if (clearPhoto && !photoPayload) {
+        removeUserPhotoFile(user.photoPath);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { photoPath: null, photoMimeType: null },
+        });
+        if (user.teacherId) {
+          await syncPhotoToLinkedTeacher(prisma, { teacherId: user.teacherId, clear: true });
+        }
+      } else if (photoPayload) {
+        const saved = saveUserPhotoFile({
+          userId: user.id,
+          ...photoPayload,
+          previousPhotoPath: user.photoPath,
+        });
+        await prisma.user.update({ where: { id: user.id }, data: saved });
+        if (user.teacherId) {
+          await syncPhotoToLinkedTeacher(prisma, { teacherId: user.teacherId, ...saved });
+        }
+      }
+    }
+
     const response = await buildMeResponse(user.id);
     res.json(response);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 

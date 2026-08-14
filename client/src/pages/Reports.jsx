@@ -17,6 +17,7 @@ const FEE_TYPE_OPTIONS = [
   { value: 'TRANSPORT', labelKey: 'pageBody.fees.types.TRANSPORT' },
   { value: 'UNIFORM', labelKey: 'pageBody.fees.types.UNIFORM' },
   { value: 'OTHER', labelKey: 'pageBody.fees.types.OTHER' },
+  { value: 'CONFIRMATION', labelKey: 'pageBody.fees.types.CONFIRMATION' },
 ];
 
 const CATEGORY_ICONS = {

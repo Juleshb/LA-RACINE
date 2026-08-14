@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
+  ArrowRightLeft,
   ArrowLeft,
   CheckCircle,
   XCircle,
@@ -36,6 +37,7 @@ import {
 const STATUS_BADGE = {
   PENDING: { icon: Clock, className: 'bg-amber-50 text-amber-700', label: 'En attente' },
   APPROVED: { icon: CheckCircle, className: 'bg-green-50 text-green-700', label: 'Approuvé' },
+  AWAITING_CONFIRMATION: { icon: Clock, className: 'bg-amber-50 text-amber-700', label: 'En attente de confirmation' },
   REJECTED: { icon: XCircle, className: 'bg-red-50 text-red-600', label: 'Rejeté' },
 };
 
@@ -176,6 +178,7 @@ export default function StudentDetail() {
   const { campusId } = useCampus();
   const { user } = useAuth();
   const canManage = !['TEACHER', 'PARENT', 'STUDENT'].includes(user?.role);
+  const canTransfer = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'].includes(user?.role);
   const canProvisionAccounts = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'].includes(user?.role);
 
   const [student, setStudent] = useState(null);
@@ -190,6 +193,12 @@ export default function StudentDetail() {
   const [message, setMessage] = useState('');
   const [docBusyId, setDocBusyId] = useState(null);
   const [viewer, setViewer] = useState(null); // { doc, url, contentType }
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferCampusId, setTransferCampusId] = useState('');
+  const [transferClassId, setTransferClassId] = useState('');
+  const [transferClasses, setTransferClasses] = useState([]);
+  const [transferDestinations, setTransferDestinations] = useState([]);
+  const [transferring, setTransferring] = useState(false);
 
   const loadStudent = () =>
     api.getStudent(id).then((data) => {
@@ -212,6 +221,25 @@ export default function StudentDetail() {
     if (!canManage) return;
     api.getClasses().then(setClasses).catch(console.error);
   }, [canManage, campusId]);
+
+  useEffect(() => {
+    if (!transferOpen || !canTransfer) return undefined;
+    api.getStudentTransferDestinations()
+      .then((list) => setTransferDestinations(Array.isArray(list) ? list : []))
+      .catch(() => setTransferDestinations([]));
+    return undefined;
+  }, [transferOpen, canTransfer]);
+
+  useEffect(() => {
+    if (!transferOpen || !transferCampusId) {
+      setTransferClasses([]);
+      return undefined;
+    }
+    api.getClassesForCampus(transferCampusId)
+      .then((list) => setTransferClasses(Array.isArray(list) ? list : []))
+      .catch(() => setTransferClasses([]));
+    return undefined;
+  }, [transferOpen, transferCampusId]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -321,6 +349,39 @@ export default function StudentDetail() {
     setError('');
   };
 
+  const openTransfer = () => {
+    setTransferOpen(true);
+    setTransferCampusId('');
+    setTransferClassId('');
+    setError('');
+    setMessage('');
+  };
+
+  const handleTransfer = async () => {
+    if (!transferCampusId) {
+      setError('Select the destination campus.');
+      return;
+    }
+    if (!window.confirm('Transfer this student to the selected campus? Marks and fees stay on their record. They will leave the current class and school bus assignment.')) {
+      return;
+    }
+    setTransferring(true);
+    setError('');
+    setMessage('');
+    try {
+      const result = await api.transferStudent(id, {
+        campusId: transferCampusId,
+        classId: transferClassId || null,
+      });
+      setTransferOpen(false);
+      navigate(`/campus/${result.campusId}/students/${id}`, { replace: true });
+    } catch (err) {
+      setError(err.message || 'Transfer failed');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   const saveEdit = async () => {
     if (!form.lastName?.trim()) {
       setError('Le nom est obligatoire.');
@@ -427,6 +488,11 @@ export default function StudentDetail() {
                   <CreditCard className="w-3.5 h-3.5" /> Carte élève
                 </Link>
               )}
+              {canTransfer && !editing && (
+                <button type="button" onClick={openTransfer} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+                  <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer campus
+                </button>
+              )}
               {canManage && !editing && (
                 <button type="button" onClick={startEdit} className="btn-secondary text-sm inline-flex items-center gap-1.5">
                   <Pencil className="w-3.5 h-3.5" /> Modifier
@@ -439,6 +505,74 @@ export default function StudentDetail() {
 
       {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm">{error}</div>}
       {message && <div className="mb-4 p-3 rounded-lg bg-brand-50 border border-brand-100 text-brand-800 text-sm">{message}</div>}
+
+      {canTransfer && transferOpen && (
+        <div className="card mb-6 border-brand-200">
+          <h2 className="font-semibold text-gray-900 mb-1">Transfer to another campus</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            The student keeps the same matricule, documents, marks, and fees. They leave the current class and bus assignment. Choose a class on the destination campus (optional).
+          </p>
+          {transferDestinations.length === 0 ? (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
+              No other active campus is available. Create or activate another campus first.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Destination campus *</label>
+                <select
+                  className="input"
+                  value={transferCampusId}
+                  onChange={(e) => {
+                    setTransferCampusId(e.target.value);
+                    setTransferClassId('');
+                  }}
+                >
+                  <option value="">Select campus</option>
+                  {transferDestinations.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.city ? ` — ${c.city}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">New class (optional)</label>
+                <select
+                  className="input"
+                  value={transferClassId}
+                  onChange={(e) => setTransferClassId(e.target.value)}
+                  disabled={!transferCampusId}
+                >
+                  <option value="">Assign later</option>
+                  {transferClasses.map((cls) => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 mt-4">
+            <button
+              type="button"
+              className="btn-primary text-sm inline-flex items-center gap-1.5"
+              disabled={transferring || !transferCampusId}
+              onClick={handleTransfer}
+            >
+              {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+              Confirm transfer
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={transferring}
+              onClick={() => setTransferOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {canManage && editing && (
         <div className="card mb-6 flex flex-wrap gap-3 items-center justify-between border-brand-200 bg-brand-50/40">
@@ -470,6 +604,43 @@ export default function StudentDetail() {
           <button type="button" onClick={() => updateStatus('REJECTED')} className="btn-secondary flex items-center gap-2 text-red-600">
             <XCircle className="w-4 h-4" /> Rejeter
           </button>
+        </div>
+      )}
+
+      {canManage && !editing && student.registrationStatus === 'AWAITING_CONFIRMATION' && (
+        <div className="card mb-6 space-y-3">
+          <p className="text-sm text-amber-800">
+            This returning student is not fully enrolled until the confirmation fee is paid.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {(() => {
+              const fee = (student.feePayments || []).find((p) => p.feeType === 'CONFIRMATION' && p.status !== 'PAID' && p.status !== 'WAIVED');
+              if (!fee) return null;
+              return (
+                <button
+                  type="button"
+                  className="btn-primary flex items-center gap-2"
+                  onClick={async () => {
+                    try {
+                      await api.updateFeeStatus(fee.id, 'PAID');
+                      const updated = await api.getStudent(id);
+                      setStudent(updated);
+                    } catch (err) {
+                      alert(err.message);
+                    }
+                  }}
+                >
+                  <CreditCard className="w-4 h-4" /> Mark confirmation paid
+                </button>
+              );
+            })()}
+            <button type="button" onClick={() => updateStatus('APPROVED')} className="btn-secondary flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" /> Approve without payment
+            </button>
+            <button type="button" onClick={() => updateStatus('REJECTED')} className="btn-secondary flex items-center gap-2 text-red-600">
+              <XCircle className="w-4 h-4" /> Will not continue
+            </button>
+          </div>
         </div>
       )}
 
@@ -570,6 +741,7 @@ export default function StudentDetail() {
               <Field label="Statut d’inscription">
                 <select className="input" value={f.registrationStatus} onChange={(e) => set('registrationStatus', e.target.value)}>
                   <option value="PENDING">En attente</option>
+                  <option value="AWAITING_CONFIRMATION">En attente de confirmation</option>
                   <option value="APPROVED">Approuvé</option>
                   <option value="REJECTED">Rejeté</option>
                 </select>

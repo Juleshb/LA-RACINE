@@ -54,7 +54,7 @@ const defaults = {
     },
     home: {
       heroImageUrl: HERO,
-      heroVideoUrl: HERO_VIDEO,
+      heroVideoUrl: '',
       heroEyebrow: 'Bilingual school · Rubavu & Gisenyi',
       heroTitle: 'Shaping bright futures through quality education',
       heroLine: 'A calm, rigorous bilingual education where discipline, intelligence, and innovation shape every learner.',
@@ -524,7 +524,7 @@ const defaults = {
     },
     home: {
       heroImageUrl: HERO,
-      heroVideoUrl: HERO_VIDEO,
+      heroVideoUrl: '',
       heroEyebrow: 'École bilingue · Rubavu & Gisenyi',
       heroTitle: 'Former des avenirs brillants par une éducation de qualité',
       heroLine: 'Une éducation bilingue calme et exigeante où la discipline, l’intelligence et l’innovation forment chaque élève.',
@@ -932,7 +932,7 @@ const defaults = {
     },
     home: {
       heroImageUrl: HERO,
-      heroVideoUrl: HERO_VIDEO,
+      heroVideoUrl: '',
       heroLine: 'Shule ya lugha mbili huko Rubavu ambapo nidhamu, akili na ubunifu huunda kila mwanafunzi.',
       heroCtaPrimary: 'Anza uandikishaji',
       heroCtaSecondary: 'Tembelea kampasi zetu',
@@ -1049,7 +1049,7 @@ const defaults = {
     },
     home: {
       heroImageUrl: HERO,
-      heroVideoUrl: HERO_VIDEO,
+      heroVideoUrl: '',
       heroLine: 'Ishuri ry’indimi ebyiri i Rubavu aho inyigisho, ubwenge n’ubuhanga biforma umunyeshuri wese.',
       heroCtaPrimary: 'Tangira kwiyandikisha',
       heroCtaSecondary: 'Sura kampasi zacu',
@@ -1317,9 +1317,21 @@ function getExtraPageDefault(slug, locale) {
     return {
       ...t.gallery,
       items: [
-        { title: 'Classroom learning', body: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80' },
-        { title: 'Primary lesson', body: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80' },
-        { title: 'School activity', body: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80' },
+        {
+          title: 'Classroom learning',
+          coverUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80',
+          albumUrl: '',
+        },
+        {
+          title: 'Primary lesson',
+          coverUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80',
+          albumUrl: '',
+        },
+        {
+          title: 'School activity',
+          coverUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
+          albumUrl: '',
+        },
       ],
     };
   }

@@ -167,16 +167,13 @@ export default function HomeEditor({ data, onChange }) {
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-900">
-        Edit the public landing page here. News articles and gallery photos are managed under{' '}
+        Edit the public landing page here. News articles and gallery albums are managed under{' '}
         <strong>News</strong> and <strong>Gallery</strong> — this page only controls the section titles
         and which content appears on Home.
       </div>
 
-      <Section title="1. Hero media" hint="Background video (YouTube) and default poster image when a slide has no image.">
+      <Section title="1. Hero media" hint="Background photos for the home hello section. Add slide images below for a rotating gallery.">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Hero video URL">
-            <TextInput value={d.heroVideoUrl} onChange={(v) => set({ heroVideoUrl: v })} placeholder="https://youtu.be/…" />
-          </Field>
           <ImageField label="Default hero image" value={d.heroImageUrl} onChange={(v) => set({ heroImageUrl: v })} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

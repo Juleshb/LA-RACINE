@@ -11,7 +11,7 @@ import FormSection from '../components/form/FormSection';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
-const EMPTY_FORM = { name: '', email: '', phone: '', subject: '' };
+const EMPTY_FORM = { name: '', email: '', phone: '', subject: '', identityNumber: '' };
 
 export default function Teachers() {
   const { t } = useTranslation();
@@ -80,6 +80,7 @@ export default function Teachers() {
       teacher.subject,
       teacher.email,
       teacher.phone,
+      teacher.identityNumber,
     )),
     [teachers, search],
   );
@@ -122,6 +123,7 @@ export default function Teachers() {
       email: teacher.email || '',
       phone: teacher.phone || '',
       subject: teacher.subject || '',
+      identityNumber: teacher.identityNumber || '',
     });
     setEditingId(teacher.id);
     setFormMode('edit');
@@ -323,6 +325,15 @@ export default function Teachers() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">PP / Numéro d’identité</label>
+            <input
+              className="input font-mono"
+              value={form.identityNumber}
+              onChange={(e) => setForm({ ...form, identityNumber: e.target.value })}
+              placeholder="Auto-assigned if left empty"
             />
           </div>
           <div>

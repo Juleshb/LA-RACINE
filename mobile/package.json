@@ -31,13 +31,19 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~5.9.2"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "eas:build:ios": "npx eas-cli build --platform ios --profile production",
+    "eas:submit:ios": "npx eas-cli submit --platform ios --profile production --latest",
+    "eas:build:submit:ios": "npx eas-cli build --platform ios --profile production --auto-submit",
+    "eas:login": "npx eas-cli login",
+    "eas:whoami": "npx eas-cli whoami",
+    "eas:init": "npx eas-cli init"
   },
   "private": true
 }

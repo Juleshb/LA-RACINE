@@ -4,6 +4,10 @@ import path from 'path';
 import prisma from '../lib/prisma.js';
 import { campusYearWhere } from '../lib/scope.js';
 import {
+  backfillStaffIdentityNumbers,
+  resolveStaffIdentityNumber,
+} from '../lib/staffIdentity.js';
+import {
   removeTeacherPhotoFile,
   resolveTeacherPhotoAbsPath,
   saveTeacherPhotoFile,
@@ -34,11 +38,37 @@ function extractPhotoPayload(body = {}) {
   };
 }
 
+async function syncLinkedUserPhoto(teacherId, photoPayload, { clear = false } = {}) {
+  const { saveUserPhotoFile, removeUserPhotoFile } = await import('../lib/userPhotos.js');
+  const linkedUser = await prisma.user.findFirst({
+    where: { teacherId },
+    select: { id: true, photoPath: true },
+  });
+  if (!linkedUser) return;
+  if (clear && !photoPayload) {
+    removeUserPhotoFile(linkedUser.photoPath);
+    await prisma.user.update({
+      where: { id: linkedUser.id },
+      data: { photoPath: null, photoMimeType: null },
+    }).catch(() => {});
+    return;
+  }
+  if (photoPayload) {
+    const savedUser = saveUserPhotoFile({
+      userId: linkedUser.id,
+      ...photoPayload,
+      previousPhotoPath: linkedUser.photoPath,
+    });
+    await prisma.user.update({ where: { id: linkedUser.id }, data: savedUser }).catch(() => {});
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     if (req.user.role === 'TEACHER') {
       return res.status(403).json({ error: 'Teachers cannot list all staff' });
     }
+    await backfillStaffIdentityNumbers(prisma);
     const teachers = await prisma.teacher.findMany({
       where: campusYearWhere(req),
       orderBy: { name: 'asc' },
@@ -93,9 +123,11 @@ router.post('/', async (req, res) => {
     }
 
     const photoPayload = extractPhotoPayload(req.body);
+    const identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber);
     let teacher = await prisma.teacher.create({
       data: {
         ...fields,
+        identityNumber,
         campusId: req.campusId,
         academicYearId: req.academicYearId,
       },
@@ -135,6 +167,11 @@ router.put('/:id', async (req, res) => {
     const clearPhoto = req.body.clearPhoto === true;
 
     let data = { ...fields };
+    data.identityNumber = await resolveStaffIdentityNumber(
+      prisma,
+      req.body.identityNumber ?? existing.identityNumber,
+      { teacherId: existing.id },
+    );
 
     if (clearPhoto && !photoPayload) {
       removeTeacherPhotoFile(existing.photoPath);
@@ -152,6 +189,17 @@ router.put('/:id', async (req, res) => {
       where: { id: req.params.id },
       data,
     });
+
+    if (photoPayload || clearPhoto) {
+      await syncLinkedUserPhoto(existing.id, photoPayload, { clear: clearPhoto && !photoPayload });
+    }
+    if (teacher.identityNumber) {
+      await prisma.user.updateMany({
+        where: { teacherId: teacher.id },
+        data: { identityNumber: teacher.identityNumber },
+      }).catch(() => {});
+    }
+
     res.json(serializeTeacher(teacher, { includePhotoUrl: true }));
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -181,6 +229,7 @@ router.post('/:id/photo', async (req, res) => {
       where: { id: existing.id },
       data: saved,
     });
+    await syncLinkedUserPhoto(existing.id, { fileName, contentBase64, mimeType });
     res.json(serializeTeacher(teacher, { includePhotoUrl: true }));
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -209,6 +258,7 @@ router.delete('/:id/photo', async (req, res) => {
       where: { id: existing.id },
       data: { photoPath: null, photoMimeType: null },
     });
+    await syncLinkedUserPhoto(existing.id, null, { clear: true });
     res.json(serializeTeacher(teacher, { includePhotoUrl: true }));
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -141,6 +141,8 @@ function PublicShell() {
   const [enrollOpen, setEnrollOpen] = useState(true);
   const location = useLocation();
 
+  const [coverHero, setCoverHero] = useState(location.pathname === '/');
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -155,10 +157,14 @@ function PublicShell() {
     window.scrollTo(0, 0);
   }, [location.pathname, locale]);
 
+  useEffect(() => {
+    setCoverHero(Boolean(document.querySelector('.ps-hero, .ps-page-hero.has-photo')));
+  }, [location.pathname, locale]);
+
   const brandName = (school?.name || 'École La RACINE')
     .replace(/\s*school\s*$/i, '')
     .trim() || 'La Racine';
-  const onHero = location.pathname === '/';
+  const onHero = coverHero;
   const navTone = scrolled || open || !onHero ? 'ps-nav-scrolled' : 'ps-nav-over-hero';
 
   const schoolItems = [

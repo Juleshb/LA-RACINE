@@ -12,12 +12,14 @@ import StudentExcelImportModal from '../components/StudentExcelImportModal';
 const STATUS_STYLES = {
   PENDING: 'bg-amber-50 text-amber-700',
   APPROVED: 'bg-green-50 text-green-700',
+  AWAITING_CONFIRMATION: 'bg-amber-50 text-amber-700',
   REJECTED: 'bg-red-50 text-red-600',
 };
 
 const STATUS_I18N = {
   PENDING: 'ui.pending',
   APPROVED: 'ui.approved',
+  AWAITING_CONFIRMATION: 'ui.awaitingConfirmation',
   REJECTED: 'ui.rejected',
 };
 

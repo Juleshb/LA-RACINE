@@ -51,7 +51,7 @@ router.get('/children', authorizePermission(PERMISSIONS.DASHBOARD), async (req, 
       where: {
         parentId: req.user.parentId,
         ...campusYearWhere(req),
-        registrationStatus: 'APPROVED',
+        registrationStatus: { in: ['APPROVED', 'AWAITING_CONFIRMATION'] },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
       select: {
@@ -60,6 +60,7 @@ router.get('/children', authorizePermission(PERMISSIONS.DASHBOARD), async (req, 
         firstName: true,
         lastName: true,
         classId: true,
+        registrationStatus: true,
         studentAccountCreatedBy: true,
         class: { select: { id: true, name: true, grade: true, section: true } },
         user: { select: { id: true, email: true, isActive: true } },
@@ -96,7 +97,7 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
     }
 
     const base = campusYearWhere(req);
-    const childWhere = { parentId: req.user.parentId, ...base, registrationStatus: 'APPROVED' };
+    const childWhere = { parentId: req.user.parentId, ...base, registrationStatus: { in: ['APPROVED', 'AWAITING_CONFIRMATION'] } };
 
     const children = await prisma.student.findMany({
       where: childWhere,
@@ -107,6 +108,7 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
         firstName: true,
         lastName: true,
         classId: true,
+        registrationStatus: true,
         studentAccountCreatedBy: true,
         class: { select: { id: true, name: true, grade: true, section: true } },
         user: { select: { id: true, email: true, isActive: true } },

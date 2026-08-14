@@ -15,6 +15,9 @@ export function classYearWhere(req) {
   };
 }
 
+/** Parent-visible enrollment statuses (includes returning students waiting to pay). */
+export const PARENT_VISIBLE_STATUSES = ['APPROVED', 'AWAITING_CONFIRMATION'];
+
 export function studentYearWhere(req) {
   return {
     campusId: req.campusId,
@@ -45,7 +48,7 @@ export async function resolveClassIdFilter(req, classId) {
 
   if (req.user.role === 'PARENT' && req.user.parentId) {
     const children = await prisma.student.findMany({
-      where: { parentId: req.user.parentId, ...studentYearWhere(req), registrationStatus: 'APPROVED' },
+      where: { parentId: req.user.parentId, ...studentYearWhere(req), registrationStatus: { in: PARENT_VISIBLE_STATUSES } },
       select: { classId: true },
     });
     const allowed = [...new Set(children.map((c) => c.classId).filter(Boolean))];
@@ -82,7 +85,7 @@ export async function studentScopeWhere(req) {
   }
 
   if (role === 'PARENT' && parentId) {
-    return { ...base, parentId, registrationStatus: 'APPROVED' };
+    return { ...base, parentId, registrationStatus: { in: PARENT_VISIBLE_STATUSES } };
   }
 
   if (role === 'TEACHER') {

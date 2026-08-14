@@ -95,6 +95,153 @@ function drawText(ctx, text, x, y, {
   else ctx.fillText(value, x, y);
 }
 
+async function renderStaffServiceCanvas({
+  fields,
+  photoUrl = null,
+  schoolName = 'LA RACINE',
+  academicYear = '',
+} = {}) {
+  const [logo, photo, seal, signature] = await Promise.all([
+    loadImage('/logo.png'),
+    loadImage(photoUrl),
+    loadImage('/bulletin/sceau-directeur.png'),
+    loadImage('/bulletin/signature-directeur.png'),
+  ]);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = ID_CARD_WIDTH_PX * EXPORT_SCALE;
+  canvas.height = ID_CARD_HEIGHT_PX * EXPORT_SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const W = ID_CARD_WIDTH_PX;
+  const H = ID_CARD_HEIGHT_PX;
+
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, 10);
+  ctx.clip();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = '#dbe7f0';
+  for (let i = -2; i < 14; i += 1) {
+    ctx.save();
+    ctx.translate(-50 + i * 38, -30);
+    ctx.transform(1, 0, -0.62, 1, 0, 0);
+    ctx.fillRect(0, 0, 12, 320);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  const fillPoly = (points, fill) => {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+
+  fillPoly([[198, 256], [248, 256], [348, 0], [298, 0]], '#c8e6f8');
+  fillPoly([[228, 256], [282, 256], [382, 0], [328, 0]], '#5eb6ea');
+  fillPoly([[262, 256], [318, 256], [418, 0], [362, 0]], '#0078d4');
+  fillPoly([[300, 256], [406, 256], [406, 0], [348, 0]], '#151515');
+
+  ctx.beginPath();
+  ctx.moveTo(0, 16);
+  ctx.lineTo(248, 16);
+  ctx.lineTo(218, 50);
+  ctx.lineTo(0, 50);
+  ctx.closePath();
+  ctx.fillStyle = '#0086de';
+  ctx.fill();
+  drawText(ctx, 'CARTE DE SERVICE', 14, 39, {
+    size: 16,
+    weight: '800',
+    color: '#ffffff',
+    family: 'Arial, Helvetica, sans-serif',
+  });
+
+  ctx.fillStyle = '#0086de';
+  ctx.fillRect(14, 50, 210, 2);
+
+  drawText(ctx, 'DISCIPLINE - INTELLIGENCE - INNOVATION', 14, 64, {
+    size: 8.5,
+    weight: '700',
+    color: '#4eb3e8',
+    family: 'Arial, Helvetica, sans-serif',
+  });
+
+  if (logo) {
+    ctx.beginPath();
+    ctx.arc(267, 47, 39, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    drawContainImage(ctx, logo, 228, 8, 78, 78);
+  }
+
+  const rows = fields?.rows || [];
+  ctx.font = '400 11px Arial, Helvetica, sans-serif';
+  rows.forEach((row, index) => {
+    const y = 88 + index * 16;
+    const label = `${row.label} :`;
+    drawText(ctx, label, 14, y, {
+      size: 11,
+      weight: '400',
+      color: '#111111',
+      family: 'Arial, Helvetica, sans-serif',
+    });
+    const labelW = ctx.measureText(`${label} `).width;
+    drawText(ctx, row.value, 14 + labelW + 2, y, {
+      size: index === 0 ? 12 : 11,
+      weight: '700',
+      color: '#111111',
+      maxWidth: 210 - labelW,
+      family: 'Arial, Helvetica, sans-serif',
+    });
+  });
+
+  const photoX = W - 122;
+  const photoY = 92;
+  const photoW = 96;
+  const photoH = 108;
+
+  if (seal) drawContainImage(ctx, seal, photoX - 52, photoY + 26, 78, 78);
+
+  ctx.fillStyle = '#0086de';
+  ctx.fillRect(photoX + 10, photoY + photoH, 86, 7);
+
+  ctx.fillStyle = '#eef2f6';
+  ctx.fillRect(photoX, photoY, photoW, photoH);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(photoX, photoY, photoW, photoH);
+  ctx.clip();
+  if (photo) {
+    drawCoverImage(ctx, photo, photoX, photoY, photoW, photoH);
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(photoX + 0.75, photoY + 0.75, photoW - 1.5, photoH - 1.5);
+
+  const sigX = photoX;
+  const sigY = H - 40;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(sigX, sigY, photoW, 30);
+  ctx.strokeStyle = '#cfcfcf';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sigX + 0.5, sigY + 0.5, photoW - 1, 29);
+  if (signature) drawContainImage(ctx, signature, sigX + 4, sigY + 3, photoW - 8, 24);
+
+  ctx.restore();
+  return canvas;
+}
+
 /**
  * Paint a complete CR80 ID card onto a high-res canvas (no html2canvas).
  * Matches the on-screen branded design for reliable PDF/JPEG export.
@@ -107,26 +254,11 @@ export async function renderIdCardCanvas({
   campusName = '',
   academicYear = '',
 } = {}) {
-  const isStaff = kind === 'staff';
-  const theme = isStaff
-    ? {
-      ink: '#14261a',
-      muted: '#5c6b60',
-      deep: '#14532d',
-      panelTop: '#ffffff',
-      panelMid: '#f3f7ee',
-      panelEnd: '#eaf3df',
-      topA: '#14532d',
-      topB: '#3f6212',
-      topC: '#84cc16',
-      footA: '#14532d',
-      footB: '#3f6212',
-      factBorder: '#a3e635',
-      photoEdge: '#84cc16',
-      photoBg: '#ecfccb',
-      kindLabel: 'PERSONNEL',
-    }
-    : {
+  if (kind === 'staff') {
+    return renderStaffServiceCanvas({ fields, photoUrl, schoolName, academicYear });
+  }
+
+  const theme = {
       ink: '#0b2840',
       muted: '#5b6b78',
       deep: '#0c4a6e',
@@ -177,7 +309,7 @@ export async function renderIdCardCanvas({
 
   // Soft glow
   const glow = ctx.createRadialGradient(W - 40, 120, 10, W - 40, 120, 140);
-  glow.addColorStop(0, isStaff ? 'rgba(101,163,13,0.16)' : 'rgba(2,132,199,0.16)');
+  glow.addColorStop(0, 'rgba(2,132,199,0.16)');
   glow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
@@ -252,7 +384,7 @@ export async function renderIdCardCanvas({
     drawCoverImage(ctx, photo, photoX, photoY, photoW, photoH);
   } else {
     // Placeholder person silhouette
-    ctx.fillStyle = isStaff ? '#a3e635' : '#7dd3fc';
+    ctx.fillStyle = '#7dd3fc';
     ctx.beginPath();
     ctx.arc(photoX + photoW / 2, photoY + 38, 16, 0, Math.PI * 2);
     ctx.fill();
@@ -386,17 +518,43 @@ export function studentCardExportFields(student, academicYear) {
 /**
  * Build export field payload from a staff card.
  */
-export function staffCardExportFields(staff, academicYear, roleLabel = 'ENSEIGNANT') {
+const ROLE_FR = {
+  SCHOOL_MANAGER: 'Directeur',
+  SCHOOL_ADMIN: 'Administrateur',
+  TEACHER: 'Enseignant',
+  HEAD_OF_STUDIES: 'Préfet des études',
+  HEAD_OF_DISCIPLINE: 'Préfet de discipline',
+  SECRETARY: 'Secrétaire',
+  ACCOUNTANT: 'Comptable',
+  LIBRARIAN: 'Bibliothécaire',
+};
+
+export function staffCardExportFields(staff, academicYear, roleLabel = 'Personnel', schoolName = 'LA RACINE') {
   const name = String(staff?.name || `${staff?.firstName || ''} ${staff?.lastName || ''}`)
     .trim()
     .toUpperCase() || '—';
+  const school = String(schoolName || 'LA RACINE').replace(/^École\s+/i, '').trim() || 'LA RACINE';
+  const gender = String(staff?.gender || staff?.sex || '').toUpperCase();
+  const sex = gender === 'MALE' || gender === 'M' || gender === 'MASCULIN'
+    ? 'Masculin'
+    : gender === 'FEMALE' || gender === 'F' || gender === 'FEMININ' || gender === 'FÉMININ'
+      ? 'Féminin'
+      : '—';
+  const poste = ROLE_FR[staff?.role]
+    || (/secretary/i.test(roleLabel || '') ? 'Secrétaire' : null)
+    || (/teacher|enseignant/i.test(roleLabel || '') ? 'Enseignant' : null)
+    || roleLabel
+    || 'Personnel';
   return {
     name,
     rows: [
-      { label: 'FONCTION', value: roleLabel || '—' },
-      { label: 'MATIÈRE', value: staff?.subject || '—' },
-      { label: 'TÉL', value: staff?.phone || '—' },
-      { label: 'ANNÉE', value: academicYear || '—' },
+      { label: 'Nom', value: name },
+      { label: 'PP/ Numéro d’identité', value: staff?.identityNumber || staff?.nationalId || '—' },
+      { label: 'Sexe', value: sex },
+      { label: 'Poste', value: poste },
+      { label: 'École', value: school },
+      { label: 'Validité', value: academicYear ? `Année ${academicYear}` : 'Fin de contrat' },
+      { label: 'N° Tél', value: staff?.phone || '—' },
     ],
   };
 }

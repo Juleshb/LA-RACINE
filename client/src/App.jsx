@@ -20,6 +20,7 @@ import Fees from './pages/Fees';
 import CreateFee from './pages/CreateFee';
 import FeeReceipt from './pages/FeeReceipt';
 import AcademicYears from './pages/AcademicYears';
+import Deliberation from './pages/Deliberation';
 import Users from './pages/Users';
 import Library from './pages/Library';
 import ELibrary from './pages/ELibrary';
@@ -135,6 +136,7 @@ export default function App() {
             <Route path="my-registrations" element={<RequirePermission permission={PERMISSIONS.REGISTRATION}><ParentMyRegistrations /></RequirePermission>} />
             <Route path="my-registrations/:id" element={<RequirePermission permission={PERMISSIONS.REGISTRATION}><ParentRegistrationDetail /></RequirePermission>} />
             <Route path="academic-years" element={<RequirePermission permission={PERMISSIONS.ACADEMIC_YEAR}><AcademicYears /></RequirePermission>} />
+            <Route path="academic-years/deliberation" element={<RequirePermission permission={PERMISSIONS.ACADEMIC_YEAR}><Deliberation /></RequirePermission>} />
             <Route path="users" element={<RequirePermission permission={PERMISSIONS.USERS}><Users /></RequirePermission>} />
             <Route path="profile" element={<Profile />} />
           </Route>

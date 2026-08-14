@@ -15,6 +15,7 @@ const feeTypeLabels = {
   TRANSPORT: 'Transport Fee',
   UNIFORM: 'Uniform Fee',
   OTHER: 'Other Fee',
+  CONFIRMATION: 'Confirmation fee',
 };
 
 export default function FeeReceipt() {

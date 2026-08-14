@@ -13,6 +13,7 @@ import {
   staffCardExportFields,
   studentCardExportFields,
 } from '../lib/idCardPdf';
+import { ROLE_LABELS } from '../config/permissions';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 export default function IdCards() {
@@ -26,7 +27,7 @@ export default function IdCards() {
 
   const [tab, setTab] = useState(initialTab);
   const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [staffPeople, setStaffPeople] = useState([]);
   const [school, setSchool] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(initialStaff || initialStudent || '');
@@ -44,18 +45,57 @@ export default function IdCards() {
     Promise.all([
       api.getStudents({ status: 'APPROVED' }),
       api.getTeachers(),
+      api.getUsers(campusId).catch(() => []),
       api.getSchool().catch(() => null),
     ])
-      .then(([studentList, teacherList, schoolData]) => {
+      .then(([studentList, teacherList, userList, schoolData]) => {
         setStudents(Array.isArray(studentList) ? studentList : []);
-        setTeachers(Array.isArray(teacherList) ? teacherList : []);
+        const teachersArr = Array.isArray(teacherList) ? teacherList : [];
+        const staffUsers = (Array.isArray(userList) ? userList : [])
+          .filter((u) => u.role && u.role !== 'STUDENT' && u.role !== 'PARENT');
+        const linkedTeacherIds = new Set(staffUsers.map((u) => u.teacherId).filter(Boolean));
+        const fromUsers = staffUsers.map((u) => ({
+          key: `u:${u.id}`,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          phone: u.phone || '',
+          email: u.email || '',
+          subject: '',
+          role: u.role,
+          roleLabel: ROLE_LABELS[u.role] || u.role,
+          hasPhoto: Boolean(u.hasPhoto),
+          identityNumber: u.identityNumber || '',
+          userId: u.id,
+          teacherId: u.teacherId || null,
+        }));
+        const extraTeachers = teachersArr
+          .filter((t) => !linkedTeacherIds.has(t.id))
+          .map((t) => ({
+            key: `t:${t.id}`,
+            name: t.name,
+            phone: t.phone || '',
+            email: t.email || '',
+            subject: t.subject || '',
+            role: 'TEACHER',
+            roleLabel: 'ENSEIGNANT',
+            hasPhoto: Boolean(t.hasPhoto),
+            identityNumber: t.identityNumber || '',
+            userId: null,
+            teacherId: t.id,
+          }));
+        const people = [...fromUsers, ...extraTeachers];
+        setStaffPeople(people);
         setSchool(schoolData);
+        if (initialStaff) {
+          const match = people.find((p) => p.key === initialStaff || p.userId === initialStaff || p.teacherId === initialStaff);
+          if (match) setSelectedId(match.key);
+        }
       })
       .catch((err) => setError(err.message || 'Failed to load cards data'))
       .finally(() => setLoading(false));
   }, [campusId]);
 
   const schoolName = school?.name || 'École La RACINE';
+  const staffSchoolName = school?.abbreviation || 'LA RACINE';
   const campusName = campus?.name || '';
   const yearName = academicYear?.name || '';
 
@@ -71,9 +111,9 @@ export default function IdCards() {
     [students, search],
   );
 
-  const filteredTeachers = useMemo(
-    () => teachers.filter((t) => matchesSearch(search, t.name, t.subject, t.email, t.phone)),
-    [teachers, search],
+  const filteredStaff = useMemo(
+    () => staffPeople.filter((p) => matchesSearch(search, p.name, p.subject, p.email, p.phone, p.roleLabel)),
+    [staffPeople, search],
   );
 
   const getStudentSortValue = useCallback((row, key) => {
@@ -85,10 +125,10 @@ export default function IdCards() {
     }
   }, []);
 
-  const getTeacherSortValue = useCallback((row, key) => {
+  const getStaffSortValue = useCallback((row, key) => {
     switch (key) {
       case 'name': return row.name || '';
-      case 'subject': return row.subject || '';
+      case 'subject': return row.roleLabel || row.subject || '';
       case 'phone': return row.phone || '';
       default: return '';
     }
@@ -102,11 +142,11 @@ export default function IdCards() {
   } = useTableSort(filteredStudents, getStudentSortValue, { initialKey: 'name' });
 
   const {
-    sorted: sortedTeachers,
-    sortKey: teacherSortKey,
-    sortDir: teacherSortDir,
-    toggleSort: toggleTeacherSort,
-  } = useTableSort(filteredTeachers, getTeacherSortValue, { initialKey: 'name' });
+    sorted: sortedStaff,
+    sortKey: staffSortKey,
+    sortDir: staffSortDir,
+    toggleSort: toggleStaffSort,
+  } = useTableSort(filteredStaff, getStaffSortValue, { initialKey: 'name' });
 
   const selectedStudent = useMemo(() => {
     const base = filteredStudents.find((s) => s.id === selectedId)
@@ -122,8 +162,8 @@ export default function IdCards() {
     }
     return base;
   }, [filteredStudents, students, selectedId, studentDetail]);
-  const selectedTeacher = filteredTeachers.find((t) => t.id === selectedId)
-    || teachers.find((t) => t.id === selectedId);
+  const selectedStaff = filteredStaff.find((p) => p.key === selectedId)
+    || staffPeople.find((p) => p.key === selectedId);
 
   useEffect(() => {
     // Auto-select first row when tab/list changes (skip once if URL prefilled)
@@ -137,12 +177,12 @@ export default function IdCards() {
         setSelectedId(first);
       }
     } else {
-      const first = filteredTeachers[0]?.id || '';
-      if (!filteredTeachers.some((t) => t.id === selectedId)) {
+      const first = filteredStaff[0]?.key || '';
+      if (!filteredStaff.some((p) => p.key === selectedId)) {
         setSelectedId(first);
       }
     }
-  }, [tab, filteredStudents, filteredTeachers]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, filteredStudents, filteredStaff]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedId) {
@@ -164,16 +204,13 @@ export default function IdCards() {
           setStudentDetail(data);
         } else {
           setStudentDetail(null);
-          const teacher = teachers.find((t) => t.id === selectedId);
-          if (teacher?.hasPhoto) {
-            const detail = await api.getTeacher(selectedId).catch(() => null);
-            if (cancelled) return;
-            if (detail?.photoUrl) {
-              setPhotoUrl(detail.photoUrl);
-            } else {
-              objectUrl = await api.getTeacherPhotoUrl(selectedId);
-              if (!cancelled) setPhotoUrl(objectUrl);
-            }
+          const person = staffPeople.find((p) => p.key === selectedId);
+          if (person?.hasPhoto && person.userId) {
+            objectUrl = await api.getUserPhotoUrl(person.userId);
+            if (!cancelled) setPhotoUrl(objectUrl);
+          } else if (person?.hasPhoto && person.teacherId) {
+            objectUrl = await api.getTeacherPhotoUrl(person.teacherId);
+            if (!cancelled) setPhotoUrl(objectUrl);
           } else {
             setPhotoUrl(null);
           }
@@ -193,7 +230,7 @@ export default function IdCards() {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [tab, selectedId, teachers]);
+  }, [tab, selectedId, staffPeople]);
 
   const handleExport = async (kind) => {
     setExporting(kind);
@@ -211,13 +248,13 @@ export default function IdCards() {
         };
         if (kind === 'pdf') await downloadIdCardPdf(payload, `carte-eleve-${code}.pdf`);
         else await downloadIdCardJpeg(payload, `carte-eleve-${code}.jpg`);
-      } else if (tab === 'staff' && selectedTeacher) {
-        const code = (selectedTeacher.name || selectedTeacher.id).replace(/\s+/g, '-');
+      } else if (tab === 'staff' && selectedStaff) {
+        const code = (selectedStaff.name || selectedStaff.key).replace(/\s+/g, '-');
         const payload = {
           kind: 'staff',
-          fields: staffCardExportFields(selectedTeacher, yearName, 'ENSEIGNANT'),
+          fields: staffCardExportFields(selectedStaff, yearName, selectedStaff.roleLabel, staffSchoolName),
           photoUrl,
-          schoolName,
+          schoolName: staffSchoolName,
           campusName,
           academicYear: yearName,
         };
@@ -237,7 +274,7 @@ export default function IdCards() {
     <div>
       <PageHeader
         title="ID Cards"
-        description="Student cards for accepted registrations, and staff cards for teachers."
+        description="Student cards for accepted registrations, and staff cards for all personnel."
       />
 
       {error && (
@@ -265,7 +302,7 @@ export default function IdCards() {
         >
           <CreditCard className="w-4 h-4" />
           Staff
-          <span className="opacity-80 text-xs">{teachers.length}</span>
+          <span className="opacity-80 text-xs">{staffPeople.length}</span>
         </button>
       </div>
 
@@ -316,30 +353,30 @@ export default function IdCards() {
                 </table>
               </div>
             )
-          ) : filteredTeachers.length === 0 ? (
+          ) : filteredStaff.length === 0 ? (
             <p className="text-center text-gray-500 py-12 px-4">
-              {teachers.length === 0 ? 'No teachers yet.' : 'No staff match your search.'}
+              {staffPeople.length === 0 ? 'No staff yet.' : 'No staff match your search.'}
             </p>
           ) : (
             <div className="overflow-x-auto max-h-[60vh]">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs text-gray-500 sticky top-0">
                   <tr>
-                    <SortableTh label="Name" columnKey="name" sortKey={teacherSortKey} sortDir={teacherSortDir} onSort={toggleTeacherSort} className="px-4 py-2 font-medium" />
-                    <SortableTh label="Subject" columnKey="subject" sortKey={teacherSortKey} sortDir={teacherSortDir} onSort={toggleTeacherSort} className="px-4 py-2 font-medium" />
-                    <SortableTh label="Phone" columnKey="phone" sortKey={teacherSortKey} sortDir={teacherSortDir} onSort={toggleTeacherSort} className="px-4 py-2 font-medium" />
+                    <SortableTh label="Name" columnKey="name" sortKey={staffSortKey} sortDir={staffSortDir} onSort={toggleStaffSort} className="px-4 py-2 font-medium" />
+                    <SortableTh label="Role" columnKey="subject" sortKey={staffSortKey} sortDir={staffSortDir} onSort={toggleStaffSort} className="px-4 py-2 font-medium" />
+                    <SortableTh label="Phone" columnKey="phone" sortKey={staffSortKey} sortDir={staffSortDir} onSort={toggleStaffSort} className="px-4 py-2 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedTeachers.map((t) => (
+                  {sortedStaff.map((p) => (
                     <tr
-                      key={t.id}
-                      className={`border-t border-gray-100 cursor-pointer ${selectedId === t.id ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
-                      onClick={() => setSelectedId(t.id)}
+                      key={p.key}
+                      className={`border-t border-gray-100 cursor-pointer ${selectedId === p.key ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
+                      onClick={() => setSelectedId(p.key)}
                     >
-                      <td className="px-4 py-2.5 font-medium text-gray-900">{t.name}</td>
-                      <td className="px-4 py-2.5 text-gray-500">{t.subject || '—'}</td>
-                      <td className="px-4 py-2.5 text-gray-500">{t.phone || '—'}</td>
+                      <td className="px-4 py-2.5 font-medium text-gray-900">{p.name}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{p.roleLabel || p.subject || '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{p.phone || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -384,15 +421,15 @@ export default function IdCards() {
                   campusName={campusName}
                   academicYear={yearName}
                 />
-              ) : tab === 'staff' && selectedTeacher ? (
+              ) : tab === 'staff' && selectedStaff ? (
                 <StaffIdCard
                   ref={cardRef}
-                  staff={selectedTeacher}
+                  staff={selectedStaff}
                   photoUrl={photoUrl}
-                  schoolName={schoolName}
+                  schoolName={staffSchoolName}
                   campusName={campusName}
                   academicYear={yearName}
-                  roleLabel="ENSEIGNANT"
+                  roleLabel={selectedStaff.roleLabel || 'PERSONNEL'}
                 />
               ) : (
                 <div className="text-center text-gray-400 py-16 text-sm flex flex-col items-center gap-2">

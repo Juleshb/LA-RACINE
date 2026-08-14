@@ -237,6 +237,22 @@ router.delete('/:id/documents/:docId', async (req, res) => {
   }
 });
 
+router.get('/transfer-destinations', async (req, res) => {
+  try {
+    if (!isManagerRole(req.user.role) && req.user.role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const campuses = await prisma.campus.findMany({
+      where: { isActive: true, NOT: { id: req.campusId } },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, code: true, city: true },
+    });
+    res.json(campuses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const scope = await studentScopeWhere(req);
@@ -277,6 +293,104 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.post('/:id/transfer', async (req, res) => {
+  try {
+    if (!isManagerRole(req.user.role) && req.user.role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Only a school manager, school admin, or secretary can transfer students' });
+    }
+
+    const destCampusId = String(req.body?.campusId || '').trim();
+    const destClassId = req.body?.classId ? String(req.body.classId).trim() : null;
+    if (!destCampusId) {
+      return res.status(400).json({ error: 'Select the destination campus' });
+    }
+    if (destCampusId === req.campusId) {
+      return res.status(400).json({ error: 'Choose a different campus' });
+    }
+
+    const scope = await studentScopeWhere(req);
+    const existing = await prisma.student.findFirst({
+      where: { id: req.params.id, ...scope },
+    });
+    if (!existing) return res.status(404).json({ error: 'Student not found' });
+
+    const destCampus = await prisma.campus.findFirst({
+      where: { id: destCampusId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!destCampus) return res.status(404).json({ error: 'Destination campus not found' });
+
+    const destYear = await prisma.academicYear.findFirst({
+      where: { campusId: destCampusId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!destYear) {
+      return res.status(400).json({ error: `No active academic year on ${destCampus.name}. Open a year there first.` });
+    }
+
+    const clash = await prisma.student.findFirst({
+      where: {
+        campusId: destCampusId,
+        academicYearId: destYear.id,
+        studentId: existing.studentId,
+        NOT: { id: existing.id },
+      },
+      select: { id: true },
+    });
+    if (clash) {
+      return res.status(400).json({
+        error: `A student with ID ${existing.studentId} already exists on ${destCampus.name} for ${destYear.name}`,
+      });
+    }
+
+    let classId = null;
+    if (destClassId) {
+      const destClass = await prisma.class.findFirst({
+        where: { id: destClassId, campusId: destCampusId, academicYearId: destYear.id },
+        select: { id: true },
+      });
+      if (!destClass) {
+        return res.status(400).json({ error: 'Selected class does not belong to the destination campus year' });
+      }
+      classId = destClass.id;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.studentTransport.deleteMany({ where: { studentId: existing.id } }).catch(() => {});
+      await tx.student.update({
+        where: { id: existing.id },
+        data: {
+          campusId: destCampusId,
+          academicYearId: destYear.id,
+          classId,
+          busStop: null,
+        },
+      });
+      await tx.user.updateMany({
+        where: { studentId: existing.id },
+        data: { campusId: destCampusId },
+      });
+    });
+
+    const student = await prisma.student.findUnique({
+      where: { id: existing.id },
+      include: studentInclude,
+    });
+
+    res.json({
+      ...student,
+      photoUrl: loadPhotoDataUrl(student.documents),
+      message: `Transferred to ${destCampus.name} (${destYear.name})`,
+      campusId: destCampusId,
+    });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'This student ID is already used on the destination campus' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/register', async (req, res) => {
   try {
     if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {
@@ -285,7 +399,12 @@ router.post('/register', async (req, res) => {
 
     const { student, documents, parentRecordId } = await createStudentRegistration({
       campusId: req.campusId,
-      body: req.body,
+      body: {
+        ...req.body,
+        ...(req.user.role === 'ACCOUNTANT' && !req.body.registrationStatus
+          ? { registrationStatus: 'APPROVED' }
+          : {}),
+      },
       parentSubmitted: false,
       requireDocuments: false,
       studentInclude,
@@ -635,7 +754,7 @@ router.patch('/:id/registration-status', async (req, res) => {
       return res.status(403).json({ error: 'You cannot update registration status' });
     }
     const { status } = req.body;
-    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+    if (!['PENDING', 'AWAITING_CONFIRMATION', 'APPROVED', 'REJECTED'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
     const scope = await studentScopeWhere(req);

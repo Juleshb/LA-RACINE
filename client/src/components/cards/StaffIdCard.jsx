@@ -1,25 +1,74 @@
 import { forwardRef } from 'react';
 import { User } from 'lucide-react';
 
-function Fact({ label, value }) {
+const ROLE_FR = {
+  SCHOOL_MANAGER: 'Directeur',
+  SCHOOL_ADMIN: 'Administrateur',
+  TEACHER: 'Enseignant',
+  HEAD_OF_STUDIES: 'Préfet des études',
+  HEAD_OF_DISCIPLINE: 'Préfet de discipline',
+  SECRETARY: 'Secrétaire',
+  ACCOUNTANT: 'Comptable',
+  LIBRARIAN: 'Bibliothécaire',
+};
+
+function Field({ label, value, strong }) {
   return (
-    <div className="id-card-fact">
-      <span className="id-card-label">{label}</span>
-      <span className="id-card-value">{value || '—'}</span>
+    <div className="svc-field">
+      <span className="svc-label">{label}&nbsp;:</span>
+      <span className={`svc-value${strong ? ' is-strong' : ''}`}>{value || '—'}</span>
     </div>
   );
 }
 
-/**
- * Printable staff / teacher ID card (CR80 landscape).
- */
+function formatSex(staff) {
+  const gender = String(staff?.gender || staff?.sex || '').toUpperCase();
+  if (gender === 'MALE' || gender === 'M' || gender === 'MASCULIN') return 'Masculin';
+  if (gender === 'FEMALE' || gender === 'F' || gender === 'FEMININ' || gender === 'FÉMININ') return 'Féminin';
+  return '—';
+}
+
+function formatIdentity(staff) {
+  return staff?.identityNumber || staff?.nationalId || staff?.idNumber || '—';
+}
+
+function frenchRole(staff, roleLabel) {
+  if (staff?.role && ROLE_FR[staff.role]) return ROLE_FR[staff.role];
+  if (roleLabel && ROLE_FR[roleLabel]) return ROLE_FR[roleLabel];
+  if (/secretary/i.test(roleLabel || '')) return 'Secrétaire';
+  if (/teacher|enseignant/i.test(roleLabel || '')) return 'Enseignant';
+  return roleLabel || 'Personnel';
+}
+
+function ServiceCardBg() {
+  return (
+    <svg className="svc-bg" viewBox="0 0 406 256" preserveAspectRatio="none" aria-hidden="true">
+      {Array.from({ length: 14 }, (_, i) => (
+        <rect
+          key={i}
+          x={-50 + i * 38}
+          y={-30}
+          width={12}
+          height={320}
+          fill="#dbe7f0"
+          opacity="0.45"
+          transform="skewX(-32)"
+        />
+      ))}
+      <polygon fill="#c8e6f8" points="198,256 248,256 348,0 298,0" />
+      <polygon fill="#5eb6ea" points="228,256 282,256 382,0 328,0" />
+      <polygon fill="#0078d4" points="262,256 318,256 418,0 362,0" />
+      <polygon fill="#151515" points="300,256 406,256 406,0 400,0 348,0" />
+    </svg>
+  );
+}
+
 const StaffIdCard = forwardRef(function StaffIdCard({
   staff,
   photoUrl,
-  schoolName = 'École La RACINE',
-  campusName = '',
+  schoolName = 'LA RACINE',
   academicYear = '',
-  roleLabel = 'ENSEIGNANT',
+  roleLabel = 'Personnel',
   id = 'staff-id-card',
 }, ref) {
   if (!staff) return null;
@@ -27,67 +76,46 @@ const StaffIdCard = forwardRef(function StaffIdCard({
   const name = String(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)
     .trim()
     .toUpperCase() || '—';
+  const school = String(schoolName || 'LA RACINE').replace(/^École\s+/i, '').trim() || 'LA RACINE';
+  const poste = frenchRole(staff, roleLabel);
 
   return (
-    <div ref={ref} id={id} className="id-card id-card-staff">
-      <div className="id-card-glow" aria-hidden="true" />
-      <div className="id-card-mark" aria-hidden="true">
-        <img src="/logo.png" alt="" crossOrigin="anonymous" />
+    <div ref={ref} id={id} className="id-card id-card-staff svc-card">
+      <ServiceCardBg />
+
+      <div className="svc-banner">CARTE DE SERVICE</div>
+      <div className="svc-rule" />
+      <p className="svc-motto">DISCIPLINE - INTELLIGENCE - INNOVATION</p>
+      <img src="/logo.png" alt="" className="svc-logo" crossOrigin="anonymous" />
+
+      <div className="svc-fields">
+        <Field label="Nom" value={name} strong />
+        <Field label="PP/ Numéro d’identité" value={formatIdentity(staff)} />
+        <Field label="Sexe" value={formatSex(staff)} />
+        <Field label="Poste" value={poste} />
+        <Field label="École" value={school} />
+        <Field label="Validité" value={academicYear ? `Année ${academicYear}` : 'Fin de contrat'} />
+        <Field label="N° Tél" value={staff.phone || '—'} />
       </div>
 
-      <header className="id-card-top">
-        <div className="id-card-brand">
-          <img src="/logo.png" alt="" className="id-card-logo" crossOrigin="anonymous" />
-          <div className="id-card-header-text">
-            <div className="id-card-school">{schoolName}</div>
-            <div className="id-card-campus">
-              {[campusName, academicYear].filter(Boolean).join(' · ') || 'Rwanda'}
-            </div>
-          </div>
-        </div>
-        <div className="id-card-kind">PERSONNEL</div>
-      </header>
+      <img src="/bulletin/sceau-directeur.png" alt="" className="svc-seal" crossOrigin="anonymous" />
 
-      <div className="id-card-body">
-        <div className="id-card-photo-wrap">
-          {photoUrl ? (
-            <img src={photoUrl} alt="" className="id-card-photo id-card-photo-staff" crossOrigin="anonymous" />
-          ) : (
-            <div className="id-card-photo id-card-photo-placeholder id-card-photo-staff">
-              <User size={30} color="#a3e635" strokeWidth={1.5} />
-            </div>
-          )}
-          <div className="id-card-photo-accent" aria-hidden="true" />
-        </div>
-
-        <div className="id-card-fields">
-          <div className="id-card-name">{name}</div>
-          <div className="id-card-facts">
-            <Fact label="Fonction" value={roleLabel} />
-            <Fact label="Matière" value={staff.subject || '—'} />
-            <Fact label="Tél" value={staff.phone || '—'} />
-            <Fact label="Année" value={academicYear || '—'} />
+      <div className="svc-photo-wrap">
+        {photoUrl ? (
+          <img src={photoUrl} alt="" className="id-card-photo svc-photo" crossOrigin="anonymous" />
+        ) : (
+          <div className="id-card-photo svc-photo svc-photo-placeholder">
+            <User size={34} color="#94a3b8" strokeWidth={1.4} />
           </div>
-        </div>
+        )}
+        <span className="svc-photo-accent" aria-hidden="true" />
       </div>
 
-      <footer className="id-card-footer">
-        <span className="id-card-motto">Discipline · Intelligence · Innovation</span>
-        <div className="id-card-auth" aria-hidden="true">
-          <img
-            src="/bulletin/signature-directeur.png"
-            alt=""
-            className="id-card-mini-signature"
-            crossOrigin="anonymous"
-          />
-          <img
-            src="/bulletin/sceau-directeur.png"
-            alt=""
-            className="id-card-mini-seal"
-            crossOrigin="anonymous"
-          />
-        </div>
-      </footer>
+      <div className="svc-sign-box">
+        <img src="/bulletin/signature-directeur.png" alt="" className="svc-sign" crossOrigin="anonymous" />
+      </div>
+
+      <span className="id-card-school" hidden>{schoolName}</span>
     </div>
   );
 });

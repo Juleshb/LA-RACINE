@@ -16,7 +16,14 @@ const EMPTY_FORM = {
   category: '',
   schedule: '',
   location: '',
-  instructor: '',
+  instructorKind: 'TEACHER',
+  instructorTeacherId: '',
+  externalInstructorId: '',
+  registerExternal: false,
+  externalName: '',
+  externalPhone: '',
+  externalEmail: '',
+  externalSpecialty: '',
   maxStudents: '',
   allowedGrades: [...PRIMARY_GRADES],
   isActive: true,
@@ -33,6 +40,8 @@ export default function Extracurricular() {
   const isChooser = ['PARENT', 'STUDENT'].includes(user?.role);
 
   const [activities, setActivities] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [externalInstructors, setExternalInstructors] = useState([]);
   const [primaryClasses, setPrimaryClasses] = useState([]);
   const [children, setChildren] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -54,6 +63,8 @@ export default function Extracurricular() {
     api.getExtracurricular(forStudentId || undefined).then((data) => {
       setActivities(data.activities || []);
       setPrimaryClasses(data.primaryClasses || []);
+      setTeachers(data.teachers || []);
+      setExternalInstructors(data.externalInstructors || []);
     }).catch(console.error);
   };
 
@@ -111,7 +122,14 @@ export default function Extracurricular() {
       category: activity.category || '',
       schedule: activity.schedule || '',
       location: activity.location || '',
-      instructor: activity.instructor || '',
+      instructorKind: activity.instructorKind === 'EXTERNAL' ? 'EXTERNAL' : 'TEACHER',
+      instructorTeacherId: activity.instructorTeacherId || '',
+      externalInstructorId: activity.externalInstructorId || '',
+      registerExternal: false,
+      externalName: '',
+      externalPhone: '',
+      externalEmail: '',
+      externalSpecialty: '',
       maxStudents: activity.maxStudents ?? '',
       allowedGrades: activity.allowedGrades?.length ? activity.allowedGrades : [...PRIMARY_GRADES],
       isActive: activity.isActive !== false,
@@ -143,8 +161,27 @@ export default function Extracurricular() {
     setError('');
     setSubmitting(true);
     const payload = {
-      ...form,
+      name: form.name,
+      description: form.description,
+      category: form.category,
+      schedule: form.schedule,
+      location: form.location,
       maxStudents: form.maxStudents ? Number(form.maxStudents) : null,
+      allowedGrades: form.allowedGrades,
+      isActive: form.isActive,
+      instructorKind: form.instructorKind,
+      instructorTeacherId: form.instructorKind === 'TEACHER' ? (form.instructorTeacherId || null) : null,
+      externalInstructorId: form.instructorKind === 'EXTERNAL' && !form.registerExternal
+        ? (form.externalInstructorId || null)
+        : null,
+      externalInstructor: form.instructorKind === 'EXTERNAL' && form.registerExternal
+        ? {
+          name: form.externalName,
+          phone: form.externalPhone,
+          email: form.externalEmail,
+          specialty: form.externalSpecialty,
+        }
+        : undefined,
     };
     try {
       if (editingId) {
@@ -476,9 +513,116 @@ export default function Extracurricular() {
             <label className="label">{t('ui.location')}</label>
             <input className="input" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t('pageBody.activities.locationPlaceholder')} />
           </div>
-          <div>
+          <div className="form-field-full md:col-span-2">
             <label className="label">{t('ui.instructor')}</label>
-            <input className="input" value={form.instructor} onChange={(e) => setForm({ ...form, instructor: e.target.value })} />
+            <div className="flex flex-wrap gap-3 mb-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="instructorKind"
+                  checked={form.instructorKind === 'TEACHER'}
+                  onChange={() => setForm({
+                    ...form,
+                    instructorKind: 'TEACHER',
+                    registerExternal: false,
+                    externalInstructorId: '',
+                  })}
+                />
+                {t('pageBody.activities.instructorFromTeachers')}
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="instructorKind"
+                  checked={form.instructorKind === 'EXTERNAL'}
+                  onChange={() => setForm({ ...form, instructorKind: 'EXTERNAL', instructorTeacherId: '' })}
+                />
+                {t('pageBody.activities.instructorExternal')}
+              </label>
+            </div>
+            {form.instructorKind === 'TEACHER' ? (
+              <select
+                className="input"
+                value={form.instructorTeacherId}
+                onChange={(e) => setForm({ ...form, instructorTeacherId: e.target.value })}
+              >
+                <option value="">{t('pageBody.activities.selectTeacher')}</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}{teacher.subject ? ` — ${teacher.subject}` : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="space-y-2">
+                {!form.registerExternal && (
+                  <select
+                    className="input"
+                    value={form.externalInstructorId}
+                    onChange={(e) => setForm({ ...form, externalInstructorId: e.target.value })}
+                  >
+                    <option value="">{t('pageBody.activities.selectExternal')}</option>
+                    {externalInstructors.map((ext) => (
+                      <option key={ext.id} value={ext.id}>
+                        {ext.name}{ext.specialty ? ` — ${ext.specialty}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.registerExternal}
+                    onChange={(e) => setForm({
+                      ...form,
+                      registerExternal: e.target.checked,
+                      externalInstructorId: e.target.checked ? '' : form.externalInstructorId,
+                    })}
+                  />
+                  {t('pageBody.activities.registerExternal')}
+                </label>
+                {form.registerExternal && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="md:col-span-2">
+                      <label className="label">{t('ui.name')} *</label>
+                      <input
+                        className="input"
+                        required
+                        value={form.externalName}
+                        onChange={(e) => setForm({ ...form, externalName: e.target.value })}
+                        placeholder={t('pageBody.activities.externalNamePlaceholder')}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">{t('ui.phone')}</label>
+                      <input
+                        className="input"
+                        value={form.externalPhone}
+                        onChange={(e) => setForm({ ...form, externalPhone: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">{t('ui.email')}</label>
+                      <input
+                        className="input"
+                        type="email"
+                        value={form.externalEmail}
+                        onChange={(e) => setForm({ ...form, externalEmail: e.target.value })}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="label">{t('pageBody.activities.specialty')}</label>
+                      <input
+                        className="input"
+                        value={form.externalSpecialty}
+                        onChange={(e) => setForm({ ...form, externalSpecialty: e.target.value })}
+                        placeholder={t('pageBody.activities.specialtyPlaceholder')}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="form-field-full md:col-span-2">
             <label className="label">{t('pageBody.activities.openToGrades')}</label>

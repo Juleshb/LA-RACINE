@@ -405,6 +405,9 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       firstName: student.firstName,
       lastName: student.lastName,
       postName: student.postName,
+      fatherName: student.fatherName || null,
+      motherName: student.motherName || null,
+      parentName: student.parentName || null,
     },
     term,
     config: {

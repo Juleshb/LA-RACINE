@@ -6,13 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "laracine",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "rw.laracineschool.students",
       "infoPlist": {
         "NSCameraUsageDescription": "La Racine needs the camera so you can join live Zoom classes.",
-        "NSMicrophoneUsageDescription": "La Racine needs the microphone so you can speak in live Zoom classes."
+        "NSMicrophoneUsageDescription": "La Racine needs the microphone so you can speak in live Zoom classes.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -23,6 +24,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "package": "rw.laracineschool.students",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
@@ -50,6 +52,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "023e4d5a-d5fa-4219-83e5-0f2d70d8f722"
+      }
+    },
+    "owner": "juleshb"
   }
 }

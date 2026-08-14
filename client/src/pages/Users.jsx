@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Trash2, UserCheck, UserX, KeyRound, Pencil, Search, Eye,
-  Users as UsersIcon, GraduationCap, HeartHandshake, Briefcase,
+  Users as UsersIcon, GraduationCap, HeartHandshake, Briefcase, Camera, X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
@@ -12,9 +12,10 @@ import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import StudentSelect from '../components/StudentSelect';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
 
 const EMPTY_FORM = {
-  email: '', password: '', firstName: '', lastName: '', phone: '', role: 'TEACHER',
+  email: '', password: '', firstName: '', lastName: '', phone: '', identityNumber: '', role: 'TEACHER',
   teacherId: '', studentId: '', parentId: '',
 };
 
@@ -51,6 +52,7 @@ function matchesSearch(user, query) {
     user.student?.lastName,
     user.student?.class?.name,
     user.phone,
+    user.identityNumber,
     user.parent?.phone,
     ...(user.parent?.students || []).flatMap((s) => [s.firstName, s.lastName, s.studentId, `${s.firstName} ${s.lastName}`]),
   ]
@@ -91,6 +93,11 @@ export default function Users() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [clearPhoto, setClearPhoto] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState({});
+  const fileInputRef = useRef(null);
 
   const loadUsers = () => api.getUsers(campusId).then(setUsers).catch(console.error);
 
@@ -101,6 +108,37 @@ export default function Users() {
     api.getStudents().then(setStudents).catch(console.error);
     api.getParents(campusId).then(setParents).catch(console.error);
   }, [campusId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const withPhotos = users.filter((u) => userCategory(u.role) === 'staff' && u.hasPhoto);
+    if (!withPhotos.length) {
+      setPhotoUrls((prev) => {
+        Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
+        return {};
+      });
+      return undefined;
+    }
+    Promise.all(
+      withPhotos.map(async (u) => [u.id, await api.getUserPhotoUrl(u.id)]),
+    ).then((pairs) => {
+      if (cancelled) {
+        pairs.forEach(([, url]) => { if (url) URL.revokeObjectURL(url); });
+        return;
+      }
+      const next = {};
+      pairs.forEach(([id, url]) => { if (url) next[id] = url; });
+      setPhotoUrls((prev) => {
+        Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [users]);
+
+  useEffect(() => () => {
+    Object.values(photoUrls).forEach((url) => URL.revokeObjectURL(url));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = useMemo(() => ({
     staff: users.filter((u) => userCategory(u.role) === 'staff').length,
@@ -123,6 +161,7 @@ export default function Users() {
       case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
       case 'email': return row.email || '';
       case 'phone': return displayPhone(row);
+      case 'identity': return row.identityNumber || '';
       case 'role': return ROLE_LABELS[row.role] || row.role || '';
       case 'linked':
         return row.teacher?.name
@@ -147,12 +186,20 @@ export default function Users() {
     { initialKey: 'name' },
   );
 
+  const resetPhotoState = () => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setClearPhoto(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const closeUserModal = () => {
     setModalMode(null);
     setEditingUser(null);
     setForm({ ...EMPTY_FORM, role: defaultRoleForTab(tab) });
     setError('');
     setSubmitting(false);
+    resetPhotoState();
   };
 
   const openCreate = () => {
@@ -160,9 +207,10 @@ export default function Users() {
     setEditingUser(null);
     setForm({ ...EMPTY_FORM, role: defaultRoleForTab(tab) });
     setError('');
+    resetPhotoState();
   };
 
-  const openEdit = (user) => {
+  const openEdit = async (user) => {
     setModalMode('edit');
     setEditingUser(user);
     setForm({
@@ -171,12 +219,22 @@ export default function Users() {
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       phone: displayPhone(user),
+      identityNumber: user.identityNumber || '',
       role: user.role || 'TEACHER',
       teacherId: user.teacherId || user.teacher?.id || '',
       studentId: user.studentId || user.student?.id || '',
       parentId: user.parentId || user.parent?.id || '',
     });
     setError('');
+    resetPhotoState();
+    if (userCategory(user.role) === 'staff' && user.hasPhoto) {
+      try {
+        const url = photoUrls[user.id] || await api.getUserPhotoUrl(user.id);
+        if (url) setPhotoPreview(url);
+      } catch {
+        // keep empty preview
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -199,6 +257,18 @@ export default function Users() {
         studentId: form.role === 'STUDENT' ? (form.studentId || null) : null,
         parentId: form.role === 'PARENT' ? (form.parentId || null) : null,
       };
+      if (userCategory(form.role) === 'staff') {
+        payload.identityNumber = form.identityNumber.trim() || undefined;
+        if (photoFile) {
+          payload.photo = {
+            fileName: photoFile.name,
+            mimeType: photoFile.type,
+            contentBase64: await fileToBase64(photoFile),
+          };
+        } else if (modalMode === 'edit' && clearPhoto) {
+          payload.clearPhoto = true;
+        }
+      }
 
       if (modalMode === 'edit' && editingUser) {
         await api.updateUser(editingUser.id, payload);
@@ -215,6 +285,32 @@ export default function Users() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePhotoPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setError(`Photo is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+    setError('');
+    setPhotoFile(file);
+    setClearPhoto(false);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setClearPhoto(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const closeReset = () => {
@@ -452,6 +548,7 @@ export default function Users() {
                 <tr>
                   <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableTh label={t('ui.email')} columnKey="email" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableTh label="PP / ID" columnKey="identity" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableTh label={t('pages.users.phone')} columnKey="phone" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableTh label={t('ui.role')} columnKey="role" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableTh label={t('pages.users.linkedProfile')} columnKey="linked" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -461,18 +558,23 @@ export default function Users() {
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
-                  <tr><td colSpan={7} className="users-empty">{emptyMessage}</td></tr>
+                  <tr><td colSpan={8} className="users-empty">{emptyMessage}</td></tr>
                 ) : sorted.map((u) => (
                   <tr key={u.id}>
                     <td>
                       <div className="users-name-cell">
                         <span className="users-avatar users-avatar-staff">
-                          {(u.firstName?.[0] || '?').toUpperCase()}{(u.lastName?.[0] || '').toUpperCase()}
+                          {photoUrls[u.id] ? (
+                            <img src={photoUrls[u.id]} alt="" className="users-avatar-img" />
+                          ) : (
+                            <>{(u.firstName?.[0] || '?').toUpperCase()}{(u.lastName?.[0] || '').toUpperCase()}</>
+                          )}
                         </span>
                         <span className="font-medium text-gray-900">{u.firstName} {u.lastName}</span>
                       </div>
                     </td>
                     <td className="text-gray-500">{u.email}</td>
+                    <td className="text-sm font-mono text-gray-700">{u.identityNumber || '—'}</td>
                     <td className="text-sm text-gray-600">{displayPhone(u) || <span className="text-amber-700 text-xs">{t('pages.users.phoneMissing')}</span>}</td>
                     <td>
                       <span className="users-role-badge users-role-staff">{ROLE_LABELS[u.role]}</span>
@@ -596,6 +698,52 @@ export default function Users() {
         size="lg"
       >
         <FormSection title={t('ui.accountDetails')}>
+          {userCategory(form.role) === 'staff' && (
+            <div className="form-field-full md:col-span-2">
+              <label className="label">Profile photo</label>
+              <div className="flex items-start gap-4">
+                <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-gray-400">
+                      {(form.firstName?.[0] || '?').toUpperCase()}{(form.lastName?.[0] || '').toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      {photoPreview ? 'Change' : 'Upload'}
+                    </button>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1 py-1.5"
+                        onClick={handleRemovePhoto}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handlePhotoPick}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
+                </div>
+              </div>
+            </div>
+          )}
           <div>
             <label className="label">{t('ui.firstName')} *</label>
             <input className="input" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
@@ -608,6 +756,18 @@ export default function Users() {
             <label className="label">{t('ui.email')} *</label>
             <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
+          {userCategory(form.role) === 'staff' && (
+            <div>
+              <label className="label">PP / Numéro d’identité</label>
+              <input
+                className="input font-mono"
+                value={form.identityNumber}
+                onChange={(e) => setForm({ ...form, identityNumber: e.target.value })}
+                placeholder="Auto-assigned if left empty"
+              />
+              <p className="text-xs text-gray-500 mt-1">Must be unique for every staff member.</p>
+            </div>
+          )}
           {roleNeedsPhone(form.role) && (
             <div>
               <label className="label">{t('pages.users.phone')} *</label>

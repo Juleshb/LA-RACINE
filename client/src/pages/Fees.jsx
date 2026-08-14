@@ -35,6 +35,7 @@ const FEE_TYPE_KEYS = {
   TRANSPORT: 'pageBody.fees.types.TRANSPORT',
   UNIFORM: 'pageBody.fees.types.UNIFORM',
   OTHER: 'pageBody.fees.types.OTHER',
+  CONFIRMATION: 'pageBody.fees.types.CONFIRMATION',
 };
 
 export default function Fees() {

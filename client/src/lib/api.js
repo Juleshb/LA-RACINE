@@ -1,4 +1,5 @@
 import { getApiBase } from './config';
+import { trackedFetch } from './apiLoading';
 
 const API_BASE = getApiBase();
 
@@ -13,7 +14,7 @@ function getCampusId() {
 async function request(endpoint, options = {}) {
   const token = getToken();
   const campusId = getCampusId();
-  const { headers: customHeaders = {}, ...restOptions } = options;
+  const { headers: customHeaders = {}, silent = false, ...restOptions } = options;
   const needsCampus = !endpoint.startsWith('/auth')
     && !endpoint.startsWith('/campuses')
     && !endpoint.startsWith('/users')
@@ -44,10 +45,10 @@ async function request(endpoint, options = {}) {
     delete headers['X-Academic-Year-Id'];
   }
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const res = await trackedFetch(`${API_BASE}${endpoint}`, {
     ...restOptions,
     headers,
-  });
+  }, { silent });
 
   if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/forgot')) {
     localStorage.removeItem('token');
@@ -103,6 +104,14 @@ export const api = {
     }),
   getMe: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
+  getMyPhotoUrl: async () => {
+    const token = getToken();
+    const res = await trackedFetch(`${API_BASE}/auth/me/photo`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    }, { silent: true });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  },
   changePassword: (currentPassword, newPassword, confirmPassword) =>
     request('/auth/me/password', {
       method: 'PATCH',
@@ -126,10 +135,22 @@ export const api = {
   createAcademicYear: (data) => request('/academic-years', { method: 'POST', body: JSON.stringify(data) }),
   startNewAcademicYear: (data) => request('/academic-years/start-new', { method: 'POST', body: JSON.stringify(data) }),
   getCopyPreview: (yearId) => request(`/academic-years/${yearId}/copy-preview`),
+  getDeliberation: (sourceYearId) =>
+    request(`/academic-years/deliberation${sourceYearId ? `?sourceYearId=${encodeURIComponent(sourceYearId)}` : ''}`),
+  applyDeliberation: (data) => request('/academic-years/deliberation', { method: 'POST', body: JSON.stringify(data) }),
   activateAcademicYear: (id) => request(`/academic-years/${id}/activate`, { method: 'PATCH' }),
+  revertAcademicYear: (id) => request(`/academic-years/${id}/revert`, { method: 'POST' }),
   closeAcademicYear: (id) => request(`/academic-years/${id}/close`, { method: 'PATCH' }),
 
   getUsers: (campusId) => request(campusId ? `/users?campusId=${campusId}` : '/users'),
+  getUserPhotoUrl: async (userId) => {
+    const token = getToken();
+    const res = await trackedFetch(`${API_BASE}/users/${userId}/photo`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    }, { silent: true });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  },
   getParents: (campusId) => request(campusId ? `/users/parents?campusId=${campusId}` : '/users/parents'),
   createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -159,13 +180,13 @@ export const api = {
   getStudentPhotoUrl: async (studentId) => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/students/${studentId}/photo`, {
+    const res = await trackedFetch(`${API_BASE}/students/${studentId}/photo`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
         ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
       },
-    });
+    }, { silent: true });
     if (!res.ok) return null;
     return URL.createObjectURL(await res.blob());
   },
@@ -173,7 +194,7 @@ export const api = {
     const token = getToken();
     const campusId = getCampusId();
     const qs = download ? '?download=1' : '';
-    const res = await fetch(`${API_BASE}/students/${studentId}/documents/${docId}${qs}`, {
+    const res = await trackedFetch(`${API_BASE}/students/${studentId}/documents/${docId}${qs}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
@@ -207,6 +228,8 @@ export const api = {
   getRegistrationOptions: () => request('/students/registration/options'),
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  transferStudent: (id, data) => request(`/students/${id}/transfer`, { method: 'POST', body: JSON.stringify(data) }),
+  getStudentTransferDestinations: () => request('/students/transfer-destinations'),
   deleteStudent: (id, { challengeId, code } = {}) =>
     request(`/students/${id}`, {
       method: 'DELETE',
@@ -224,13 +247,13 @@ export const api = {
   getTeacherPhotoUrl: async (teacherId) => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/teachers/${teacherId}/photo`, {
+    const res = await trackedFetch(`${API_BASE}/teachers/${teacherId}/photo`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
         ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
       },
-    });
+    }, { silent: true });
     if (!res.ok) return null;
     return URL.createObjectURL(await res.blob());
   },
@@ -358,7 +381,7 @@ export const api = {
   getELibraryFileUrl: async (id) => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/e-library/${id}/file`, {
+    const res = await trackedFetch(`${API_BASE}/e-library/${id}/file`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
@@ -420,7 +443,7 @@ export const api = {
   getHomeworkFileUrl: async (homeworkId, attachmentId) => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/homework/${homeworkId}/attachments/${attachmentId}/file`, {
+    const res = await trackedFetch(`${API_BASE}/homework/${homeworkId}/attachments/${attachmentId}/file`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
@@ -435,9 +458,9 @@ export const api = {
   submitHomework: (id, answers) => request(`/homework/${id}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
   deleteHomework: (id) => request(`/homework/${id}`, { method: 'DELETE' }),
 
-  getOnlineClasses: (classId) => {
+  getOnlineClasses: (classId, { silent = false } = {}) => {
     const qs = classId ? `?classId=${encodeURIComponent(classId)}` : '';
-    return request(`/online-classes${qs}`);
+    return request(`/online-classes${qs}`, { silent });
   },
   getOnlineClass: (id) => request(`/online-classes/${id}`),
   createOnlineClass: (data) => request('/online-classes', { method: 'POST', body: JSON.stringify(data) }),
@@ -526,7 +549,7 @@ export const api = {
   streamStudentAiChat: async ({ messages }, { onChunk } = {}) => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/student/ai-chat`, {
+    const res = await trackedFetch(`${API_BASE}/student/ai-chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -535,7 +558,7 @@ export const api = {
         ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
       },
       body: JSON.stringify({ messages }),
-    });
+    }, { silent: true });
 
     if (res.status === 401) {
       localStorage.removeItem('token');
@@ -570,13 +593,13 @@ export const api = {
   getMyStudentPhotoUrl: async () => {
     const token = getToken();
     const campusId = getCampusId();
-    const res = await fetch(`${API_BASE}/student/photo`, {
+    const res = await trackedFetch(`${API_BASE}/student/photo`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(campusId ? { 'X-Campus-Id': campusId } : {}),
         ...(getAcademicYearId() ? { 'X-Academic-Year-Id': getAcademicYearId() } : {}),
       },
-    });
+    }, { silent: true });
     if (!res.ok) return null;
     return URL.createObjectURL(await res.blob());
   },

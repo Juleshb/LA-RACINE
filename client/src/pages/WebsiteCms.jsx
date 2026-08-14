@@ -148,7 +148,7 @@ function WebsiteDashboard({ stats, loading, onOpenPage, campusBase }) {
         <StatCard icon={Globe} label={t('pages.website.statLanguages')} value={`${o.localesTotal || 0}`} hint="EN · FR · SW · RW" tone="sky" />
         <StatCard icon={FileText} label={t('pages.website.statCmsPages')} value={`${o.pagesTotal || 0}`} hint={`${o.contentRows || 0}/${o.expectedRows || 0} locale rows`} />
         <StatCard icon={Newspaper} label={t('pages.website.statNews')} value={`${o.newsTotal || 0}`} hint="Across primary locale" />
-        <StatCard icon={Image} label={t('pages.website.statGallery')} value={`${o.galleryImages || 0}`} hint="Public gallery items" tone="slate" />
+        <StatCard icon={Image} label={t('pages.website.statGallery')} value={`${o.galleryImages || 0}`} hint="Public albums" tone="slate" />
         <StatCard
           icon={Megaphone}
           label={t('pages.website.statAnnouncements')}
@@ -325,7 +325,7 @@ function WebsiteDashboard({ stats, loading, onOpenPage, campusBase }) {
             { slug: 'announcements', label: 'Add announcement', icon: Megaphone },
             { slug: 'news', label: 'Write news', icon: Newspaper },
             { slug: 'events', label: 'Schedule event', icon: CalendarDays },
-            { slug: 'gallery', label: 'Upload gallery', icon: Image },
+            { slug: 'gallery', label: 'Add album', icon: Image },
           ].map((action) => {
             const Icon = action.icon;
             return (
@@ -1354,19 +1354,24 @@ function AnnouncementEditor({ data, onChange }) {
 }
 
 function GalleryEditor({ data, onChange }) {
-  const images = Array.isArray(data.items) ? data.items : [];
+  const albums = Array.isArray(data.items) ? data.items : [];
 
-  const removeImage = (index) => {
-    onChange({ ...data, items: images.filter((_, i) => i !== index) });
+  const updateAlbum = (index, patch) => {
+    onChange({
+      ...data,
+      items: albums.map((album, i) => (i === index ? { ...album, ...patch } : album)),
+    });
   };
 
-  const updateCaption = (index, caption) => {
-    const next = images.map((img, i) => (i === index ? { ...img, caption } : img));
-    onChange({ ...data, items: next });
+  const removeAlbum = (index) => {
+    onChange({ ...data, items: albums.filter((_, i) => i !== index) });
   };
 
-  const addImages = (newImages) => {
-    onChange({ ...data, items: [...images, ...newImages] });
+  const addAlbum = () => {
+    onChange({
+      ...data,
+      items: [...albums, { title: '', coverUrl: '', albumUrl: '' }],
+    });
   };
 
   return (
@@ -1396,83 +1401,97 @@ function GalleryEditor({ data, onChange }) {
 
       <div>
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-sm font-semibold text-gray-900">Images ({images.length})</h3>
-        </div>
-
-        {/* Upload area */}
-        <div className="mb-4 p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center">
-          <p className="text-sm text-gray-500 mb-2">Upload images or paste URLs</p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
-            <label className="btn-primary text-sm cursor-pointer inline-flex items-center gap-1.5">
-              📷 Upload images
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files || []);
-                  const newItems = await Promise.all(
-                    files.map(async (file) => ({
-                      url: await fileToDataUrl(file),
-                      caption: file.name.replace(/\.[^.]+$/, ''),
-                    }))
-                  );
-                  addImages(newItems);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <input
-              className="input max-w-xs"
-              placeholder="Paste image URL + Enter"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const url = e.target.value.trim();
-                  if (!url) return;
-                  addImages([{ url, caption: '' }]);
-                  e.target.value = '';
-                }
-              }}
-            />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Albums ({albums.length})</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Store photos on Google Photos, Drive, or another album. Upload only a cover here, then paste the album link.
+            </p>
           </div>
+          <button type="button" className="btn-primary text-sm" onClick={addAlbum}>
+            Add album
+          </button>
         </div>
 
-        {images.length === 0 ? (
+        {albums.length === 0 ? (
           <div className="p-4 text-sm text-gray-500 rounded-xl border border-gray-200 bg-white text-center">
-            No images yet. Upload or paste URLs above.
+            No albums yet. Add an album, upload a cover, and paste the link where the photos live.
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {images.map((img, index) => {
-              const url = typeof img === 'string' ? img : img.url || img.imageUrl || '';
-              const caption = typeof img === 'string' ? '' : img.caption || '';
+          <div className="space-y-4">
+            {albums.map((raw, index) => {
+              const cover = raw.coverUrl || raw.imageUrl || raw.url || raw.body || '';
+              const albumUrl = raw.albumUrl || raw.link || '';
+              const title = raw.title || raw.caption || '';
               return (
-                <div key={index} className="relative group rounded-xl overflow-hidden border border-gray-200 bg-white">
-                  {url && (
-                    <img
-                      src={url}
-                      alt={caption || `Gallery ${index + 1}`}
-                      className="w-full aspect-square object-cover"
-                      loading="lazy"
-                    />
-                  )}
-                  <div className="p-2">
-                    <input
-                      className="w-full text-xs border border-gray-200 rounded px-2 py-1"
-                      placeholder="Caption"
-                      value={caption}
-                      onChange={(e) => updateCaption(index, e.target.value)}
-                    />
+                <div key={index} className="rounded-xl border border-gray-200 bg-white p-4 grid grid-cols-1 md:grid-cols-[160px_minmax(0,1fr)] gap-4">
+                  <div>
+                    {cover ? (
+                      <img src={cover} alt="" className="w-full aspect-square object-cover rounded-lg border border-gray-200" />
+                    ) : (
+                      <div className="w-full aspect-square rounded-lg border border-dashed border-gray-300 bg-gray-50 grid place-items-center text-xs text-gray-400">
+                        Cover
+                      </div>
+                    )}
+                    <label className="btn-secondary text-sm cursor-pointer inline-flex items-center justify-center w-full mt-2">
+                      Upload cover
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          updateAlbum(index, {
+                            coverUrl: await fileToDataUrl(file),
+                            url: undefined,
+                            body: undefined,
+                            imageUrl: undefined,
+                          });
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
                   </div>
-                  <button
-                    type="button"
-                    className="absolute top-1.5 right-1.5 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                    onClick={() => removeImage(index)}
-                  >
-                    ×
-                  </button>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label">Album name</label>
+                      <input
+                        className="input"
+                        value={title}
+                        onChange={(e) => updateAlbum(index, { title: e.target.value, caption: e.target.value })}
+                        placeholder="Sports day 2026"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Cover image URL</label>
+                      <input
+                        className="input"
+                        value={cover.startsWith('data:') ? '' : cover}
+                        onChange={(e) => updateAlbum(index, {
+                          coverUrl: e.target.value,
+                          url: undefined,
+                          body: undefined,
+                          imageUrl: undefined,
+                        })}
+                        placeholder="https://… (optional if you uploaded a cover)"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Album link</label>
+                      <input
+                        className="input"
+                        value={albumUrl}
+                        onChange={(e) => updateAlbum(index, { albumUrl: e.target.value, link: undefined })}
+                        placeholder="https://photos.app.goo.gl/… or Drive folder"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Photos stay on that service — they are not saved on this server.</p>
+                    </div>
+                    <div className="flex justify-end">
+                      <button type="button" className="text-sm text-red-600 font-medium" onClick={() => removeAlbum(index)}>
+                        Remove album
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })}

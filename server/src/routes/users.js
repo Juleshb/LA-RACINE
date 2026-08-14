@@ -6,6 +6,19 @@ import { authenticate } from '../middleware/auth.js';
 import { authorizeRoles, isManagerRole, MANAGER_ROLES } from '../config/permissions.js';
 import { issuePasswordReset, buildResetPreview } from '../lib/passwordReset.js';
 import { validateStrongPassword } from '../lib/passwordPolicy.js';
+import {
+  backfillStaffIdentityNumbers,
+  resolveStaffIdentityNumber,
+} from '../lib/staffIdentity.js';
+import {
+  extractPhotoPayload,
+  removeUserPhotoDir,
+  removeUserPhotoFile,
+  resolveUserPhotoAbsPath,
+  saveUserPhotoFile,
+  serializeUserPhoto,
+  syncPhotoToLinkedTeacher,
+} from '../lib/userPhotos.js';
 
 const router = Router();
 
@@ -49,11 +62,15 @@ router.get('/', async (req, res) => {
         : { campusId };
     }
 
+    await backfillStaffIdentityNumbers(prisma);
+
     const users = await prisma.user.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       select: {
         ...userSelect,
+        photoPath: true,
+        photoMimeType: true,
         teacher: { select: { id: true, name: true } },
         student: {
           select: {
@@ -94,7 +111,7 @@ router.get('/', async (req, res) => {
       const pending = u.passwordResetTokens?.[0] || null;
       const { passwordResetTokens, ...rest } = u;
       return {
-        ...rest,
+        ...serializeUserPhoto(rest),
         pendingReset: pending
           ? {
               expiresAt: pending.expiresAt,
@@ -129,6 +146,46 @@ router.get('/parents', async (req, res) => {
       },
     });
     res.json(parents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/:id/photo', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { photoPath: true, photoMimeType: true, role: true },
+    });
+    if (!user?.photoPath) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+    const absPath = resolveUserPhotoAbsPath(user.photoPath);
+    if (!absPath) {
+      return res.status(404).json({ error: 'Photo file missing' });
+    }
+    if (user.photoMimeType) res.setHeader('Content-Type', user.photoMimeType);
+    res.sendFile(absPath);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/:id/photo', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { photoPath: true, photoMimeType: true },
+    });
+    if (!user?.photoPath) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+    const absPath = resolveUserPhotoAbsPath(user.photoPath);
+    if (!absPath) {
+      return res.status(404).json({ error: 'Photo file missing' });
+    }
+    if (user.photoMimeType) res.setHeader('Content-Type', user.photoMimeType);
+    res.sendFile(absPath);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -173,7 +230,14 @@ router.post('/', async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
+    let identityNumber = null;
+    if (STAFF_ROLES.has(role)) {
+      identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber, {
+        teacherId: teacherId || null,
+      });
+    }
+
+    let user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
         password: hashed,
@@ -181,14 +245,36 @@ router.post('/', async (req, res) => {
         lastName,
         role,
         phone: phoneValue,
+        identityNumber,
         campusId: isManagerRole(role) ? null : campusId,
         teacherId: teacherId || null,
         studentId: studentId || null,
         parentId: parentId || null,
         mustChangePassword: false,
       },
-      select: userSelect,
+      select: { ...userSelect, photoPath: true, photoMimeType: true },
     });
+
+    const photoPayload = STAFF_ROLES.has(role) ? extractPhotoPayload(req.body) : null;
+    if (photoPayload) {
+      try {
+        const saved = saveUserPhotoFile({ userId: user.id, ...photoPayload });
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: saved,
+          select: { ...userSelect, photoPath: true, photoMimeType: true },
+        });
+        if (role === 'TEACHER' && (teacherId || user.teacherId)) {
+          await syncPhotoToLinkedTeacher(prisma, {
+            teacherId: teacherId || user.teacherId,
+            ...saved,
+          });
+        }
+      } catch (photoErr) {
+        await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+        throw photoErr;
+      }
+    }
 
     if (role === 'PARENT' && parentId && phoneValue) {
       await prisma.parent.update({
@@ -197,10 +283,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (role === 'TEACHER' && teacherId && phoneValue) {
+    if (role === 'TEACHER' && teacherId) {
       await prisma.teacher.update({
         where: { id: teacherId },
-        data: { phone: phoneValue },
+        data: {
+          ...(phoneValue ? { phone: phoneValue } : {}),
+          ...(identityNumber ? { identityNumber } : {}),
+        },
       }).catch(() => {});
     }
 
@@ -211,9 +300,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    res.status(201).json(user);
+    res.status(201).json(serializeUserPhoto(user));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -295,6 +384,17 @@ router.put('/:id', async (req, res) => {
     if (typeof isActive === 'boolean') data.isActive = isActive;
     if (phoneValue !== undefined) data.phone = phoneValue;
 
+    if (STAFF_ROLES.has(nextRole)) {
+      data.identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber ?? target.identityNumber, {
+        userId: target.id,
+        teacherId: nextRole === 'TEACHER'
+          ? (teacherId !== undefined ? (teacherId || null) : target.teacherId)
+          : target.teacherId,
+      });
+    } else {
+      data.identityNumber = null;
+    }
+
     if (isManagerRole(nextRole)) {
       data.campusId = null;
       data.teacherId = null;
@@ -325,11 +425,58 @@ router.put('/:id', async (req, res) => {
       data,
       select: {
         ...userSelect,
+        photoPath: true,
+        photoMimeType: true,
         teacher: { select: { id: true, name: true } },
         student: { select: { id: true, studentId: true, firstName: true, lastName: true } },
         parent: { select: { id: true, phone: true } },
       },
     });
+
+    const photoPayload = extractPhotoPayload(req.body);
+    const clearPhoto = req.body.clearPhoto === true;
+    let result = user;
+    if (STAFF_ROLES.has(user.role) && (photoPayload || clearPhoto)) {
+      if (clearPhoto && !photoPayload) {
+        removeUserPhotoFile(target.photoPath);
+        result = await prisma.user.update({
+          where: { id: target.id },
+          data: { photoPath: null, photoMimeType: null },
+          select: {
+            ...userSelect,
+            photoPath: true,
+            photoMimeType: true,
+            teacher: { select: { id: true, name: true } },
+            student: { select: { id: true, studentId: true, firstName: true, lastName: true } },
+            parent: { select: { id: true, phone: true } },
+          },
+        });
+        if (result.teacherId) {
+          await syncPhotoToLinkedTeacher(prisma, { teacherId: result.teacherId, clear: true });
+        }
+      } else if (photoPayload) {
+        const saved = saveUserPhotoFile({
+          userId: target.id,
+          ...photoPayload,
+          previousPhotoPath: target.photoPath,
+        });
+        result = await prisma.user.update({
+          where: { id: target.id },
+          data: saved,
+          select: {
+            ...userSelect,
+            photoPath: true,
+            photoMimeType: true,
+            teacher: { select: { id: true, name: true } },
+            student: { select: { id: true, studentId: true, firstName: true, lastName: true } },
+            parent: { select: { id: true, phone: true } },
+          },
+        });
+        if (result.teacherId) {
+          await syncPhotoToLinkedTeacher(prisma, { teacherId: result.teacherId, ...saved });
+        }
+      }
+    }
 
     if (user.role === 'PARENT' && user.parentId && phoneValue) {
       await prisma.parent.update({
@@ -338,10 +485,13 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    if (user.role === 'TEACHER' && user.teacherId && phoneValue) {
+    if (user.role === 'TEACHER' && user.teacherId) {
       await prisma.teacher.update({
         where: { id: user.teacherId },
-        data: { phone: phoneValue },
+        data: {
+          ...(phoneValue ? { phone: phoneValue } : {}),
+          ...(result.identityNumber ? { identityNumber: result.identityNumber } : {}),
+        },
       }).catch(() => {});
     }
 
@@ -352,12 +502,12 @@ router.put('/:id', async (req, res) => {
       }).catch(() => {});
     }
 
-    res.json(user);
+    res.json(serializeUserPhoto(result));
   } catch (error) {
     if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Email or linked profile is already in use' });
+      return res.status(400).json({ error: 'Email, linked profile, or identity number is already in use' });
     }
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -472,6 +622,8 @@ router.delete('/:id', async (req, res) => {
     }
 
     const id = target.id;
+    removeUserPhotoFile(target.photoPath);
+    removeUserPhotoDir(id);
 
     await prisma.$transaction(async (tx) => {
       await tx.contactInquiryReply.updateMany({

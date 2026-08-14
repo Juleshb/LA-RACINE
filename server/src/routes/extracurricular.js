@@ -104,11 +104,25 @@ async function resolveTargetStudentId(req, bodyStudentId) {
   return { studentId: bodyStudentId };
 }
 
+const instructorInclude = {
+  instructorTeacher: { select: { id: true, name: true, subject: true, phone: true, email: true } },
+  externalInstructor: { select: { id: true, name: true, phone: true, email: true, specialty: true } },
+};
+
+function instructorDisplayName(activity) {
+  return activity.instructorTeacher?.name
+    || activity.externalInstructor?.name
+    || activity.instructor
+    || null;
+}
+
 function serializeActivity(activity, { myEnrollments = [], includeDetails = false } = {}) {
   const allowedGrades = parseAllowedGrades(activity.allowedGrades);
   const enrollmentCount = activity._count?.enrollments ?? activity.enrollments?.length ?? 0;
   const enrolledStudentIds = new Set((activity.enrollments || []).map((e) => e.studentId));
   const isEnrolled = myEnrollments.includes(activity.id);
+  const kind = activity.instructorKind
+    || (activity.instructorTeacherId ? 'TEACHER' : activity.externalInstructorId ? 'EXTERNAL' : null);
 
   const base = {
     id: activity.id,
@@ -117,7 +131,12 @@ function serializeActivity(activity, { myEnrollments = [], includeDetails = fals
     category: activity.category,
     schedule: activity.schedule,
     location: activity.location,
-    instructor: activity.instructor,
+    instructor: instructorDisplayName(activity),
+    instructorKind: kind,
+    instructorTeacherId: activity.instructorTeacherId || null,
+    externalInstructorId: activity.externalInstructorId || null,
+    instructorTeacher: activity.instructorTeacher || null,
+    externalInstructor: activity.externalInstructor || null,
     maxStudents: activity.maxStudents,
     allowedGrades,
     isActive: activity.isActive,
@@ -187,6 +206,122 @@ router.get('/eligible-students', async (req, res) => {
   }
 });
 
+async function listTeachers(req) {
+  return prisma.teacher.findMany({
+    where: campusYearWhere(req),
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, subject: true, phone: true, email: true },
+  });
+}
+
+async function listExternalInstructors(req) {
+  return prisma.externalInstructor.findMany({
+    where: { campusId: req.campusId, isActive: true },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, phone: true, email: true, specialty: true },
+  });
+}
+
+async function resolveInstructor(req, body = {}, existing = {}) {
+  const kind = String(body.instructorKind || '').toUpperCase();
+  const teacherId = body.instructorTeacherId || null;
+  let externalId = body.externalInstructorId || null;
+  const incoming = body.externalInstructor || null;
+
+  if (kind === 'TEACHER') {
+    if (!teacherId) {
+      return {
+        instructorKind: null,
+        instructorTeacherId: null,
+        externalInstructorId: null,
+        instructor: null,
+      };
+    }
+    const teacher = await prisma.teacher.findFirst({
+      where: { id: teacherId, ...campusYearWhere(req) },
+      select: { id: true, name: true },
+    });
+    if (!teacher) return { error: 'Teacher not found' };
+    return {
+      instructorKind: 'TEACHER',
+      instructorTeacherId: teacher.id,
+      externalInstructorId: null,
+      instructor: teacher.name,
+    };
+  }
+
+  if (kind === 'EXTERNAL' || externalId || incoming?.name) {
+    if (incoming?.name?.trim() && !externalId) {
+      const created = await prisma.externalInstructor.create({
+        data: {
+          campusId: req.campusId,
+          name: incoming.name.trim(),
+          phone: incoming.phone?.trim() || null,
+          email: incoming.email?.trim() || null,
+          specialty: incoming.specialty?.trim() || null,
+          notes: incoming.notes?.trim() || null,
+        },
+      });
+      externalId = created.id;
+    }
+    if (!externalId) {
+      return { error: 'Select or register an external instructor' };
+    }
+    const ext = await prisma.externalInstructor.findFirst({
+      where: { id: externalId, campusId: req.campusId },
+    });
+    if (!ext) return { error: 'External instructor not found' };
+    return {
+      instructorKind: 'EXTERNAL',
+      instructorTeacherId: null,
+      externalInstructorId: ext.id,
+      instructor: ext.name,
+    };
+  }
+
+  return {
+    instructorKind: existing.instructorKind || null,
+    instructorTeacherId: existing.instructorTeacherId ?? null,
+    externalInstructorId: existing.externalInstructorId ?? null,
+    instructor: body.instructor !== undefined ? (body.instructor || null) : (existing.instructor ?? null),
+  };
+}
+
+router.get('/external-instructors', async (req, res) => {
+  try {
+    if (!canManageActivities(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const instructors = await listExternalInstructors(req);
+    res.json(instructors);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/external-instructors', async (req, res) => {
+  try {
+    if (!canManageActivities(req.user.role)) {
+      return res.status(403).json({ error: 'You cannot register instructors' });
+    }
+    const name = String(req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Instructor name is required' });
+    const created = await prisma.externalInstructor.create({
+      data: {
+        campusId: req.campusId,
+        name,
+        phone: req.body?.phone?.trim() || null,
+        email: req.body?.email?.trim() || null,
+        specialty: req.body?.specialty?.trim() || null,
+        notes: req.body?.notes?.trim() || null,
+      },
+    });
+    res.status(201).json(created);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const { role, studentId, parentId } = req.user;
@@ -229,7 +364,10 @@ router.get('/', async (req, res) => {
         ...(role === 'STUDENT' || role === 'PARENT' ? { isActive: true } : {}),
       },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        _count: { select: { enrollments: true } },
+        ...instructorInclude,
+      },
     });
 
     const filtered = (studentGrade && (role === 'STUDENT' || role === 'PARENT'))
@@ -237,11 +375,15 @@ router.get('/', async (req, res) => {
       : activities;
 
     const primaryClasses = await getPrimaryClasses(req);
-
-    res.json({
+    const payload = {
       activities: filtered.map((a) => serializeActivity(a, { myEnrollments })),
       primaryClasses,
-    });
+    };
+    if (canManageActivities(role)) {
+      payload.teachers = await listTeachers(req);
+      payload.externalInstructors = await listExternalInstructors(req);
+    }
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -256,6 +398,7 @@ router.get('/:id', async (req, res) => {
           include: { student: studentInclude },
           orderBy: { enrolledAt: 'asc' },
         },
+        ...instructorInclude,
       },
     });
     if (!activity) return res.status(404).json({ error: 'Activity not found' });
@@ -273,7 +416,7 @@ router.post('/', async (req, res) => {
     }
 
     const {
-      name, description, category, schedule, location, instructor, maxStudents, allowedGrades, isActive,
+      name, description, category, schedule, location, maxStudents, allowedGrades, isActive,
     } = req.body;
 
     if (!name?.trim()) return res.status(400).json({ error: 'Activity name is required' });
@@ -282,6 +425,9 @@ router.post('/', async (req, res) => {
     if (!grades.length) {
       return res.status(400).json({ error: 'Select at least one Primary grade (P1–P6)' });
     }
+
+    const instructorFields = await resolveInstructor(req, req.body);
+    if (instructorFields.error) return res.status(400).json({ error: instructorFields.error });
 
     const activity = await prisma.extracurricularActivity.create({
       data: {
@@ -292,12 +438,15 @@ router.post('/', async (req, res) => {
         category: category || null,
         schedule: schedule || null,
         location: location || null,
-        instructor: instructor || null,
+        ...instructorFields,
         maxStudents: maxStudents ? Number(maxStudents) : null,
         allowedGrades: grades,
         isActive: isActive !== false,
       },
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        _count: { select: { enrollments: true } },
+        ...instructorInclude,
+      },
     });
 
     res.status(201).json(serializeActivity(activity));
@@ -318,13 +467,16 @@ router.put('/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Activity not found' });
 
     const {
-      name, description, category, schedule, location, instructor, maxStudents, allowedGrades, isActive,
+      name, description, category, schedule, location, maxStudents, allowedGrades, isActive,
     } = req.body;
 
     const grades = allowedGrades != null ? parseAllowedGrades(allowedGrades) : parseAllowedGrades(existing.allowedGrades);
     if (!grades.length) {
       return res.status(400).json({ error: 'Select at least one Primary grade (P1–P6)' });
     }
+
+    const instructorFields = await resolveInstructor(req, req.body, existing);
+    if (instructorFields.error) return res.status(400).json({ error: instructorFields.error });
 
     const activity = await prisma.extracurricularActivity.update({
       where: { id: req.params.id },
@@ -334,12 +486,15 @@ router.put('/:id', async (req, res) => {
         category: category ?? existing.category,
         schedule: schedule ?? existing.schedule,
         location: location ?? existing.location,
-        instructor: instructor ?? existing.instructor,
+        ...instructorFields,
         maxStudents: maxStudents !== undefined ? (maxStudents ? Number(maxStudents) : null) : existing.maxStudents,
         allowedGrades: grades,
         isActive: isActive ?? existing.isActive,
       },
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        _count: { select: { enrollments: true } },
+        ...instructorInclude,
+      },
     });
 
     res.json(serializeActivity(activity));

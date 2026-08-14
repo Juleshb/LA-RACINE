@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { studentScopeWhere } from '../lib/scope.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
+import { generateFeeReceiptNumber } from '../lib/deliberation.js';
 
 const router = Router();
 
@@ -10,14 +11,6 @@ router.use(authorizePermission(PERMISSIONS.FEES));
 function campusStudentFilter(req) {
   const scope = studentScopeWhere(req);
   return scope.then((where) => ({ student: where }));
-}
-
-function generateReceiptNumber() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `FEE-${year}${month}-${random}`;
 }
 
 router.get('/', async (req, res) => {
@@ -90,7 +83,7 @@ router.post('/', async (req, res) => {
 
     const fee = await prisma.feePayment.create({
       data: {
-        receiptNumber: generateReceiptNumber(),
+        receiptNumber: generateFeeReceiptNumber(),
         studentId,
         feeType,
         amount,
@@ -125,6 +118,18 @@ router.patch('/:id/status', async (req, res) => {
       data: { status, paidDate: status === 'PAID' ? new Date() : null },
       include: { student: { include: { class: true } } },
     });
+
+    if (
+      fee.feeType === 'CONFIRMATION'
+      && ['PAID', 'WAIVED'].includes(status)
+      && fee.student?.registrationStatus === 'AWAITING_CONFIRMATION'
+    ) {
+      await prisma.student.update({
+        where: { id: fee.studentId },
+        data: { registrationStatus: 'APPROVED' },
+      });
+    }
+
     res.json(fee);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { getYouTubeEmbedUrl, parseYouTubeId } from '../../lib/youtube';
 import ProgramCard from '../../components/public/ProgramCard';
 import { enrichProgramCard } from './programUtils';
+import { galleryAlbums } from '../../lib/galleryAlbums';
 
 function formatDate(value, locale) {
   if (!value) return '';
@@ -28,11 +28,6 @@ function newsImage(item) {
   return item.imageUrl || '';
 }
 
-function galleryImage(item) {
-  if (!item) return '';
-  return item.body || item.imageUrl || item.url || '';
-}
-
 /**
  * Landing page — all copy, slides, stats, programs, testimonials, and CTAs
  * come from Website CMS (`home` slug). News cards + gallery images come from
@@ -46,18 +41,15 @@ export default function PublicHome() {
   const academics = page('academics') || {};
 
   const brand = (school?.name || 'École La RACINE').replace(/\s*school\s*$/i, '').trim();
-  const videoId = parseYouTubeId(c.heroVideoUrl || '');
-  const posterUrl = videoId
-    ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-    : c.heroImageUrl;
-  const embedUrl = useMemo(() => {
-    if (!videoId) return '';
-    return getYouTubeEmbedUrl(videoId, { autoplay: true, muted: true, background: true });
-  }, [videoId]);
 
   const slides = useMemo(() => {
     const fromCms = Array.isArray(c.heroSlides) ? c.heroSlides.filter((s) => s?.title || s?.body) : [];
-    if (fromCms.length) return fromCms;
+    if (fromCms.length) {
+      return fromCms.map((s) => ({
+        ...s,
+        imageUrl: s.imageUrl || c.heroImageUrl || '',
+      }));
+    }
     if (!c.heroTitle && !c.heroLine && !c.heroImageUrl) return [];
     return [
       {
@@ -99,29 +91,19 @@ export default function PublicHome() {
     : (c.values || [])).filter((item) => item?.title);
   const voices = Array.isArray(c.testimonials) ? c.testimonials.filter((t) => t?.quote) : [];
   const newsItems = Array.isArray(news.items) ? news.items.slice(0, 6) : [];
-  const galleryItems = Array.isArray(gallery.items) ? gallery.items.slice(0, 8) : [];
+  const galleryItems = galleryAlbums(gallery.items).slice(0, 8);
   const stats = c.stats || {};
 
   return (
     <>
       <section className="ps-hero">
         <div className="ps-hero-media" aria-hidden="true">
-          {(active.imageUrl || posterUrl || c.heroImageUrl) && (
+          {(active.imageUrl || c.heroImageUrl) && (
             <img
               className="ps-hero-poster"
-              src={active.imageUrl || posterUrl || c.heroImageUrl}
+              src={active.imageUrl || c.heroImageUrl}
               alt=""
               fetchPriority="high"
-            />
-          )}
-          {slide === 0 && embedUrl && (
-            <iframe
-              className="ps-hero-video"
-              src={embedUrl}
-              title={brand}
-              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
-              tabIndex={-1}
             />
           )}
         </div>
@@ -295,13 +277,29 @@ export default function PublicHome() {
             )}
           </div>
           <div className="ps-home-gallery-track">
-            {galleryItems.map((item, index) => {
-              const src = galleryImage(item);
-              if (!src) return null;
+            {galleryItems.map((album, index) => {
+              const inner = (
+                <>
+                  {album.coverUrl ? <img src={album.coverUrl} alt="" /> : <div className="ps-home-gallery-placeholder" />}
+                  {album.title && <figcaption>{album.title}</figcaption>}
+                </>
+              );
+              if (album.albumUrl) {
+                return (
+                  <a
+                    key={`${album.title}-${index}`}
+                    href={album.albumUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ps-home-gallery-item"
+                  >
+                    {inner}
+                  </a>
+                );
+              }
               return (
-                <figure key={item.title || src || index} className="ps-home-gallery-item">
-                  <img src={src} alt={item.title || ''} />
-                  {item.title && <figcaption>{item.title}</figcaption>}
+                <figure key={`${album.title}-${index}`} className="ps-home-gallery-item">
+                  {inner}
                 </figure>
               );
             })}

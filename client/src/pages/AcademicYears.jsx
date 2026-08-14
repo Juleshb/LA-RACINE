@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Calendar, PlayCircle, Copy, RotateCcw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Calendar, PlayCircle, Copy, RotateCcw, Gavel, Undo2 } from 'lucide-react';
 import { api, setActiveAcademicYear } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
@@ -21,12 +22,15 @@ export default function AcademicYears() {
     copyTeachers: true,
     copyClasses: true,
     copySubjects: true,
+    confirmationFeeAmount: '',
+    confirmationFeeDueDate: '',
   });
   const [copyPreview, setCopyPreview] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activatingId, setActivatingId] = useState(null);
+  const [revertingId, setRevertingId] = useState(null);
 
   const load = () => api.getAcademicYears().then(setYears).catch(console.error);
 
@@ -64,7 +68,7 @@ export default function AcademicYears() {
       ? `\n\nCopy from ${academicYear?.name}: ${copyParts.join(', ')}.`
       : '\n\nStart with empty records (no copy).';
 
-    if (!confirm(`Start ${newYearForm.name}? The current year will be closed.${copyNote}\n\nStudent records and student login links always start fresh.`)) return;
+    if (!confirm(`Start ${newYearForm.name}? The current year will be closed.${copyNote}\n\nPromoted and repeating students from deliberation will be enrolled and billed the confirmation fee. Rejected / graduated students will not continue.`)) return;
 
     setError('');
     setSubmitting(true);
@@ -75,6 +79,10 @@ export default function AcademicYears() {
         copyTeachers: newYearForm.copyTeachers,
         copyClasses: newYearForm.copyClasses,
         copySubjects: newYearForm.copySubjects,
+        confirmationFeeAmount: newYearForm.confirmationFeeAmount === ''
+          ? null
+          : Number(newYearForm.confirmationFeeAmount),
+        confirmationFeeDueDate: newYearForm.confirmationFeeDueDate || null,
       });
       setActiveAcademicYear(result.year.id);
       setShowNewYear(false);
@@ -106,6 +114,36 @@ export default function AcademicYears() {
       setError(err.message);
     } finally {
       setActivatingId(null);
+    }
+  };
+
+  const handleRevert = async (year) => {
+    const previous = years
+      .filter((y) => y.id !== year.id)
+      .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0];
+    const restoreNote = previous
+      ? `\n\n${previous.name} will be opened again. You can start a new year later.`
+      : '\n\nThere is no previous year. You will set an academic year again from scratch.';
+    if (!confirm(
+      `Revert ${year.name}?\n\nThis year will be deleted so you can set it again.${restoreNote}\n\nCopied classes/teachers and any new-year enrollments or confirmation fees for ${year.name} will be removed. The previous year’s students, marks, and fees are kept.`,
+    )) return;
+
+    setError('');
+    setRevertingId(year.id);
+    try {
+      const result = await api.revertAcademicYear(year.id);
+      if (result.restoredYear?.id) {
+        setActiveAcademicYear(result.restoredYear.id);
+      } else {
+        setActiveAcademicYear(null);
+      }
+      setMessage(result.message);
+      load();
+      reloadAcademicYear();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRevertingId(null);
     }
   };
 
@@ -143,17 +181,25 @@ export default function AcademicYears() {
         title={t('pages.academicYears.title')}
         description={t('pages.academicYears.description', { campus: campus.name })}
         action={
-          !academicYear ? (
-            <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Set academic year
-            </button>
-          ) : (
-            <button onClick={() => setShowNewYear(true)} className="btn-primary flex items-center gap-2">
-              <PlayCircle className="w-4 h-4" />
-              {t('pages.academicYears.start')}
-            </button>
-          )
+          <div className="flex flex-wrap items-center gap-2">
+            {academicYear && (
+              <Link to="deliberation" className="btn-secondary flex items-center gap-2">
+                <Gavel className="w-4 h-4" />
+                Deliberation
+              </Link>
+            )}
+            {!academicYear ? (
+              <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Set academic year
+              </button>
+            ) : (
+              <button onClick={() => setShowNewYear(true)} className="btn-primary flex items-center gap-2">
+                <PlayCircle className="w-4 h-4" />
+                {t('pages.academicYears.start')}
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -166,15 +212,26 @@ export default function AcademicYears() {
 
       {academicYear && (
         <div className="card mb-8 border-brand-200 bg-brand-50/30">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-8 h-8 text-brand-600" />
-            <div>
-              <p className="text-sm text-gray-500">Current academic year</p>
-              <p className="text-xl font-semibold text-gray-900">{academicYear.name}</p>
-              <p className="text-sm text-gray-500">
-                Started {new Date(academicYear.startDate).toLocaleDateString()}
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-8 h-8 text-brand-600" />
+              <div>
+                <p className="text-sm text-gray-500">Current academic year</p>
+                <p className="text-xl font-semibold text-gray-900">{academicYear.name}</p>
+                <p className="text-sm text-gray-500">
+                  Started {new Date(academicYear.startDate).toLocaleDateString()}
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => handleRevert(academicYear)}
+              disabled={revertingId === academicYear.id}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Undo2 className="w-4 h-4" />
+              {revertingId === academicYear.id ? 'Reverting…' : 'Revert year'}
+            </button>
           </div>
         </div>
       )}
@@ -209,7 +266,7 @@ export default function AcademicYears() {
           open={showNewYear}
           mode="create"
           title="Start new academic year"
-          subtitle={`Closes ${academicYear?.name}. Students always start fresh in the new year.`}
+          subtitle={`Closes ${academicYear?.name}. Deliberation must already be done. Confirmation fees are created now.`}
           onClose={() => { setShowNewYear(false); setError(''); }}
           onSubmit={handleStartNew}
           formId="new-academic-year-form"
@@ -229,6 +286,32 @@ export default function AcademicYears() {
             </div>
           </FormSection>
 
+          <FormSection title="Confirmation to continue">
+            <p className="text-sm text-gray-500 mb-3">
+              Families of promoted and repeating students pay this to confirm they continue in the new year.
+            </p>
+            <div>
+              <label className="label">Confirmation fee (RWF)</label>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                placeholder="e.g. 20000"
+                value={newYearForm.confirmationFeeAmount}
+                onChange={(e) => setNewYearForm({ ...newYearForm, confirmationFeeAmount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Payment due date</label>
+              <input
+                className="input"
+                type="date"
+                value={newYearForm.confirmationFeeDueDate}
+                onChange={(e) => setNewYearForm({ ...newYearForm, confirmationFeeDueDate: e.target.value })}
+              />
+            </div>
+          </FormSection>
+
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
             <div className="flex items-center gap-2 mb-3">
               <Copy className="w-4 h-4 text-brand-600" />
@@ -237,6 +320,12 @@ export default function AcademicYears() {
             {copyPreview && (
               <p className="text-xs text-gray-500 mb-3">
                 Available: {copyPreview.teachers} teachers · {copyPreview.classes} classes · {copyPreview.subjects} courses
+                {copyPreview.deliberation ? (
+                  <>
+                    <br />
+                    Deliberation: {copyPreview.deliberation.promote} promote · {copyPreview.deliberation.repeat} repeat · {copyPreview.deliberation.rejected} rejected · {copyPreview.deliberation.graduate} graduate · {copyPreview.deliberation.undecided} not decided
+                  </>
+                ) : null}
               </p>
             )}
             <div className="space-y-3">
@@ -317,7 +406,17 @@ export default function AcademicYears() {
                     <td className="py-3">{y._count?.teachers || 0}</td>
                     <td className="py-3">{y._count?.classes || 0}</td>
                     <td className="py-3 text-right">
-                      {!y.isActive && (
+                      {y.isActive ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRevert(y)}
+                          disabled={revertingId === y.id}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-800 disabled:opacity-50"
+                        >
+                          <Undo2 className="w-4 h-4" />
+                          {revertingId === y.id ? 'Reverting...' : 'Revert'}
+                        </button>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => handleActivate(y)}

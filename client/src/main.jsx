@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import App from './App';
+import ApiLoader from './components/ApiLoader';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
@@ -11,6 +12,7 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <LanguageProvider>
+          <ApiLoader />
           <App />
         </LanguageProvider>
       </AuthProvider>

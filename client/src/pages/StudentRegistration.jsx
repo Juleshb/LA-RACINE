@@ -71,6 +71,11 @@ export default function StudentRegistration({ isParent = false, isPublic = false
   const [importOpen, setImportOpen] = useState(false);
 
   const campusId = isPublic ? publicCampusId : contextCampusId;
+  const isAccountant = !isParent && !isPublic && user?.role === 'ACCOUNTANT';
+  const sections = useMemo(
+    () => (isAccountant ? FORM_SECTIONS.filter((s) => s.id !== 9) : FORM_SECTIONS),
+    [isAccountant],
+  );
 
   useEffect(() => {
     if (!isPublic) return undefined;
@@ -223,7 +228,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
   };
 
   const validateAll = () => {
-    for (let i = 0; i < FORM_SECTIONS.length; i++) {
+    for (let i = 0; i < sections.length; i++) {
       if (!validateStep(i)) {
         setStep(i);
         return false;
@@ -234,7 +239,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
 
   const next = () => {
     if (!validateStep()) return;
-    setStep((s) => Math.min(s + 1, FORM_SECTIONS.length - 1));
+    setStep((s) => Math.min(s + 1, sections.length - 1));
   };
 
   const prev = () => setStep((s) => Math.max(s - 1, 0));
@@ -258,7 +263,10 @@ export default function StudentRegistration({ isParent = false, isPublic = false
           state: { message: student.message || 'Registration submitted for school review.' },
         });
       } else {
-        const student = await api.registerStudent(form);
+        const student = await api.registerStudent({
+          ...form,
+          ...(isAccountant ? { registrationStatus: 'APPROVED' } : {}),
+        });
         navigate(`/campus/${campusId}/students/${student.id}`);
       }
     } catch (err) {
@@ -268,7 +276,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
     }
   };
 
-  const section = FORM_SECTIONS[step];
+  const section = sections[step];
   const selectedCampus = campuses.find((c) => c.id === publicCampusId);
 
   if (success) {
@@ -375,7 +383,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
 
       {/* Stepper */}
       <div className="flex gap-1 mb-8 overflow-x-auto pb-2">
-        {FORM_SECTIONS.map((s, i) => (
+        {sections.map((s, i) => (
           <button
             key={s.id}
             type="button"
@@ -722,7 +730,7 @@ export default function StudentRegistration({ isParent = false, isPublic = false
           <button type="button" onClick={prev} disabled={step === 0} className="btn-secondary flex items-center gap-2 disabled:opacity-40">
             <ChevronLeft className="w-4 h-4" /> Précédent
           </button>
-          {step < FORM_SECTIONS.length - 1 ? (
+          {step < sections.length - 1 ? (
             <button type="button" onClick={next} className="btn-primary flex items-center gap-2">
               Suivant <ChevronRight className="w-4 h-4" />
             </button>
@@ -735,7 +743,9 @@ export default function StudentRegistration({ isParent = false, isPublic = false
                   ? 'Submit application'
                   : isParent
                     ? 'Submit for school review'
-                    : 'Soumettre l\'inscription'}
+                    : isAccountant
+                      ? 'Admit student'
+                      : 'Soumettre l\'inscription'}
             </button>
           )}
         </div>
