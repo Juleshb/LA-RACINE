@@ -89,16 +89,28 @@ export default function FeeReceipt() {
             <div>
               <p className="text-gray-400 print:text-gray-600 text-sm">Fee Type</p>
               <p className="font-semibold text-lg">{feeTypeLabels[fee.feeType]}</p>
+              {fee.installmentIndex && fee.installmentTotal && (
+                <p className="text-sm text-gray-500 mt-1">Installment {fee.installmentIndex} of {fee.installmentTotal}</p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-gray-400 print:text-gray-600 text-sm">Amount</p>
               <p className="font-bold text-2xl text-brand-600 print:text-green-700">{formatCurrency(fee.amount)}</p>
+              {fee.discountAmount > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Original {formatCurrency(fee.originalAmount ?? (fee.amount + fee.discountAmount))}
+                  {' · '}Discount {formatCurrency(fee.discountAmount)}
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-200 print:border-gray-300">
             <p className="text-sm">
               Status: <span className="font-medium">{fee.status}</span>
             </p>
+            {fee.discountReason && (
+              <p className="text-sm text-gray-500 mt-1">Discount reason: {fee.discountReason}</p>
+            )}
           </div>
         </div>
 

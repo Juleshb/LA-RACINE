@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Wallet, Bus, BarChart3, School, FileText,
-  AlertCircle, CreditCard, CalendarDays, TrendingUp,
+  AlertCircle, CreditCard, CalendarDays, TrendingUp, BookOpen,
 } from 'lucide-react';
 import ModernStatCard from './ModernStatCard';
 import DashboardShell from './DashboardShell';
@@ -246,13 +246,16 @@ export default function AccountantDashboard({ campusId, data, userName }) {
 
           <DashboardPanel title={t('staffDash.accountant.quickAccess')}>
             <div className="dash-quick-list">
+              <DashQuickLink to={`${base}/finance`} icon={BarChart3} label={t('pages.finance.title')} />
               <DashQuickLink to={`${base}/fees`} icon={Wallet} label={t('staffDash.accountant.recordPayment')} />
               <DashQuickLink to={`${base}/students/register`} icon={FileText} label={t('staffDash.accountant.admitStudent')} />
               <DashQuickLink to={`${base}/students`} icon={Users} label={t('pages.students.title')} />
+              <DashQuickLink to={`${base}/classes`} icon={BookOpen} label={t('pages.classes.title')} />
               <DashQuickLink to={`${base}/reports`} icon={BarChart3} label={t('pages.reports.title')} />
               <DashQuickLink to={`${base}/communication`} icon={MessageSquare} label={t('staffDash.accountant.messages')} badge={unreadCount} />
               <DashQuickLink to={`${base}/transport`} icon={Bus} label={t('staffDash.accountant.transport')} />
               <DashQuickLink to={`${base}/id-cards`} icon={CreditCard} label={t('staffDash.accountant.idCards')} />
+              <DashQuickLink to={`${base}/academic-years`} icon={CalendarDays} label={t('pages.academicYears.title')} />
               <DashQuickLink to={`${base}/school`} icon={School} label={t('staffDash.manager.schoolProfile')} />
             </div>
           </DashboardPanel>

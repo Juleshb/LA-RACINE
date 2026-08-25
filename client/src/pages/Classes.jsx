@@ -33,6 +33,7 @@ export default function Classes() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const isTeacher = user?.role === 'TEACHER';
+  const canManageClasses = !['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT'].includes(user?.role);
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [search, setSearch] = useState('');
@@ -62,10 +63,10 @@ export default function Classes() {
 
   useEffect(() => {
     loadClasses();
-    if (!isTeacher) {
+    if (canManageClasses) {
       api.getTeachers().then(setTeachers).catch(console.error);
     }
-  }, [isTeacher]);
+  }, [canManageClasses]);
 
   const stats = useMemo(() => {
     const totalStudents = classes.reduce((sum, c) => sum + (c._count?.students || 0), 0);
@@ -169,8 +170,10 @@ export default function Classes() {
         title={isTeacher ? t('pages.classes.titleTeacher') : t('pages.classes.title')}
         description={isTeacher
           ? t('pages.classes.descriptionTeacher')
-          : t('pages.classes.description')}
-        action={!isTeacher && (
+          : user?.role === 'ACCOUNTANT'
+            ? t('pages.classes.descriptionAccountant')
+            : t('pages.classes.description')}
+        action={canManageClasses && (
           <button type="button" onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             {t('pages.classes.add')}
@@ -353,7 +356,7 @@ export default function Classes() {
               ? t('ui.noSearchResults')
               : (isTeacher ? t('pageBody.classes.emptyTeacher') : t('pageBody.classes.emptyStaff'))}
           </p>
-            {!isTeacher && !(classes.length > 0 && (search.trim() || levelFilter !== 'all')) && (
+            {canManageClasses && !(classes.length > 0 && (search.trim() || levelFilter !== 'all')) && (
               <button type="button" onClick={openCreate} className="btn-primary mt-2 inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> {t('pageBody.classes.addFirst')}
               </button>
@@ -396,7 +399,7 @@ export default function Classes() {
                       </p>
                     </div>
                   </div>
-                  {!isTeacher && (
+                  {canManageClasses && (
                     <div className="classes-card-actions">
                       <button
                         type="button"

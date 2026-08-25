@@ -111,6 +111,8 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.FEES,
     PERMISSIONS.STUDENTS,
+    PERMISSIONS.CLASSES,
+    PERMISSIONS.ACADEMIC_YEAR,
     PERMISSIONS.SCHOOL,
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
@@ -176,6 +178,7 @@ export const NAV_ITEMS = [
   { to: 'bulletin-report', permission: PERMISSIONS.MARKS, icon: 'FileText', label: 'Bulletin' },
   { to: 'attendance', permission: PERMISSIONS.ATTENDANCE, icon: 'ClipboardCheck', label: 'Attendance' },
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees' },
+  { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
   { to: 'library', permission: PERMISSIONS.LIBRARY, icon: 'Library', label: 'Library' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning' },
@@ -262,17 +265,20 @@ export const ACCOUNTANT_NAV_ITEMS = [
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'Students' },
   { to: 'students/register', permission: PERMISSIONS.STUDENTS, icon: 'FileText', label: 'Register student', navSlug: 'register-student' },
   { to: 'id-cards', permission: PERMISSIONS.STUDENTS, icon: 'CreditCard', label: 'ID Cards' },
+  { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'Classes' },
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees & payments' },
+  { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
   { to: 'transport', permission: PERMISSIONS.TRANSPORT, icon: 'Bus', label: 'Transport' },
+  { to: 'academic-years', permission: PERMISSIONS.ACADEMIC_YEAR, icon: 'Calendar', label: 'Academic year' },
   { to: 'school', permission: PERMISSIONS.SCHOOL, icon: 'School', label: 'School profile' },
 ];
 
 export const ACCOUNTANT_NAV_GROUPS = [
   { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION] },
-  { id: 'students', title: 'Students', permissions: [PERMISSIONS.STUDENTS] },
+  { id: 'students', title: 'Students', permissions: [PERMISSIONS.STUDENTS, PERMISSIONS.CLASSES] },
   { id: 'finance', title: 'Finance', permissions: [PERMISSIONS.FEES] },
   { id: 'services', title: 'Services', permissions: [PERMISSIONS.TRANSPORT] },
-  { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.SCHOOL] },
+  { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.ACADEMIC_YEAR, PERMISSIONS.SCHOOL] },
 ];
 
 const STAFF_ROLES = new Set([

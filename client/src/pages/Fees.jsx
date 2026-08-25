@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Bell, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
+import FormModeModal from '../components/form/FormModeModal';
+import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
@@ -38,23 +40,48 @@ const FEE_TYPE_KEYS = {
   CONFIRMATION: 'pageBody.fees.types.CONFIRMATION',
 };
 
+const FINANCE_ROLES = new Set(['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'ACCOUNTANT']);
+
 export default function Fees() {
   const { campusId } = useCampus();
   const { user } = useAuth();
   const { t } = useTranslation();
   const isParent = user?.role === 'PARENT';
+  const canFinanceTools = FINANCE_ROLES.has(user?.role);
   const [fees, setFees] = useState([]);
+  const [confirmationQueue, setConfirmationQueue] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const [markingId, setMarkingId] = useState(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderSubmitting, setReminderSubmitting] = useState(false);
+  const [reminderError, setReminderError] = useState('');
+  const [reminderResult, setReminderResult] = useState('');
+  const [reminderForm, setReminderForm] = useState({
+    scope: 'outstanding',
+    feeType: '',
+    title: '',
+    body: '',
+    sendEmail: true,
+  });
 
   const loadFees = () => api.getFees().then(setFees).catch(console.error);
-  useEffect(() => { loadFees(); }, []);
+  const loadConfirmationQueue = () => {
+    if (!canFinanceTools) return;
+    api.getConfirmationQueue().then(setConfirmationQueue).catch(() => setConfirmationQueue([]));
+  };
+
+  useEffect(() => {
+    loadFees();
+    loadConfirmationQueue();
+  }, [canFinanceTools]);
 
   const handleDelete = async (id) => {
     if (!confirm(t('pageBody.fees.deleteConfirm'))) return;
     try {
       await api.deleteFee(id);
       loadFees();
+      loadConfirmationQueue();
     } catch (err) {
       alert(err.message);
     }
@@ -64,8 +91,70 @@ export default function Fees() {
     try {
       await api.updateFeeStatus(id, status);
       loadFees();
+      loadConfirmationQueue();
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const markConfirmationPaid = async (id) => {
+    setMarkingId(id);
+    try {
+      await api.updateFeeStatus(id, 'PAID');
+      loadFees();
+      loadConfirmationQueue();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
+  const openReminders = (preferredScope) => {
+    setReminderError('');
+    setReminderResult('');
+    setReminderForm({
+      scope: preferredScope === 'confirmation' && confirmationQueue.length
+        ? 'confirmation'
+        : 'outstanding',
+      feeType: '',
+      title: t('pageBody.fees.reminderDefaultTitle'),
+      body: '',
+      sendEmail: true,
+    });
+    setReminderOpen(true);
+  };
+
+  const sendReminders = async (e) => {
+    e.preventDefault();
+    setReminderSubmitting(true);
+    setReminderError('');
+    setReminderResult('');
+    try {
+      const payload = {
+        title: reminderForm.title || undefined,
+        body: reminderForm.body || undefined,
+        sendEmail: reminderForm.sendEmail,
+        statuses: ['PENDING', 'OVERDUE'],
+      };
+      if (reminderForm.scope === 'confirmation') {
+        payload.feeType = 'CONFIRMATION';
+        payload.feeIds = confirmationQueue.map((f) => f.id);
+      } else if (reminderForm.feeType) {
+        payload.feeType = reminderForm.feeType;
+      }
+
+      const result = await api.sendFeeReminders(payload);
+      setReminderResult(t('pageBody.fees.reminderSuccess', {
+        parents: result.parentsNotified || 0,
+        fees: result.outstandingFees || 0,
+        emails: result.emailsSent || 0,
+      }));
+      setReminderOpen(false);
+    } catch (err) {
+      setReminderError(err.message || t('pageBody.fees.reminderFailed'));
+    } finally {
+      setReminderSubmitting(false);
     }
   };
 
@@ -102,18 +191,103 @@ export default function Fees() {
     { initialKey: 'student' },
   );
 
+  const outstandingCount = fees.filter((f) => f.status === 'PENDING' || f.status === 'OVERDUE').length;
+
   return (
     <div>
       <PageHeader
         title={isParent ? t('pages.fees.titleParent') : t('pages.fees.title')}
         description={isParent ? t('pages.fees.descriptionParent') : t('pages.fees.description')}
         action={!isParent && (
-          <Link to={`/campus/${campusId}/fees/new`} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            {t('pages.fees.newFee')}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {canFinanceTools && (
+              <Link to={`/campus/${campusId}/finance`} className="btn-secondary flex items-center gap-2">
+                {t('pages.finance.title')}
+              </Link>
+            )}
+            {canFinanceTools && outstandingCount > 0 && (
+              <button type="button" onClick={() => openReminders('outstanding')} className="btn-secondary flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                {t('pageBody.fees.sendReminders')}
+              </button>
+            )}
+            <Link to={`/campus/${campusId}/fees/new`} className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              {t('pages.fees.newFee')}
+            </Link>
+          </div>
         )}
       />
+
+      {reminderResult && (
+        <div className="mb-4 p-3 rounded-lg text-sm bg-brand-50 text-brand-700 border border-brand-100">
+          {reminderResult}
+        </div>
+      )}
+
+      {canFinanceTools && confirmationQueue.length > 0 && (
+        <div className="card mb-6 border-blue-200 bg-blue-50/40">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">{t('pageBody.fees.confirmationQueueTitle')}</h2>
+              <p className="text-sm text-gray-600 mt-0.5">
+                {t('pageBody.fees.confirmationQueueDesc', { count: confirmationQueue.length })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openReminders('confirmation')}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              {t('pageBody.fees.remindConfirmation')}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-gray-500 border-b border-blue-100">
+                  <th className="pb-2 font-medium">{t('ui.student')}</th>
+                  <th className="pb-2 font-medium">{t('ui.class')}</th>
+                  <th className="pb-2 font-medium">{t('ui.amount')}</th>
+                  <th className="pb-2 font-medium">{t('ui.dueDate')}</th>
+                  <th className="pb-2 font-medium">{t('ui.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {confirmationQueue.map((fee) => (
+                  <tr key={fee.id} className="border-b border-blue-50 last:border-0">
+                    <td className="py-2.5">
+                      <Link to={`/campus/${campusId}/fees/${fee.id}`} className="font-medium text-brand-700 hover:underline">
+                        {fee.student.firstName} {fee.student.lastName}
+                      </Link>
+                      <p className="text-xs text-gray-500">{fee.student.studentId}</p>
+                    </td>
+                    <td className="py-2.5 text-gray-600">{fee.student.class?.name || '—'}</td>
+                    <td className="py-2.5 font-medium">{formatCurrency(fee.amount)}</td>
+                    <td className="py-2.5 text-gray-500">{new Date(fee.dueDate).toLocaleDateString()}</td>
+                    <td className="py-2.5">
+                      <button
+                        type="button"
+                        disabled={markingId === fee.id}
+                        onClick={() => markConfirmationPaid(fee.id)}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 disabled:opacity-50"
+                      >
+                        {markingId === fee.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4" />
+                        )}
+                        {t('pageBody.fees.markPaidEnroll')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         <ListSearch
@@ -201,6 +375,76 @@ export default function Fees() {
           </div>
         )}
       </div>
+
+      <FormModeModal
+        open={reminderOpen}
+        mode="create"
+        title={t('pageBody.fees.reminderModalTitle')}
+        subtitle={t('pageBody.fees.reminderModalSubtitle')}
+        onClose={() => { setReminderOpen(false); setReminderError(''); }}
+        onSubmit={sendReminders}
+        formId="fee-reminder-form"
+        submitLabel={reminderSubmitting ? t('pageBody.fees.sendingReminders') : t('pageBody.fees.sendReminders')}
+        submitting={reminderSubmitting}
+        error={reminderError}
+      >
+        <FormSection title={t('pageBody.fees.reminderScope')}>
+          <div>
+            <label className="label">{t('pageBody.fees.reminderWho')}</label>
+            <select
+              className="input"
+              value={reminderForm.scope}
+              onChange={(e) => setReminderForm({ ...reminderForm, scope: e.target.value })}
+            >
+              <option value="outstanding">{t('pageBody.fees.reminderAllOutstanding')}</option>
+              <option value="confirmation" disabled={!confirmationQueue.length}>
+                {t('pageBody.fees.reminderConfirmationOnly', { count: confirmationQueue.length })}
+              </option>
+            </select>
+          </div>
+          {reminderForm.scope === 'outstanding' && (
+            <div>
+              <label className="label">{t('ui.feeType')}</label>
+              <select
+                className="input"
+                value={reminderForm.feeType}
+                onChange={(e) => setReminderForm({ ...reminderForm, feeType: e.target.value })}
+              >
+                <option value="">{t('ui.all')}</option>
+                {Object.keys(FEE_TYPE_KEYS).map((type) => (
+                  <option key={type} value={type}>{t(FEE_TYPE_KEYS[type])}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="label">{t('pageBody.fees.reminderTitle')}</label>
+            <input
+              className="input"
+              value={reminderForm.title}
+              onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
+              placeholder={t('pageBody.fees.reminderDefaultTitle')}
+            />
+          </div>
+          <div>
+            <label className="label">{t('pageBody.fees.reminderBody')}</label>
+            <textarea
+              className="input min-h-[100px]"
+              value={reminderForm.body}
+              onChange={(e) => setReminderForm({ ...reminderForm, body: e.target.value })}
+              placeholder={t('pageBody.fees.reminderBodyPlaceholder')}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={reminderForm.sendEmail}
+              onChange={(e) => setReminderForm({ ...reminderForm, sendEmail: e.target.checked })}
+            />
+            {t('pageBody.fees.reminderAlsoEmail')}
+          </label>
+        </FormSection>
+      </FormModeModal>
     </div>
   );
 }

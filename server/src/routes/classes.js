@@ -32,7 +32,7 @@ router.get('/:id/bulletin-config', async (req, res) => {
 
 router.patch('/:id/bulletin-config', async (req, res) => {
   try {
-    if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {
+    if (['TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot edit bulletin settings' });
     }
     const scope = await classScopeWhere(req);
@@ -141,7 +141,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {
+    if (['TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot create classes' });
     }
 
@@ -216,7 +216,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {
+    if (['TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT'].includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot edit classes' });
     }
     const scope = await classScopeWhere(req);

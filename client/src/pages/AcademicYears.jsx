@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Calendar, PlayCircle, Copy, RotateCcw, Gavel, Undo2 } from 'lucide-react';
 import { api, setActiveAcademicYear } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
+import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
@@ -11,7 +12,10 @@ import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 export default function AcademicYears() {
   const { campus, academicYear, reloadAcademicYear } = useCampus();
+  const { user } = useAuth();
   const { t } = useTranslation();
+  const canManageYears = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'].includes(user?.role);
+  const canDeliberate = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY'].includes(user?.role);
   const [years, setYears] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showNewYear, setShowNewYear] = useState(false);
@@ -179,27 +183,35 @@ export default function AcademicYears() {
     <div>
       <PageHeader
         title={t('pages.academicYears.title')}
-        description={t('pages.academicYears.description', { campus: campus.name })}
+        description={
+          user?.role === 'ACCOUNTANT'
+            ? t('pages.academicYears.descriptionAccountant', { campus: campus.name })
+            : t('pages.academicYears.description', { campus: campus.name })
+        }
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            {academicYear && (
-              <Link to="deliberation" className="btn-secondary flex items-center gap-2">
-                <Gavel className="w-4 h-4" />
-                Deliberation
-              </Link>
-            )}
-            {!academicYear ? (
-              <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Set academic year
-              </button>
-            ) : (
-              <button onClick={() => setShowNewYear(true)} className="btn-primary flex items-center gap-2">
-                <PlayCircle className="w-4 h-4" />
-                {t('pages.academicYears.start')}
-              </button>
-            )}
-          </div>
+          (canManageYears || canDeliberate) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {academicYear && canDeliberate && (
+                <Link to="deliberation" className="btn-secondary flex items-center gap-2">
+                  <Gavel className="w-4 h-4" />
+                  Deliberation
+                </Link>
+              )}
+              {canManageYears && (
+                !academicYear ? (
+                  <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Set academic year
+                  </button>
+                ) : (
+                  <button onClick={() => setShowNewYear(true)} className="btn-primary flex items-center gap-2">
+                    <PlayCircle className="w-4 h-4" />
+                    {t('pages.academicYears.start')}
+                  </button>
+                )
+              )}
+            </div>
+          ) : null
         }
       />
 
@@ -221,8 +233,20 @@ export default function AcademicYears() {
                 <p className="text-sm text-gray-500">
                   Started {new Date(academicYear.startDate).toLocaleDateString()}
                 </p>
+                {(academicYear.confirmationFeeAmount != null || academicYear.confirmationFeeDueDate) && (
+                  <p className="text-sm text-brand-700 mt-1">
+                    Confirmation fee:{' '}
+                    {academicYear.confirmationFeeAmount != null
+                      ? new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(academicYear.confirmationFeeAmount)
+                      : '—'}
+                    {academicYear.confirmationFeeDueDate
+                      ? ` · due ${new Date(academicYear.confirmationFeeDueDate).toLocaleDateString()}`
+                      : ''}
+                  </p>
+                )}
               </div>
             </div>
+            {canManageYears && (
             <button
               type="button"
               onClick={() => handleRevert(academicYear)}
@@ -232,6 +256,7 @@ export default function AcademicYears() {
               <Undo2 className="w-4 h-4" />
               {revertingId === academicYear.id ? 'Reverting…' : 'Revert year'}
             </button>
+            )}
           </div>
         </div>
       )}
@@ -386,7 +411,7 @@ export default function AcademicYears() {
                   <SortableTh label="Students" columnKey="students" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   <SortableTh label="Teachers" columnKey="teachers" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
                   <SortableTh label="Classes" columnKey="classes" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
-                  <th className="pb-3 font-medium"></th>
+                  {canManageYears && <th className="pb-3 font-medium"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -405,6 +430,7 @@ export default function AcademicYears() {
                     <td className="py-3">{y._count?.students || 0}</td>
                     <td className="py-3">{y._count?.teachers || 0}</td>
                     <td className="py-3">{y._count?.classes || 0}</td>
+                    {canManageYears && (
                     <td className="py-3 text-right">
                       {y.isActive ? (
                         <button
@@ -428,6 +454,7 @@ export default function AcademicYears() {
                         </button>
                       )}
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

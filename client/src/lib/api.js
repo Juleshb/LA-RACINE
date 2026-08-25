@@ -363,6 +363,21 @@ export const api = {
   getFees: () => request('/fees'),
   getFee: (id) => request(`/fees/${id}`),
   getFeeStats: () => request('/fees/stats'),
+  getConfirmationQueue: () => request('/fees/confirmation-queue'),
+  sendFeeReminders: (data) => request('/fees/reminders', { method: 'POST', body: JSON.stringify(data) }),
+  getFeeStructures: () => request('/fees/structures'),
+  createFeeStructure: (data) => request('/fees/structures', { method: 'POST', body: JSON.stringify(data) }),
+  updateFeeStructure: (id, data) => request(`/fees/structures/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFeeStructure: (id) => request(`/fees/structures/${id}`, { method: 'DELETE' }),
+  generateFeesFromStructure: (id, data = {}) => request(`/fees/structures/${id}/generate`, { method: 'POST', body: JSON.stringify(data) }),
+  getCashReport: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/fees/cash-report${q ? `?${q}` : ''}`);
+  },
+  getDebtors: () => request('/fees/debtors'),
+  getTransportUnpaidFees: () => request('/fees/transport-unpaid'),
+  applyFeeDiscount: (id, data) => request(`/fees/${id}/discount`, { method: 'PATCH', body: JSON.stringify(data) }),
+  suggestFeeAmount: (studentId, feeType) => request(`/fees/suggest-amount?studentId=${encodeURIComponent(studentId)}&feeType=${encodeURIComponent(feeType)}`),
   createFee: (data) => request('/fees', { method: 'POST', body: JSON.stringify(data) }),
   updateFeeStatus: (id, status) => request(`/fees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   deleteFee: (id) => request(`/fees/${id}`, { method: 'DELETE' }),

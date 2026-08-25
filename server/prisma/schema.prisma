@@ -43,6 +43,7 @@ model Campus {
   contactInquiries ContactInquiry[]
   midtermWindows MidtermWindow[]
   aiConversations AiConversation[]
+  feeStructures  FeeStructure[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
@@ -71,6 +72,7 @@ model AcademicYear {
   eLearningLessons  ELearningLesson[]
   onlineClassSessions OnlineClassSession[]
   midtermWindows MidtermWindow[]
+  feeStructures  FeeStructure[]
   /// Frais de confirmation for returning students in this year (RWF).
   confirmationFeeAmount   Float?
   confirmationFeeDueDate  DateTime?
@@ -110,6 +112,7 @@ model User {
   contactReplies      ContactInquiryReply[]
   broadcastReads      CommunicationBroadcastRead[]
   midtermsPublished   MidtermWindow[] @relation("MidtermPublishedBy")
+  feeDiscountsApplied FeePayment[] @relation("FeeDiscountedBy")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
@@ -230,6 +233,7 @@ model Class {
   eLearningLessons ELearningLesson[]
   onlineClassSessions OnlineClassSession[]
   communicationBroadcasts CommunicationBroadcast[]
+  feeStructures  FeeStructure[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -485,18 +489,55 @@ model Attendance {
 }
 
 model FeePayment {
-  id            String     @id @default(uuid())
-  receiptNumber String     @unique
-  studentId     String
-  student       Student    @relation(fields: [studentId], references: [id])
-  feeType       FeeType
-  amount        Float
-  dueDate       DateTime
-  paidDate      DateTime?
-  status        FeeStatus  @default(PENDING)
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id               String        @id @default(uuid())
+  receiptNumber    String        @unique
+  studentId        String
+  student          Student       @relation(fields: [studentId], references: [id])
+  feeType          FeeType
+  amount           Float
+  originalAmount   Float?
+  discountAmount   Float         @default(0)
+  discountReason   String?
+  discountedById   String?
+  discountedBy     User?         @relation("FeeDiscountedBy", fields: [discountedById], references: [id], onDelete: SetNull)
+  dueDate          DateTime
+  paidDate         DateTime?
+  status           FeeStatus     @default(PENDING)
+  notes            String?
+  installmentIndex Int?
+  installmentTotal Int?
+  structureId      String?
+  structure        FeeStructure? @relation(fields: [structureId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([studentId, status])
+  @@index([feeType, status])
+  @@index([paidDate])
+  @@index([dueDate])
+}
+
+/// Official fee amounts by class (or school-wide when classId is null).
+model FeeStructure {
+  id             String       @id @default(uuid())
+  campusId       String
+  campus         Campus       @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  classId        String?
+  class          Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  feeType        FeeType
+  amount         Float
+  label          String?
+  installments   Int          @default(1)
+  dueDate        DateTime?
+  isActive       Boolean      @default(true)
+  payments       FeePayment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([campusId, academicYearId])
+  @@index([classId, feeType])
 }
 
 model Book {
