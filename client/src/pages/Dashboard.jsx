@@ -9,6 +9,8 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useParentDashboardData } from '../hooks/useParentDashboardData';
 import { useTeacherDashboardData } from '../hooks/useTeacherDashboardData';
 import { useStudentDashboardData } from '../hooks/useStudentDashboardData';
+import { useAccountantDashboardData } from '../hooks/useAccountantDashboardData';
+import AccountantDashboard from '../components/dashboard/AccountantDashboard';
 
 function DashboardLoading() {
   return (
@@ -87,11 +89,31 @@ function StudentDashboardPage() {
   );
 }
 
+function AccountantDashboardPage() {
+  const { user } = useAuth();
+  const { campusId } = useCampus();
+  const { data, loading, error } = useAccountantDashboardData();
+
+  if (loading) return <DashboardLoading />;
+  if (error) {
+    return <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>;
+  }
+
+  return (
+    <AccountantDashboard
+      campusId={campusId}
+      data={data}
+      userName={user?.firstName || 'Accountant'}
+    />
+  );
+}
+
 export default function Dashboard() {
   const { isManager, user } = useAuth();
   if (isManager) return <ManagerDashboard />;
   if (user?.role === 'PARENT') return <ParentDashboardPage />;
   if (user?.role === 'TEACHER') return <TeacherDashboardPage />;
   if (user?.role === 'STUDENT') return <StudentDashboardPage />;
+  if (user?.role === 'ACCOUNTANT') return <AccountantDashboardPage />;
   return <StaffDashboard />;
 }

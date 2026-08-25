@@ -138,6 +138,7 @@ export function translateStudentNavItem(item, t) {
 function appNavBucket(role) {
   if (role === 'PARENT') return 'parent';
   if (role === 'TEACHER') return 'teacher';
+  if (role === 'ACCOUNTANT') return 'accountant';
   return 'admin';
 }
 
@@ -145,11 +146,13 @@ function appNavBucket(role) {
 export function translateAppNavItem(item, role, t) {
   const bucket = appNavBucket(role);
   const parts = String(item.to || '').split('/').filter(Boolean);
-  let slug = 'home';
-  if (parts[0] === 'campus') {
-    slug = parts.length <= 2 ? 'home' : parts[2];
-  } else if (parts.length) {
-    slug = parts[parts.length - 1];
+  let slug = item.navSlug || 'home';
+  if (!item.navSlug) {
+    if (parts[0] === 'campus') {
+      slug = parts.length <= 2 ? 'home' : parts.slice(2).join('/');
+    } else if (parts.length) {
+      slug = parts[parts.length - 1];
+    }
   }
   const key = `app.nav.${bucket}.${slug}`;
   const translated = t(key);

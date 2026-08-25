@@ -254,6 +254,27 @@ export const STUDENT_NAV_GROUPS = [
   { id: 'learning', title: 'My learning', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.HOMEWORK, PERMISSIONS.AI_TUTOR, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.E_LIBRARY, PERMISSIONS.E_LEARNING] },
 ];
 
+/** Accountant-facing menu — finance, students, and school services */
+export const ACCOUNTANT_NAV_ITEMS = [
+  { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
+  { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
+  { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'Students' },
+  { to: 'students/register', permission: PERMISSIONS.STUDENTS, icon: 'FileText', label: 'Register student', navSlug: 'register-student' },
+  { to: 'id-cards', permission: PERMISSIONS.STUDENTS, icon: 'CreditCard', label: 'ID Cards' },
+  { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees & payments' },
+  { to: 'transport', permission: PERMISSIONS.TRANSPORT, icon: 'Bus', label: 'Transport' },
+  { to: 'school', permission: PERMISSIONS.SCHOOL, icon: 'School', label: 'School profile' },
+];
+
+export const ACCOUNTANT_NAV_GROUPS = [
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION] },
+  { id: 'students', title: 'Students', permissions: [PERMISSIONS.STUDENTS] },
+  { id: 'finance', title: 'Finance', permissions: [PERMISSIONS.FEES] },
+  { id: 'services', title: 'Services', permissions: [PERMISSIONS.TRANSPORT] },
+  { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.SCHOOL] },
+];
+
 const STAFF_ROLES = new Set([
   'SCHOOL_MANAGER',
   'SCHOOL_ADMIN',
@@ -295,7 +316,9 @@ export function getNavForRole(role, campusId) {
       ? TEACHER_NAV_ITEMS
       : role === 'STUDENT'
         ? STUDENT_NAV_ITEMS
-        : NAV_ITEMS;
+        : role === 'ACCOUNTANT'
+          ? ACCOUNTANT_NAV_ITEMS
+          : NAV_ITEMS;
   const base = source.filter((item) => hasPermission(role, item.permission));
   return base.map((item) => ({
     ...item,
@@ -304,6 +327,21 @@ export function getNavForRole(role, campusId) {
 }
 
 export function getNavGroupsForRole(role, campusId) {
+  if (role === 'ACCOUNTANT') {
+    const items = ACCOUNTANT_NAV_ITEMS
+      .filter((item) => hasPermission(role, item.permission))
+      .map((item) => ({
+        ...item,
+        to: buildNavPath(campusId, item.to),
+      }));
+
+    return ACCOUNTANT_NAV_GROUPS.map((group) => ({
+      id: group.id,
+      title: group.title,
+      items: items.filter((item) => group.permissions.includes(item.permission)),
+    })).filter((group) => group.items.length > 0);
+  }
+
   if (STAFF_ROLES.has(role)) {
     const items = NAV_ITEMS
       .filter((item) => hasPermission(role, item.permission))

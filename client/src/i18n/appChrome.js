@@ -60,6 +60,18 @@ const teacherNav = {
   transport: 'Transport',
 };
 
+const accountantNav = {
+  home: 'Home',
+  reports: 'Reports',
+  communication: 'Messages',
+  students: 'Students',
+  'register-student': 'Register student',
+  'id-cards': 'ID Cards',
+  fees: 'Fees & payments',
+  transport: 'Transport',
+  school: 'School profile',
+};
+
 export const appEn = {
   languageHint: 'Choose the language for the whole app. Your choice is saved for next time.',
   myProfile: 'My profile',
@@ -97,6 +109,7 @@ export const appEn = {
     admin: adminNav,
     parent: parentNav,
     teacher: teacherNav,
+    accountant: accountantNav,
   },
   groups: {
     admin: {
@@ -122,6 +135,13 @@ export const appEn = {
       classroom: 'My classroom',
       teaching: 'Teaching',
       school: 'School',
+    },
+    accountant: {
+      overview: 'Overview',
+      students: 'Students',
+      finance: 'Finance',
+      services: 'Services',
+      administration: 'Administration',
     },
   },
 };
@@ -217,6 +237,17 @@ export const appFr = {
       extracurricular: 'Activités',
       transport: 'Transport',
     },
+    accountant: {
+      home: 'Accueil',
+      reports: 'Rapports',
+      communication: 'Messages',
+      students: 'Élèves',
+      'register-student': 'Inscrire un élève',
+      'id-cards': 'Cartes d’identité',
+      fees: 'Frais & paiements',
+      transport: 'Transport',
+      school: 'Profil de l’école',
+    },
   },
   groups: {
     admin: {
@@ -242,6 +273,13 @@ export const appFr = {
       classroom: 'Ma classe',
       teaching: 'Enseignement',
       school: 'École',
+    },
+    accountant: {
+      overview: 'Vue d’ensemble',
+      students: 'Élèves',
+      finance: 'Finance',
+      services: 'Services',
+      administration: 'Administration',
     },
   },
 };
@@ -337,6 +375,17 @@ export const appRw = {
       extracurricular: 'Ibikorwa',
       transport: 'Ubwikorezi',
     },
+    accountant: {
+      home: 'Ahabanza',
+      reports: 'Raporo',
+      communication: 'Ubutumwa',
+      students: 'Abanyeshuri',
+      'register-student': 'Andikisha umunyeshuri',
+      'id-cards': 'Ikarita z’abanyeshuri',
+      fees: 'Amafaranga n’ubwishyu',
+      transport: 'Ubwikorezi',
+      school: 'Umwirondoro w’ishuri',
+    },
   },
   groups: {
     admin: {
@@ -362,6 +411,13 @@ export const appRw = {
       classroom: 'Icyumba cyanjye',
       teaching: 'Kwigisha',
       school: 'Ishuri',
+    },
+    accountant: {
+      overview: 'Incamake',
+      students: 'Abanyeshuri',
+      finance: 'Imari',
+      services: 'Serivisi',
+      administration: 'Ubuyobozi',
     },
   },
 };
@@ -457,6 +513,17 @@ export const appSw = {
       extracurricular: 'Shughuli',
       transport: 'Usafiri',
     },
+    accountant: {
+      home: 'Nyumbani',
+      reports: 'Ripoti',
+      communication: 'Ujumbe',
+      students: 'Wanafunzi',
+      'register-student': 'Sajili mwanafunzi',
+      'id-cards': 'Vitambulisho',
+      fees: 'Ada na malipo',
+      transport: 'Usafiri',
+      school: 'Wasifu wa shule',
+    },
   },
   groups: {
     admin: {
@@ -482,6 +549,13 @@ export const appSw = {
       classroom: 'Darasa langu',
       teaching: 'Ufundishaji',
       school: 'Shule',
+    },
+    accountant: {
+      overview: 'Muhtasari',
+      students: 'Wanafunzi',
+      finance: 'Fedha',
+      services: 'Huduma',
+      administration: 'Utawala',
     },
   },
 };
