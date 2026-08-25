@@ -83,29 +83,55 @@ export default function Marks() {
   const autoSaveTimerRef = useRef(null);
   const savingRef = useRef(false);
 
-  const selectedCourse = courses.find((c) => c.id === subjectId);
-  const selectedClass = classes.find((c) => c.id === classId);
-  const courseWithTests = selectedCourse
-    ? {
+  const selectedCourse = useMemo(
+    () => courses.find((c) => c.id === subjectId) || null,
+    [courses, subjectId],
+  );
+  const selectedClass = useMemo(
+    () => classes.find((c) => c.id === classId) || null,
+    [classes, classId],
+  );
+  const courseWithTests = useMemo(() => {
+    if (!selectedCourse) return null;
+    return {
       ...selectedCourse,
       assessments: subjectTests,
-      testsMarkMax: testsMarkMax || selectedCourse.testsMarkMax,
-      examMax: examMax || selectedCourse.examMax,
-      totalMax: totalMax || selectedCourse.totalMax,
-    }
-    : null;
-  const isBulletinCourse = courseUsesBulletinScale(courseWithTests);
-  const bulletinAssessments = getAssessmentsForCourse(courseWithTests, classBulletinConfig);
+      testsMarkMax: testsMarkMax === '' ? selectedCourse.testsMarkMax : testsMarkMax,
+      examMax: examMax === '' ? selectedCourse.examMax : examMax,
+      totalMax: totalMax === '' ? selectedCourse.totalMax : totalMax,
+    };
+  }, [selectedCourse, subjectTests, testsMarkMax, examMax, totalMax]);
+  const isBulletinCourse = useMemo(
+    () => courseUsesBulletinScale(courseWithTests),
+    [courseWithTests],
+  );
+  const bulletinAssessments = useMemo(
+    () => getAssessmentsForCourse(courseWithTests, classBulletinConfig),
+    [courseWithTests, classBulletinConfig],
+  );
   const usesFlexibleTests = subjectTests.length > 0;
-  const activeAssessment = parseAssessmentStepId(assessment);
-  const assessmentTypes = isBulletinCourse
-    ? bulletinAssessments.map((a) => a.key)
-    : LEGACY_ASSESSMENTS;
-  const terms = isBulletinCourse
-    ? (classBulletinConfig?.terms || DEFAULT_TERMS)
-    : [...DEFAULT_TERMS, ...LEGACY_TERMS];
+  const activeAssessment = useMemo(
+    () => parseAssessmentStepId(assessment),
+    [assessment],
+  );
+  const assessmentTypes = useMemo(
+    () => (isBulletinCourse
+      ? bulletinAssessments.map((a) => a.key)
+      : LEGACY_ASSESSMENTS),
+    [isBulletinCourse, bulletinAssessments],
+  );
+  const terms = useMemo(
+    () => (isBulletinCourse
+      ? (classBulletinConfig?.terms || DEFAULT_TERMS)
+      : [...DEFAULT_TERMS, ...LEGACY_TERMS]),
+    [isBulletinCourse, classBulletinConfig],
+  );
   const courseGroups = useMemo(() => groupCoursesByCategory(courses), [courses]);
   const subjectInClass = Boolean(subjectId && courses.some((c) => c.id === subjectId));
+  const bulletinAssessmentKey = useMemo(
+    () => bulletinAssessments.map((a) => a.key).join('|'),
+    [bulletinAssessments],
+  );
 
   useEffect(() => {
     api.getClasses().then((data) => {
@@ -206,8 +232,9 @@ export default function Marks() {
     let cancelled = false;
     api.getMarkAssessments(subjectId, term).then((data) => {
       if (cancelled) return;
+      let nextSaved;
       if (usesFlexibleTests) {
-        const saved = bulletinAssessments
+        nextSaved = bulletinAssessments
           .filter((a) => {
             if (a.assessment === 'EX') {
               return (data.others || []).some((o) => o.assessment === 'EX');
@@ -215,14 +242,17 @@ export default function Marks() {
             return (data.others || []).some((o) => o.assessment === 'TEST' && o.catNumber === a.catNumber);
           })
           .map((a) => a.key);
-        setSavedAssessments(saved);
       } else {
         const keys = bulletinAssessments.map((a) => a.key);
-        const bulletinSaved = keys.filter((a) =>
+        nextSaved = keys.filter((a) =>
           (data.others || []).some((o) => o.assessment === a),
         );
-        setSavedAssessments(bulletinSaved);
       }
+      setSavedAssessments((prev) => (
+        prev.length === nextSaved.length && prev.every((k, i) => k === nextSaved[i])
+          ? prev
+          : nextSaved
+      ));
 
       if (assessment === 'CAT') {
         setCatOptions(data.cats || []);
@@ -236,7 +266,7 @@ export default function Marks() {
     }).catch(console.error);
 
     return () => { cancelled = true; };
-  }, [subjectId, term, assessment, bulletinAssessments, subjectInClass, usesFlexibleTests]);
+  }, [subjectId, term, assessment, bulletinAssessments, bulletinAssessmentKey, subjectInClass, usesFlexibleTests]);
 
   useEffect(() => {
     if (!classId || !subjectId || !subjectInClass) {
@@ -284,25 +314,28 @@ export default function Marks() {
 
   useEffect(() => {
     if (!courseWithTests) return;
-    if (isBulletinCourse && !assessmentTypes.includes(assessment)) {
-      setAssessment(assessmentTypes[0]?.key || assessmentTypes[0] || 'TEST:1');
+    if (isBulletinCourse && assessmentTypes.length > 0 && !assessmentTypes.includes(assessment)) {
+      setAssessment(assessmentTypes[0]);
     }
     if (!isBulletinCourse && !LEGACY_ASSESSMENTS.includes(assessment)) {
       setAssessment('CAT');
     }
-  }, [subjectId, courseWithTests, isBulletinCourse, assessmentTypes, assessment]);
+  }, [subjectId, isBulletinCourse, bulletinAssessmentKey, assessment, assessmentTypes]);
 
   useEffect(() => {
     if (!courseWithTests) return;
     const def = bulletinAssessments.find((a) => a.key === assessment);
-    if (def) setMaxScore(getMaxForAssessment(courseWithTests, def));
-  }, [assessment, courseWithTests, bulletinAssessments]);
+    if (!def) return;
+    const nextMax = getMaxForAssessment(courseWithTests, def);
+    setMaxScore((prev) => (prev === nextMax ? prev : nextMax));
+  }, [assessment, courseWithTests, bulletinAssessmentKey, bulletinAssessments]);
 
   const refreshSavedAssessments = useCallback(async () => {
     if (!subjectId) return;
     const data = await api.getMarkAssessments(subjectId, term);
+    let nextSaved;
     if (usesFlexibleTests) {
-      const saved = bulletinAssessments
+      nextSaved = bulletinAssessments
         .filter((a) => {
           if (a.assessment === 'EX') {
             return (data.others || []).some((o) => o.assessment === 'EX');
@@ -310,26 +343,35 @@ export default function Marks() {
           return (data.others || []).some((o) => o.assessment === 'TEST' && o.catNumber === a.catNumber);
         })
         .map((a) => a.key);
-      setSavedAssessments(saved);
-      return saved;
+    } else {
+      const keys = bulletinAssessments.map((a) => a.key);
+      nextSaved = keys.filter((a) =>
+        (data.others || []).some((o) => o.assessment === a),
+      );
     }
-
-    const keys = bulletinAssessments.map((a) => a.key);
-    const bulletinSaved = keys.filter((a) =>
-      (data.others || []).some((o) => o.assessment === a),
-    );
-    setSavedAssessments(bulletinSaved);
+    setSavedAssessments((prev) => (
+      prev.length === nextSaved.length && prev.every((k, i) => k === nextSaved[i])
+        ? prev
+        : nextSaved
+    ));
 
     if (assessment === 'CAT') {
       setCatOptions(data.cats || []);
       setNextCatNumber(data.nextCatNumber || 1);
     }
-    return bulletinSaved;
+    return nextSaved;
   }, [subjectId, term, assessment, bulletinAssessments, usesFlexibleTests]);
 
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+  const studentsRef = useRef(students);
+  studentsRef.current = students;
+
   const performSave = useCallback(async ({ auto = false } = {}) => {
-    if (!subjectId || students.length === 0 || savingRef.current) return false;
-    if (!hasSavableMarks(records)) return false;
+    const currentRecords = recordsRef.current;
+    const currentStudents = studentsRef.current;
+    if (!subjectId || currentStudents.length === 0 || savingRef.current) return false;
+    if (!hasSavableMarks(currentRecords)) return false;
 
     savingRef.current = true;
     setSaving(true);
@@ -346,16 +388,16 @@ export default function Marks() {
           : activeAssessment.assessment === 'TEST'
             ? activeAssessment.catNumber
             : 0,
-        records: students.map((s) => ({
+        records: currentStudents.map((s) => ({
           studentId: s.id,
-          score: records[s.id]?.score,
+          score: currentRecords[s.id]?.score,
           maxScore,
-          notes: records[s.id]?.notes || null,
+          notes: currentRecords[s.id]?.notes || null,
         })),
         assessedOn,
       };
       const result = await api.saveMarks(payload);
-      lastSavedRef.current = serializeRecords(records);
+      lastSavedRef.current = serializeRecords(currentRecords);
 
       const bulletinSaved = await refreshSavedAssessments();
 
@@ -385,13 +427,12 @@ export default function Marks() {
     }
   }, [
     subjectId,
-    students,
-    records,
     term,
     assessedOn,
     assessment,
     activeAssessment.assessment,
     activeAssessment.catNumber,
+    catNumber,
     maxScore,
     refreshSavedAssessments,
     isBulletinCourse,
