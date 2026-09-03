@@ -13,6 +13,7 @@ const adminNav = {
   attendance: 'Attendance',
   fees: 'Fees',
   finance: 'Finance desk',
+  'tuition-ledger': 'Tuition ledger',
   library: 'Library',
   'e-library': 'E-Library',
   'e-learning': 'E-Learning',
@@ -71,9 +72,16 @@ const accountantNav = {
   classes: 'Classes',
   fees: 'Fees & payments',
   finance: 'Finance desk',
+  'tuition-ledger': 'Tuition ledger',
   transport: 'Transport',
   'academic-years': 'Academic year',
   school: 'School profile',
+};
+
+const activitiesManagerNav = {
+  home: 'Home',
+  extracurricular: 'Activities',
+  reports: 'Activity reports',
 };
 
 export const appEn = {
@@ -114,6 +122,7 @@ export const appEn = {
     parent: parentNav,
     teacher: teacherNav,
     accountant: accountantNav,
+    activitiesManager: activitiesManagerNav,
   },
   groups: {
     admin: {
@@ -146,6 +155,10 @@ export const appEn = {
       finance: 'Finance',
       services: 'Services',
       administration: 'Administration',
+    },
+    activitiesManager: {
+      overview: 'Overview',
+      activities: 'Activities',
     },
   },
 };
@@ -197,6 +210,7 @@ export const appFr = {
       attendance: 'Présences',
       fees: 'Frais',
       finance: 'Bureau finance',
+      'tuition-ledger': 'Registre des frais',
       library: 'Bibliothèque',
       'e-library': 'E-Bibliothèque',
       'e-learning': 'E-Apprentissage',
@@ -252,9 +266,15 @@ export const appFr = {
       classes: 'Classes',
       fees: 'Frais & paiements',
       finance: 'Bureau finance',
+      'tuition-ledger': 'Registre des frais',
       transport: 'Transport',
       'academic-years': 'Année scolaire',
       school: 'Profil de l’école',
+    },
+    activitiesManager: {
+      home: 'Accueil',
+      extracurricular: 'Activités',
+      reports: 'Rapports d’activités',
     },
   },
   groups: {
@@ -288,6 +308,10 @@ export const appFr = {
       finance: 'Finance',
       services: 'Services',
       administration: 'Administration',
+    },
+    activitiesManager: {
+      overview: 'Aperçu',
+      activities: 'Activités',
     },
   },
 };
@@ -339,6 +363,7 @@ export const appRw = {
       attendance: 'Kuzaza',
       fees: 'Amafaranga',
       finance: 'Ibiro by’imari',
+      'tuition-ledger': 'Icyegeranyo cy’amafaranga',
       library: 'Isomero',
       'e-library': 'Isomero rya elegitoronike',
       'e-learning': 'Kwiga kuri interineti',
@@ -394,9 +419,15 @@ export const appRw = {
       classes: 'Amasomo',
       fees: 'Amafaranga n’ubwishyu',
       finance: 'Ibiro by’imari',
+      'tuition-ledger': 'Icyegeranyo cy’amafaranga',
       transport: 'Ubwikorezi',
       'academic-years': 'Umwaka w’amashuri',
       school: 'Umwirondoro w’ishuri',
+    },
+    activitiesManager: {
+      home: 'Ahabanza',
+      extracurricular: 'Ibikorwa',
+      reports: 'Raporo z’ibikorwa',
     },
   },
   groups: {
@@ -430,6 +461,10 @@ export const appRw = {
       finance: 'Imari',
       services: 'Serivisi',
       administration: 'Ubuyobozi',
+    },
+    activitiesManager: {
+      overview: 'Incamake',
+      activities: 'Ibikorwa',
     },
   },
 };
@@ -481,6 +516,7 @@ export const appSw = {
       attendance: 'Mahudhurio',
       fees: 'Ada',
       finance: 'Dawati la fedha',
+      'tuition-ledger': 'Rejista ya ada',
       library: 'Maktaba',
       'e-library': 'E-Maktaba',
       'e-learning': 'E-Kujifunza',
@@ -536,9 +572,15 @@ export const appSw = {
       classes: 'Madarasa',
       fees: 'Ada na malipo',
       finance: 'Dawati la fedha',
+      'tuition-ledger': 'Rejista ya ada',
       transport: 'Usafiri',
       'academic-years': 'Mwaka wa masomo',
       school: 'Wasifu wa shule',
+    },
+    activitiesManager: {
+      home: 'Nyumbani',
+      extracurricular: 'Shughuli',
+      reports: 'Ripoti za shughuli',
     },
   },
   groups: {
@@ -572,6 +614,10 @@ export const appSw = {
       finance: 'Fedha',
       services: 'Huduma',
       administration: 'Utawala',
+    },
+    activitiesManager: {
+      overview: 'Muhtasari',
+      activities: 'Shughuli',
     },
   },
 };

@@ -11,6 +11,8 @@ import { useTeacherDashboardData } from '../hooks/useTeacherDashboardData';
 import { useStudentDashboardData } from '../hooks/useStudentDashboardData';
 import { useAccountantDashboardData } from '../hooks/useAccountantDashboardData';
 import AccountantDashboard from '../components/dashboard/AccountantDashboard';
+import { useActivitiesManagerDashboardData } from '../hooks/useActivitiesManagerDashboardData';
+import ActivitiesManagerDashboard from '../components/dashboard/ActivitiesManagerDashboard';
 
 function DashboardLoading() {
   return (
@@ -108,6 +110,25 @@ function AccountantDashboardPage() {
   );
 }
 
+function ActivitiesManagerDashboardPage() {
+  const { user } = useAuth();
+  const { campusId } = useCampus();
+  const { data, loading, error } = useActivitiesManagerDashboardData();
+
+  if (loading) return <DashboardLoading />;
+  if (error) {
+    return <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100">{error}</div>;
+  }
+
+  return (
+    <ActivitiesManagerDashboard
+      campusId={campusId}
+      data={data}
+      userName={user?.firstName || 'Manager'}
+    />
+  );
+}
+
 export default function Dashboard() {
   const { isManager, user } = useAuth();
   if (isManager) return <ManagerDashboard />;
@@ -115,5 +136,6 @@ export default function Dashboard() {
   if (user?.role === 'TEACHER') return <TeacherDashboardPage />;
   if (user?.role === 'STUDENT') return <StudentDashboardPage />;
   if (user?.role === 'ACCOUNTANT') return <AccountantDashboardPage />;
+  if (user?.role === 'ACTIVITIES_MANAGER') return <ActivitiesManagerDashboardPage />;
   return <StaffDashboard />;
 }

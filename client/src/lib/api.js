@@ -229,6 +229,7 @@ export const api = {
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   transferStudent: (id, data) => request(`/students/${id}/transfer`, { method: 'POST', body: JSON.stringify(data) }),
+  changeStudentClass: (id, data) => request(`/students/${id}/change-class`, { method: 'POST', body: JSON.stringify(data) }),
   getStudentTransferDestinations: () => request('/students/transfer-destinations'),
   deleteStudent: (id, { challengeId, code } = {}) =>
     request(`/students/${id}`, {
@@ -376,6 +377,7 @@ export const api = {
   },
   getDebtors: () => request('/fees/debtors'),
   getTransportUnpaidFees: () => request('/fees/transport-unpaid'),
+  getTuitionLedger: (level = 'nursery') => request(`/fees/tuition-ledger?level=${encodeURIComponent(level)}`),
   applyFeeDiscount: (id, data) => request(`/fees/${id}/discount`, { method: 'PATCH', body: JSON.stringify(data) }),
   suggestFeeAmount: (studentId, feeType) => request(`/fees/suggest-amount?studentId=${encodeURIComponent(studentId)}&feeType=${encodeURIComponent(feeType)}`),
   createFee: (data) => request('/fees', { method: 'POST', body: JSON.stringify(data) }),

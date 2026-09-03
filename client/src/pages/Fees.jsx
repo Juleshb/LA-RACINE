@@ -36,6 +36,8 @@ const FEE_TYPE_KEYS = {
   EXAM: 'pageBody.fees.types.EXAM',
   TRANSPORT: 'pageBody.fees.types.TRANSPORT',
   UNIFORM: 'pageBody.fees.types.UNIFORM',
+  EXTRACURRICULAR: 'pageBody.fees.types.EXTRACURRICULAR',
+  CARRY_OVER: 'pageBody.fees.types.CARRY_OVER',
   OTHER: 'pageBody.fees.types.OTHER',
   CONFIRMATION: 'pageBody.fees.types.CONFIRMATION',
 };

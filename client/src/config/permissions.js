@@ -36,6 +36,7 @@ export const ROLE_LABELS = {
   HEAD_OF_DISCIPLINE: 'Head of Discipline',
   SECRETARY: 'Secretary (Admin)',
   ACCOUNTANT: 'Accountant',
+  ACTIVITIES_MANAGER: 'Activities Manager',
   LIBRARIAN: 'Librarian',
 };
 
@@ -118,6 +119,11 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.REPORTS,
   ],
+  ACTIVITIES_MANAGER: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.EXTRACURRICULAR,
+    PERMISSIONS.REPORTS,
+  ],
   LIBRARIAN: [
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.LIBRARY,
@@ -179,6 +185,7 @@ export const NAV_ITEMS = [
   { to: 'attendance', permission: PERMISSIONS.ATTENDANCE, icon: 'ClipboardCheck', label: 'Attendance' },
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees' },
   { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
+  { to: 'tuition-ledger', permission: PERMISSIONS.FEES, icon: 'ClipboardList', label: 'Tuition ledger' },
   { to: 'library', permission: PERMISSIONS.LIBRARY, icon: 'Library', label: 'Library' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning' },
@@ -268,6 +275,7 @@ export const ACCOUNTANT_NAV_ITEMS = [
   { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'Classes' },
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees & payments' },
   { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
+  { to: 'tuition-ledger', permission: PERMISSIONS.FEES, icon: 'ClipboardList', label: 'Tuition ledger' },
   { to: 'transport', permission: PERMISSIONS.TRANSPORT, icon: 'Bus', label: 'Transport' },
   { to: 'academic-years', permission: PERMISSIONS.ACADEMIC_YEAR, icon: 'Calendar', label: 'Academic year' },
   { to: 'school', permission: PERMISSIONS.SCHOOL, icon: 'School', label: 'School profile' },
@@ -281,6 +289,18 @@ export const ACCOUNTANT_NAV_GROUPS = [
   { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.ACADEMIC_YEAR, PERMISSIONS.SCHOOL] },
 ];
 
+/** Activities Manager — activities only (list, add, enroll, assign coach, reports) */
+export const ACTIVITIES_MANAGER_NAV_ITEMS = [
+  { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'extracurricular', permission: PERMISSIONS.EXTRACURRICULAR, icon: 'Sparkles', label: 'Activities' },
+  { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Activity reports' },
+];
+
+export const ACTIVITIES_MANAGER_NAV_GROUPS = [
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD] },
+  { id: 'activities', title: 'Activities', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.REPORTS] },
+];
+
 const STAFF_ROLES = new Set([
   'SCHOOL_MANAGER',
   'SCHOOL_ADMIN',
@@ -288,6 +308,7 @@ const STAFF_ROLES = new Set([
   'HEAD_OF_STUDIES',
   'HEAD_OF_DISCIPLINE',
   'ACCOUNTANT',
+  'ACTIVITIES_MANAGER',
   'LIBRARIAN',
 ]);
 
@@ -324,7 +345,9 @@ export function getNavForRole(role, campusId) {
         ? STUDENT_NAV_ITEMS
         : role === 'ACCOUNTANT'
           ? ACCOUNTANT_NAV_ITEMS
-          : NAV_ITEMS;
+          : role === 'ACTIVITIES_MANAGER'
+            ? ACTIVITIES_MANAGER_NAV_ITEMS
+            : NAV_ITEMS;
   const base = source.filter((item) => hasPermission(role, item.permission));
   return base.map((item) => ({
     ...item,
@@ -342,6 +365,21 @@ export function getNavGroupsForRole(role, campusId) {
       }));
 
     return ACCOUNTANT_NAV_GROUPS.map((group) => ({
+      id: group.id,
+      title: group.title,
+      items: items.filter((item) => group.permissions.includes(item.permission)),
+    })).filter((group) => group.items.length > 0);
+  }
+
+  if (role === 'ACTIVITIES_MANAGER') {
+    const items = ACTIVITIES_MANAGER_NAV_ITEMS
+      .filter((item) => hasPermission(role, item.permission))
+      .map((item) => ({
+        ...item,
+        to: buildNavPath(campusId, item.to),
+      }));
+
+    return ACTIVITIES_MANAGER_NAV_GROUPS.map((group) => ({
       id: group.id,
       title: group.title,
       items: items.filter((item) => group.permissions.includes(item.permission)),

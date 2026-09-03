@@ -20,6 +20,7 @@ import { createStudentRegistration } from '../lib/createRegistration.js';
 import { studentDuplicateKey, buildDuplicateIndex } from '../lib/studentDuplicate.js';
 import { OTP_PURPOSE, createAndSendOtp, verifyOtpChallenge } from '../lib/authOtp.js';
 import { isOtpEnabled } from '../lib/appSettings.js';
+import { assertClassHasSeat, CLASS_CAPACITY, countClassStudents } from '../lib/classCapacity.js';
 
 const router = Router();
 const serverRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -352,6 +353,7 @@ router.post('/:id/transfer', async (req, res) => {
       if (!destClass) {
         return res.status(400).json({ error: 'Selected class does not belong to the destination campus year' });
       }
+      await assertClassHasSeat(prisma, destClass.id);
       classId = destClass.id;
     }
 
@@ -384,6 +386,7 @@ router.post('/:id/transfer', async (req, res) => {
       campusId: destCampusId,
     });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
     if (error.code === 'P2002') {
       return res.status(400).json({ error: 'This student ID is already used on the destination campus' });
     }
@@ -802,6 +805,9 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'You cannot create student records' });
     }
     const { dateOfBirth, registrationDate, documents: _, ...data } = req.body;
+    if (data.classId) {
+      await assertClassHasSeat(prisma, data.classId);
+    }
     const studentId = data.studentId || await generateStudentId(req.campusId, req.academicYearId);
     const student = await prisma.student.create({
       data: {
@@ -816,6 +822,68 @@ router.post('/', async (req, res) => {
     });
     res.status(201).json(student);
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** Move a student to another class on the same campus (capacity-checked). */
+router.post('/:id/change-class', async (req, res) => {
+  try {
+    if (['TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'You cannot transfer students between classes' });
+    }
+
+    const nextClassId = req.body?.classId ? String(req.body.classId).trim() : null;
+    if (!nextClassId) {
+      return res.status(400).json({ error: 'Select the destination class' });
+    }
+
+    const scope = await studentScopeWhere(req);
+    const existing = await prisma.student.findFirst({
+      where: { id: req.params.id, ...scope },
+      include: { class: { select: { id: true, name: true } } },
+    });
+    if (!existing) return res.status(404).json({ error: 'Student not found' });
+
+    if (existing.classId === nextClassId) {
+      return res.status(400).json({ error: 'Student is already in this class' });
+    }
+
+    const destClass = await prisma.class.findFirst({
+      where: {
+        id: nextClassId,
+        campusId: existing.campusId,
+        academicYearId: existing.academicYearId,
+      },
+      select: { id: true, name: true, grade: true, section: true },
+    });
+    if (!destClass) {
+      return res.status(400).json({ error: 'Invalid destination class for this campus year' });
+    }
+
+    await assertClassHasSeat(prisma, destClass.id, { excludeStudentId: existing.id });
+
+    const student = await prisma.student.update({
+      where: { id: existing.id },
+      data: {
+        classId: destClass.id,
+        registrationClass: destClass.name,
+      },
+      include: studentInclude,
+    });
+
+    const remaining = CLASS_CAPACITY - await countClassStudents(prisma, destClass.id);
+
+    res.json({
+      ...student,
+      photoUrl: loadPhotoDataUrl(student.documents),
+      message: `Transferred from ${existing.class?.name || 'unassigned'} to ${destClass.name}`,
+      destination: destClass,
+      remainingSeats: remaining,
+    });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
     res.status(500).json({ error: error.message });
   }
 });
@@ -909,6 +977,9 @@ router.put('/:id', async (req, res) => {
           where: { id: nextClassId, campusId: existing.campusId },
         });
         if (!klass) return res.status(400).json({ error: 'Invalid class for this campus' });
+        if (nextClassId !== existing.classId) {
+          await assertClassHasSeat(prisma, klass.id, { excludeStudentId: existing.id });
+        }
         data.classId = klass.id;
         if (body.registrationClass === undefined) {
           data.registrationClass = klass.name;
@@ -925,6 +996,7 @@ router.put('/:id', async (req, res) => {
     });
     res.json({ ...student, photoUrl: loadPhotoDataUrl(student.documents) });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
     res.status(500).json({ error: error.message });
   }
 });

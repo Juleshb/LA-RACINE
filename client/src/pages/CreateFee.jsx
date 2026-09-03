@@ -126,6 +126,8 @@ export default function CreateFee() {
                 <option value="EXAM">Exam Fee</option>
                 <option value="TRANSPORT">Transport</option>
                 <option value="UNIFORM">Uniform</option>
+                <option value="EXTRACURRICULAR">Extracurricular</option>
+                <option value="CARRY_OVER">Carry-over balance</option>
                 <option value="OTHER">Other</option>
                 <option value="CONFIRMATION">Confirmation (continue next year)</option>
               </select>

@@ -34,7 +34,14 @@ const CATEGORIES = ['Sport', 'Arts', 'Music', 'Science Club', 'Language', 'Other
 export default function Extracurricular() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const canManage = !['PARENT', 'STUDENT', 'TEACHER'].includes(user?.role);
+  const canManage = [
+    'SCHOOL_MANAGER',
+    'SCHOOL_ADMIN',
+    'SECRETARY',
+    'HEAD_OF_STUDIES',
+    'HEAD_OF_DISCIPLINE',
+    'ACTIVITIES_MANAGER',
+  ].includes(user?.role);
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
   const isChooser = ['PARENT', 'STUDENT'].includes(user?.role);

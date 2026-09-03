@@ -18,6 +18,7 @@ import BulletinReport from './pages/BulletinReport';
 import Attendance from './pages/Attendance';
 import Fees from './pages/Fees';
 import FinanceDesk from './pages/FinanceDesk';
+import TuitionLedger from './pages/TuitionLedger';
 import CreateFee from './pages/CreateFee';
 import FeeReceipt from './pages/FeeReceipt';
 import AcademicYears from './pages/AcademicYears';
@@ -118,6 +119,7 @@ export default function App() {
             <Route path="attendance" element={<RequirePermission permission={PERMISSIONS.ATTENDANCE}><Attendance /></RequirePermission>} />
             <Route path="fees" element={<RequirePermission permission={PERMISSIONS.FEES}><Fees /></RequirePermission>} />
             <Route path="finance" element={<RequirePermission permission={PERMISSIONS.FEES}><FinanceDesk /></RequirePermission>} />
+            <Route path="tuition-ledger" element={<RequirePermission permission={PERMISSIONS.FEES}><TuitionLedger /></RequirePermission>} />
             <Route path="fees/new" element={<RequirePermission permission={PERMISSIONS.FEES}><CreateFee /></RequirePermission>} />
             <Route path="fees/:id" element={<RequirePermission permission={PERMISSIONS.FEES}><FeeReceipt /></RequirePermission>} />
             <Route path="library" element={<RequirePermission permission={PERMISSIONS.LIBRARY}><Library /></RequirePermission>} />

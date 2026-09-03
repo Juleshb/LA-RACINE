@@ -19,7 +19,17 @@ function formatCurrency(amount) {
 }
 
 const FEE_TYPES = [
-  'TUITION', 'REGISTRATION', 'CONFIRMATION', 'EXAM', 'TRANSPORT', 'UNIFORM', 'OTHER',
+  'TUITION', 'REGISTRATION', 'CONFIRMATION', 'EXAM', 'TRANSPORT', 'UNIFORM',
+  'EXTRACURRICULAR', 'CARRY_OVER', 'OTHER',
+];
+
+const FEE_TERMS = [
+  { value: '', labelKey: 'pageBody.finance.termNone' },
+  { value: 'ANNUAL', labelKey: 'pageBody.finance.termAnnual' },
+  { value: 'TRIMESTRE_1', labelKey: 'pageBody.finance.termT1' },
+  { value: 'TRIMESTRE_2', labelKey: 'pageBody.finance.termT2' },
+  { value: 'TRIMESTRE_3', labelKey: 'pageBody.finance.termT3' },
+  { value: 'PRIOR_YEAR', labelKey: 'pageBody.finance.termPrior' },
 ];
 
 const TABS = [
@@ -29,6 +39,13 @@ const TABS = [
   { id: 'transport', icon: Bus, labelKey: 'pageBody.finance.tabTransport' },
   { id: 'banks', icon: Banknote, labelKey: 'pageBody.finance.tabBanks' },
 ];
+
+function defaultInstallmentsFor(feeType, term) {
+  if (feeType === 'TUITION' && ['TRIMESTRE_1', 'TRIMESTRE_2', 'TRIMESTRE_3'].includes(term)) {
+    return '2';
+  }
+  return '1';
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -57,10 +74,11 @@ export default function FinanceDesk() {
   const [structureSubmitting, setStructureSubmitting] = useState(false);
   const [structureForm, setStructureForm] = useState({
     feeType: 'TUITION',
+    term: 'TRIMESTRE_1',
     amount: '',
     classId: '',
     label: '',
-    installments: '1',
+    installments: '2',
     dueDate: '',
   });
   const [generatingId, setGeneratingId] = useState(null);
@@ -155,6 +173,18 @@ export default function FinanceDesk() {
     return translated === key ? type : translated;
   };
 
+  const termLabel = (term) => {
+    if (!term) return '—';
+    const map = {
+      ANNUAL: 'pageBody.finance.termAnnual',
+      TRIMESTRE_1: 'pageBody.finance.termT1',
+      TRIMESTRE_2: 'pageBody.finance.termT2',
+      TRIMESTRE_3: 'pageBody.finance.termT3',
+      PRIOR_YEAR: 'pageBody.finance.termPrior',
+    };
+    return map[term] ? t(map[term]) : term;
+  };
+
   const createStructure = async (e) => {
     e.preventDefault();
     setStructureSubmitting(true);
@@ -162,6 +192,7 @@ export default function FinanceDesk() {
     try {
       await api.createFeeStructure({
         feeType: structureForm.feeType,
+        term: structureForm.term || null,
         amount: Number(structureForm.amount),
         classId: structureForm.classId || null,
         label: structureForm.label || null,
@@ -250,7 +281,7 @@ export default function FinanceDesk() {
         d.student.class?.name || '',
         d.totalDue,
         d.oldestOverdueDays,
-        d.student.parent?.phone || '',
+        d.student.parent?.phone || d.student.parent?.user?.phone || '',
       ]);
     }
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -304,6 +335,9 @@ export default function FinanceDesk() {
         description={t('pages.finance.description')}
         action={(
           <div className="flex flex-wrap gap-2">
+            <Link to={`/campus/${campusId}/tuition-ledger`} className="btn-secondary text-sm">
+              {t('pages.tuitionLedger.title')}
+            </Link>
             <Link to={`/campus/${campusId}/fees`} className="btn-secondary text-sm">
               {t('pages.fees.title')}
             </Link>
@@ -461,10 +495,11 @@ export default function FinanceDesk() {
               onClick={() => {
                 setStructureForm({
                   feeType: 'TUITION',
+                  term: 'TRIMESTRE_1',
                   amount: '',
                   classId: '',
                   label: '',
-                  installments: '1',
+                  installments: '2',
                   dueDate: '',
                 });
                 setStructureFormOpen(true);
@@ -485,6 +520,7 @@ export default function FinanceDesk() {
                 <thead>
                   <tr className="text-left text-gray-500 border-b">
                     <th className="pb-2">{t('ui.feeType')}</th>
+                    <th className="pb-2">{t('pageBody.finance.term')}</th>
                     <th className="pb-2">{t('ui.class')}</th>
                     <th className="pb-2">{t('pageBody.finance.label')}</th>
                     <th className="pb-2">{t('ui.amount')}</th>
@@ -496,6 +532,7 @@ export default function FinanceDesk() {
                   {structures.map((s) => (
                     <tr key={s.id} className="border-b border-gray-50">
                       <td className="py-2.5">{feeTypeLabel(s.feeType)}</td>
+                      <td className="py-2.5 text-gray-500">{termLabel(s.term)}</td>
                       <td className="py-2.5">{s.class?.name || t('pageBody.finance.allClasses')}</td>
                       <td className="py-2.5 text-gray-500">{s.label || '—'}</td>
                       <td className="py-2.5 font-medium">{formatCurrency(s.amount)}</td>
@@ -689,9 +726,40 @@ export default function FinanceDesk() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label">{t('ui.feeType')}</label>
-              <select className="input" value={structureForm.feeType} onChange={(e) => setStructureForm({ ...structureForm, feeType: e.target.value })}>
+              <select
+                className="input"
+                value={structureForm.feeType}
+                onChange={(e) => {
+                  const feeType = e.target.value;
+                  const term = structureForm.term;
+                  setStructureForm({
+                    ...structureForm,
+                    feeType,
+                    installments: defaultInstallmentsFor(feeType, term),
+                  });
+                }}
+              >
                 {FEE_TYPES.map((type) => (
                   <option key={type} value={type}>{feeTypeLabel(type)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">{t('pageBody.finance.term')}</label>
+              <select
+                className="input"
+                value={structureForm.term}
+                onChange={(e) => {
+                  const term = e.target.value;
+                  setStructureForm({
+                    ...structureForm,
+                    term,
+                    installments: defaultInstallmentsFor(structureForm.feeType, term),
+                  });
+                }}
+              >
+                {FEE_TERMS.map((opt) => (
+                  <option key={opt.value || 'none'} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
             </div>

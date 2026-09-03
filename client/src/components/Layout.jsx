@@ -76,7 +76,7 @@ export default function Layout() {
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
   const isAiTutor = isStudent && /\/ai-tutor\/?$/.test(location.pathname);
-  const isStaff = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'LIBRARIAN'].includes(user?.role);
+  const isStaff = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACCOUNTANT', 'ACTIVITIES_MANAGER', 'LIBRARIAN'].includes(user?.role);
   const rawNavGroups = getNavGroupsForRole(user.role, campusId);
   const navGroups = rawNavGroups?.length
     ? rawNavGroups.map((group) => ({

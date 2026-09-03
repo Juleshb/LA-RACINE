@@ -202,6 +202,10 @@ model Teacher {
   phone          String?
   identityNumber String?      @unique
   subject        String?
+  address        String?
+  qualifications String?
+  bankName       String?
+  bankAccount    String?
   photoPath      String?
   photoMimeType  String?
   user           User?
@@ -494,6 +498,7 @@ model FeePayment {
   studentId        String
   student          Student       @relation(fields: [studentId], references: [id])
   feeType          FeeType
+  term             FeeTerm?
   amount           Float
   originalAmount   Float?
   discountAmount   Float         @default(0)
@@ -513,6 +518,7 @@ model FeePayment {
 
   @@index([studentId, status])
   @@index([feeType, status])
+  @@index([feeType, term])
   @@index([paidDate])
   @@index([dueDate])
 }
@@ -527,6 +533,7 @@ model FeeStructure {
   classId        String?
   class          Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
   feeType        FeeType
+  term           FeeTerm?
   amount         Float
   label          String?
   installments   Int          @default(1)
@@ -538,6 +545,7 @@ model FeeStructure {
 
   @@index([campusId, academicYearId])
   @@index([classId, feeType])
+  @@index([feeType, term])
 }
 
 model Book {
@@ -1159,6 +1167,7 @@ enum UserRole {
   HEAD_OF_DISCIPLINE
   SECRETARY
   ACCOUNTANT
+  ACTIVITIES_MANAGER
   LIBRARIAN
 }
 
@@ -1193,7 +1202,17 @@ enum FeeType {
   EXAM
   TRANSPORT
   UNIFORM
+  EXTRACURRICULAR
+  CARRY_OVER
   OTHER
+}
+
+enum FeeTerm {
+  ANNUAL
+  TRIMESTRE_1
+  TRIMESTRE_2
+  TRIMESTRE_3
+  PRIOR_YEAR
 }
 
 enum FeeStatus {

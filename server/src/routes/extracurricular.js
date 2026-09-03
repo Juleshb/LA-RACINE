@@ -18,7 +18,14 @@ const studentInclude = {
 };
 
 function canManageActivities(role) {
-  return !['PARENT', 'STUDENT', 'TEACHER'].includes(role);
+  return [
+    'SCHOOL_MANAGER',
+    'SCHOOL_ADMIN',
+    'SECRETARY',
+    'HEAD_OF_STUDIES',
+    'HEAD_OF_DISCIPLINE',
+    'ACTIVITIES_MANAGER',
+  ].includes(role);
 }
 
 function parseAllowedGrades(value) {

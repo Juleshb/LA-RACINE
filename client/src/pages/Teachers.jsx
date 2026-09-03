@@ -11,7 +11,17 @@ import FormSection from '../components/form/FormSection';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
-const EMPTY_FORM = { name: '', email: '', phone: '', subject: '', identityNumber: '' };
+const EMPTY_FORM = {
+  name: '',
+  email: '',
+  phone: '',
+  subject: '',
+  identityNumber: '',
+  address: '',
+  qualifications: '',
+  bankName: '',
+  bankAccount: '',
+};
 
 export default function Teachers() {
   const { t } = useTranslation();
@@ -81,6 +91,10 @@ export default function Teachers() {
       teacher.email,
       teacher.phone,
       teacher.identityNumber,
+      teacher.address,
+      teacher.qualifications,
+      teacher.bankName,
+      teacher.bankAccount,
     )),
     [teachers, search],
   );
@@ -124,6 +138,10 @@ export default function Teachers() {
       phone: teacher.phone || '',
       subject: teacher.subject || '',
       identityNumber: teacher.identityNumber || '',
+      address: teacher.address || '',
+      qualifications: teacher.qualifications || '',
+      bankName: teacher.bankName || '',
+      bankAccount: teacher.bankAccount || '',
     });
     setEditingId(teacher.id);
     setFormMode('edit');
@@ -342,6 +360,48 @@ export default function Teachers() {
               className="input"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">{t('ui.fullAddress')}</label>
+            <textarea
+              className="input min-h-[72px]"
+              rows={3}
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder={t('pageBody.teachers.addressPlaceholder')}
+            />
+          </div>
+        </FormSection>
+        <FormSection title={t('ui.qualifications')}>
+          <div>
+            <label className="label">{t('ui.qualifications')}</label>
+            <textarea
+              className="input min-h-[72px]"
+              rows={3}
+              value={form.qualifications}
+              onChange={(e) => setForm({ ...form, qualifications: e.target.value })}
+              placeholder={t('pageBody.teachers.qualificationsPlaceholder')}
+            />
+          </div>
+        </FormSection>
+        <FormSection title={t('ui.bankDetails')}>
+          <div>
+            <label className="label">{t('ui.bankName')}</label>
+            <input
+              className="input"
+              value={form.bankName}
+              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+              placeholder={t('pageBody.teachers.bankNamePlaceholder')}
+            />
+          </div>
+          <div>
+            <label className="label">{t('ui.bankAccount')}</label>
+            <input
+              className="input font-mono"
+              value={form.bankAccount}
+              onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
+              placeholder={t('pageBody.teachers.bankAccountPlaceholder')}
             />
           </div>
         </FormSection>

@@ -139,6 +139,7 @@ function appNavBucket(role) {
   if (role === 'PARENT') return 'parent';
   if (role === 'TEACHER') return 'teacher';
   if (role === 'ACCOUNTANT') return 'accountant';
+  if (role === 'ACTIVITIES_MANAGER') return 'activitiesManager';
   return 'admin';
 }
 

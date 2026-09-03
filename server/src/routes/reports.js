@@ -158,12 +158,21 @@ const REPORT_CATALOG = [
   },
   {
     id: 'extracurricular',
-    title: 'Extracurricular activities',
-    description: 'Activities and enrolled student counts',
+    title: 'Activities overview',
+    description: 'All clubs with instructor, capacity, and enrollment counts',
     category: 'Activities',
     permission: PERMISSIONS.EXTRACURRICULAR,
     filters: ['dateRange'],
     dateFieldLabel: 'Created between',
+  },
+  {
+    id: 'extracurricular-enrollments',
+    title: 'Activity enrollments',
+    description: 'Student-by-student list of activity enrollments',
+    category: 'Activities',
+    permission: PERMISSIONS.EXTRACURRICULAR,
+    filters: ['dateRange'],
+    dateFieldLabel: 'Enrolled between',
   },
   {
     id: 'timetable',
@@ -218,24 +227,32 @@ router.get('/:type', async (req, res) => {
       });
       columns = [
         { key: 'studentId', label: 'Student ID' },
-        { key: 'firstName', label: 'First name' },
-        { key: 'lastName', label: 'Last name' },
+        { key: 'lastName', label: 'Last name (Nom)' },
+        { key: 'postName', label: 'Surname (Post-nom)' },
+        { key: 'firstName', label: 'First name (Prénom)' },
+        { key: 'dateOfBirth', label: 'Date of birth' },
         { key: 'className', label: 'Class' },
         { key: 'grade', label: 'Grade' },
         { key: 'status', label: 'Registration' },
         { key: 'gender', label: 'Gender' },
+        { key: 'fatherName', label: 'Father name' },
+        { key: 'motherName', label: 'Mother name' },
         { key: 'phone', label: 'Phone' },
         { key: 'parentPhone', label: 'Parent phone' },
         { key: 'createdAt', label: 'Registered' },
       ];
       rows = students.map((s) => ({
         studentId: s.studentId,
-        firstName: s.firstName,
-        lastName: s.lastName,
+        lastName: s.lastName || '',
+        postName: s.postName || '',
+        firstName: s.firstName || '',
+        dateOfBirth: fmtDate(s.dateOfBirth),
         className: s.class?.name || '',
         grade: s.class?.grade || '',
         status: s.registrationStatus || '',
         gender: s.gender || '',
+        fatherName: s.fatherName || '',
+        motherName: s.motherName || '',
         phone: s.phone || '',
         parentPhone: s.parentPhone || s.parent?.phone || '',
         createdAt: fmtDate(s.createdAt),
@@ -258,6 +275,10 @@ router.get('/:type', async (req, res) => {
         { key: 'email', label: 'Email' },
         { key: 'phone', label: 'Phone' },
         { key: 'subject', label: 'Subject' },
+        { key: 'address', label: 'Full address' },
+        { key: 'qualifications', label: 'Qualifications' },
+        { key: 'bankName', label: 'Bank name' },
+        { key: 'bankAccount', label: 'Bank account' },
         { key: 'courses', label: 'Courses' },
         { key: 'classes', label: 'Classes' },
         { key: 'account', label: 'Account' },
@@ -268,6 +289,10 @@ router.get('/:type', async (req, res) => {
         email: t.email || t.user?.email || '',
         phone: t.phone || '',
         subject: t.subject || '',
+        address: t.address || '',
+        qualifications: t.qualifications || '',
+        bankName: t.bankName || '',
+        bankAccount: t.bankAccount || '',
         courses: t._count.subjects,
         classes: t._count.classes,
         account: t.user ? (t.user.isActive ? 'Active' : 'Inactive') : 'None',
@@ -661,21 +686,118 @@ router.get('/:type', async (req, res) => {
           ...(createdFilter || {}),
         },
         orderBy: { name: 'asc' },
-        include: { _count: { select: { enrollments: true } } },
+        include: {
+          _count: { select: { enrollments: true } },
+          instructorTeacher: { select: { name: true } },
+          externalInstructor: { select: { name: true } },
+        },
       });
       columns = [
         { key: 'name', label: 'Activity' },
         { key: 'category', label: 'Category' },
+        { key: 'status', label: 'Status' },
         { key: 'schedule', label: 'Schedule' },
+        { key: 'location', label: 'Location' },
+        { key: 'instructor', label: 'Instructor' },
         { key: 'enrollments', label: 'Enrolled' },
+        { key: 'maxStudents', label: 'Capacity' },
+        { key: 'seatsLeft', label: 'Seats left' },
+        { key: 'allowedGrades', label: 'Grades' },
         { key: 'createdAt', label: 'Created' },
       ];
-      rows = activities.map((a) => ({
-        name: a.name,
-        category: a.category || '',
-        schedule: a.schedule || '',
-        enrollments: a._count.enrollments,
-        createdAt: fmtDate(a.createdAt),
+      rows = activities.map((a) => {
+        const enrolled = a._count.enrollments;
+        const max = a.maxStudents;
+        const instructor = a.instructorTeacher?.name
+          || a.externalInstructor?.name
+          || a.instructor
+          || '';
+        let grades = '';
+        try {
+          const parsed = typeof a.allowedGrades === 'string'
+            ? JSON.parse(a.allowedGrades)
+            : a.allowedGrades;
+          grades = Array.isArray(parsed) ? parsed.join(', ') : String(parsed || '');
+        } catch {
+          grades = '';
+        }
+        return {
+          name: a.name,
+          category: a.category || '',
+          status: a.isActive ? 'Active' : 'Inactive',
+          schedule: a.schedule || '',
+          location: a.location || '',
+          instructor,
+          enrollments: enrolled,
+          maxStudents: max ?? '',
+          seatsLeft: max != null ? Math.max(0, max - enrolled) : '',
+          allowedGrades: grades,
+          createdAt: fmtDate(a.createdAt),
+        };
+      });
+    } else if (type === 'extracurricular-enrollments') {
+      const enrolledFilter = dateRangeFilter(queryDates, 'enrolledAt');
+      const enrollments = await prisma.extracurricularEnrollment.findMany({
+        where: {
+          activity: {
+            campusId: req.campusId,
+            academicYearId: req.academicYearId,
+          },
+          ...(enrolledFilter || {}),
+        },
+        orderBy: [{ enrolledAt: 'desc' }],
+        take: 5000,
+        include: {
+          activity: {
+            select: {
+              name: true,
+              category: true,
+              schedule: true,
+              instructor: true,
+              instructorTeacher: { select: { name: true } },
+              externalInstructor: { select: { name: true } },
+            },
+          },
+          student: {
+            select: {
+              studentId: true,
+              firstName: true,
+              lastName: true,
+              postName: true,
+              gender: true,
+              class: { select: { name: true, grade: true } },
+            },
+          },
+        },
+      });
+      columns = [
+        { key: 'activity', label: 'Activity' },
+        { key: 'category', label: 'Category' },
+        { key: 'instructor', label: 'Instructor' },
+        { key: 'studentId', label: 'Student ID' },
+        { key: 'lastName', label: 'Last name' },
+        { key: 'postName', label: 'Surname (Post-nom)' },
+        { key: 'firstName', label: 'First name' },
+        { key: 'gender', label: 'Gender' },
+        { key: 'className', label: 'Class' },
+        { key: 'grade', label: 'Grade' },
+        { key: 'enrolledAt', label: 'Enrolled on' },
+      ];
+      rows = enrollments.map((e) => ({
+        activity: e.activity?.name || '',
+        category: e.activity?.category || '',
+        instructor: e.activity?.instructorTeacher?.name
+          || e.activity?.externalInstructor?.name
+          || e.activity?.instructor
+          || '',
+        studentId: e.student?.studentId || '',
+        lastName: e.student?.lastName || '',
+        postName: e.student?.postName || '',
+        firstName: e.student?.firstName || '',
+        gender: e.student?.gender || '',
+        className: e.student?.class?.name || '',
+        grade: e.student?.class?.grade || '',
+        enrolledAt: fmtDate(e.enrolledAt),
       }));
     } else if (type === 'timetable') {
       const slots = await prisma.timetableSlot.findMany({

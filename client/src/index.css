@@ -4525,6 +4525,10 @@
     @apply relative z-[1] grid grid-cols-2 lg:grid-cols-4 gap-3;
   }
 
+  .classes-overview-grid {
+    @apply relative z-[1] grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5;
+  }
+
   .classes-stat {
     @apply flex items-center gap-3 rounded-xl bg-white/85 border border-white shadow-sm px-3.5 py-3 backdrop-blur-sm;
   }
@@ -4533,12 +4537,92 @@
     @apply flex items-center justify-center w-9 h-9 rounded-lg bg-brand-100 text-brand-700 shrink-0;
   }
 
+  .classes-stat-icon.is-boys {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .classes-stat-icon.is-girls {
+    @apply bg-pink-100 text-pink-700;
+  }
+
   .classes-stat-value {
     @apply text-base font-bold text-gray-900;
   }
 
   .classes-stat-label {
     @apply text-[11px] uppercase tracking-wide text-gray-500;
+  }
+
+  .classes-stat-sub {
+    @apply text-[11px] text-gray-400 mt-0.5 leading-snug;
+  }
+
+  .classes-charts {
+    @apply relative z-[1] grid grid-cols-1 lg:grid-cols-3 gap-3;
+  }
+
+  .classes-chart-card {
+    @apply rounded-xl bg-white/90 border border-white shadow-sm p-4 backdrop-blur-sm;
+  }
+
+  .classes-chart-card-wide {
+    @apply lg:col-span-3;
+  }
+
+  .classes-chart-title {
+    @apply text-sm font-semibold text-gray-900;
+  }
+
+  .classes-chart-desc {
+    @apply text-xs text-gray-500 mt-0.5 mb-3;
+  }
+
+  .classes-chart-empty {
+    @apply flex items-center justify-center h-40 text-sm text-gray-400;
+  }
+
+  .classes-donut-wrap {
+    @apply relative;
+  }
+
+  .classes-donut-center {
+    @apply absolute left-1/2 top-[88px] -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none;
+  }
+
+  .classes-donut-value {
+    @apply text-lg font-bold text-gray-900 leading-none;
+  }
+
+  .classes-donut-caption {
+    @apply text-[10px] uppercase tracking-wide text-gray-400 mt-1;
+  }
+
+  .classes-chart-legend {
+    @apply flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1;
+  }
+
+  .classes-chart-legend-item {
+    @apply inline-flex items-center gap-1.5 text-xs text-gray-600;
+  }
+
+  .classes-chart-legend-dot {
+    @apply w-2.5 h-2.5 rounded-full shrink-0;
+  }
+
+  .classes-chart-tooltip {
+    @apply rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-md text-xs;
+  }
+
+  .classes-chart-tooltip-label {
+    @apply font-semibold text-gray-800 mb-1;
+  }
+
+  .classes-chart-tooltip-row {
+    @apply flex items-center gap-1.5 text-gray-600;
+  }
+
+  .classes-chart-tooltip-dot {
+    @apply w-2 h-2 rounded-full shrink-0;
   }
 
   .classes-toolbar {
@@ -4689,6 +4773,14 @@
     @apply grid grid-cols-3 gap-2 rounded-xl bg-gray-50 border border-gray-100 p-2.5;
   }
 
+  .classes-metrics-6 {
+    @apply grid-cols-3 sm:grid-cols-6;
+  }
+
+  .classes-metrics-wide {
+    @apply grid-cols-2 sm:grid-cols-5 mx-5 mt-4;
+  }
+
   .classes-metric {
     @apply text-center;
   }
@@ -4701,8 +4793,76 @@
     @apply text-brand-700;
   }
 
+  .classes-metric-value.is-full {
+    @apply text-red-600;
+  }
+
   .classes-metric-label {
     @apply block text-[10px] uppercase tracking-wide text-gray-400 mt-0.5;
+  }
+
+  .classes-full-tag {
+    @apply text-[10px] font-semibold uppercase tracking-wide text-red-700 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded;
+  }
+
+  .classes-open-btn {
+    @apply w-full inline-flex items-center justify-center gap-2 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-100 rounded-lg py-2 transition-colors;
+  }
+
+  .classes-card.is-full {
+    @apply ring-1 ring-red-100;
+  }
+
+  .classes-detail {
+    @apply flex flex-col max-h-[min(90vh,860px)];
+  }
+
+  .classes-detail-header {
+    @apply flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-gray-100;
+  }
+
+  .classes-transfer-bar {
+    @apply mx-5 mt-4 mb-2 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-xl bg-gray-50 border border-gray-100;
+  }
+
+  .classes-transfer-field {
+    @apply min-w-0;
+  }
+
+  .classes-detail-table-wrap {
+    @apply flex-1 overflow-auto px-5 pb-5 mt-3;
+  }
+
+  .classes-detail-search {
+    @apply sticky top-0 z-10 flex items-center gap-2 mb-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm;
+  }
+
+  .classes-detail-search svg {
+    @apply text-gray-400 shrink-0;
+  }
+
+  .classes-detail-search input {
+    @apply flex-1 min-w-0 border-0 bg-transparent text-sm text-gray-800 placeholder:text-gray-400 outline-none;
+  }
+
+  .classes-detail-search-count {
+    @apply text-[11px] font-medium text-gray-400 tabular-nums shrink-0;
+  }
+
+  .classes-detail-table {
+    @apply w-full text-sm border-collapse;
+  }
+
+  .classes-detail-table th {
+    @apply text-left text-[11px] uppercase tracking-wide text-gray-400 font-semibold pb-2 border-b border-gray-100 sticky top-0 bg-white;
+  }
+
+  .classes-detail-table td {
+    @apply py-2.5 border-b border-gray-50 align-middle;
+  }
+
+  .classes-status-pill {
+    @apply inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-600;
   }
 
   /* Nursery competence marks */

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   Users, MessageSquare, Wallet, Bus, BarChart3, School, FileText,
-  AlertCircle, CreditCard, CalendarDays, TrendingUp, BookOpen,
+  AlertCircle, CreditCard, CalendarDays, TrendingUp, BookOpen, ClipboardList,
 } from 'lucide-react';
 import ModernStatCard from './ModernStatCard';
 import DashboardShell from './DashboardShell';
@@ -246,6 +246,7 @@ export default function AccountantDashboard({ campusId, data, userName }) {
 
           <DashboardPanel title={t('staffDash.accountant.quickAccess')}>
             <div className="dash-quick-list">
+              <DashQuickLink to={`${base}/tuition-ledger`} icon={ClipboardList} label={t('pages.tuitionLedger.title')} />
               <DashQuickLink to={`${base}/finance`} icon={BarChart3} label={t('pages.finance.title')} />
               <DashQuickLink to={`${base}/fees`} icon={Wallet} label={t('staffDash.accountant.recordPayment')} />
               <DashQuickLink to={`${base}/students/register`} icon={FileText} label={t('staffDash.accountant.admitStudent')} />

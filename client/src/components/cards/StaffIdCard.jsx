@@ -9,6 +9,7 @@ const ROLE_FR = {
   HEAD_OF_DISCIPLINE: 'Préfet de discipline',
   SECRETARY: 'Secrétaire',
   ACCOUNTANT: 'Comptable',
+  ACTIVITIES_MANAGER: 'Responsable des activités',
   LIBRARIAN: 'Bibliothécaire',
 };
 

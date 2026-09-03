@@ -6,6 +6,7 @@ import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { listBulletinPresets, resolveBulletinConfig } from '../config/bulletinPresets.js';
 import { usesNurseryCompetence } from '../config/grades.js';
 import { ensureDefaultClasses, classSortKey } from '../lib/defaultClasses.js';
+import { CLASS_CAPACITY, getClassEnrollmentStats } from '../lib/classCapacity.js';
 
 const router = Router();
 
@@ -104,7 +105,24 @@ router.get('/', async (req, res) => {
       if (ka !== kb) return ka - kb;
       return String(a.name).localeCompare(String(b.name));
     });
-    res.json(classes);
+
+    const enrollment = await getClassEnrollmentStats(prisma, classes.map((c) => c.id));
+    res.json(classes.map((cls) => {
+      const stats = enrollment.get(cls.id) || {
+        capacity: CLASS_CAPACITY,
+        students: 0,
+        boys: 0,
+        girls: 0,
+        remaining: CLASS_CAPACITY,
+      };
+      return {
+        ...cls,
+        stats: {
+          ...stats,
+          courses: cls._count?.subjects || 0,
+        },
+      };
+    }));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -117,23 +135,62 @@ router.get('/:id', async (req, res) => {
       where: { id: req.params.id, ...scope },
       include: {
         teacher: true,
-        students: true,
+        students: {
+          where: { registrationStatus: { not: 'REJECTED' } },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          select: {
+            id: true,
+            studentId: true,
+            firstName: true,
+            lastName: true,
+            postName: true,
+            gender: true,
+            registrationStatus: true,
+            parentPhone: true,
+            fatherPhone: true,
+            motherPhone: true,
+            parentName: true,
+            fatherName: true,
+            motherName: true,
+            dateOfBirth: true,
+          },
+        },
         subjects: { include: { teacher: true } },
+        _count: { select: { students: true, subjects: true } },
       },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
 
+    const enrollment = await getClassEnrollmentStats(prisma, [cls.id]);
+    const baseStats = enrollment.get(cls.id) || {
+      capacity: CLASS_CAPACITY,
+      students: cls.students.length,
+      boys: 0,
+      girls: 0,
+      remaining: CLASS_CAPACITY,
+    };
+    const stats = {
+      ...baseStats,
+      courses: cls.subjects?.length || cls._count?.subjects || 0,
+    };
+
+    let payload = { ...cls, stats };
     if (req.user.role === 'TEACHER') {
       const teacherId = await resolveTeacherId(req);
-      const filtered = {
-        ...cls,
+      payload = {
+        ...payload,
         subjects: teacherId
           ? cls.subjects.filter((s) => s.teacherId === teacherId)
           : [],
+        stats: {
+          ...stats,
+          courses: teacherId
+            ? cls.subjects.filter((s) => s.teacherId === teacherId).length
+            : 0,
+        },
       };
-      return res.json(filtered);
     }
-    res.json(cls);
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

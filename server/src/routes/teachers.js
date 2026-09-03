@@ -18,12 +18,17 @@ import {
 const router = Router();
 
 function pickTeacherFields(body = {}) {
-  const { name, email, phone, subject } = body;
+  const { name, email, phone, subject, address, qualifications, bankName, bankAccount } = body;
+  const clean = (value) => (value ? String(value).trim() : null);
   return {
     ...(name !== undefined ? { name: String(name).trim() } : {}),
-    ...(email !== undefined ? { email: email ? String(email).trim() : null } : {}),
-    ...(phone !== undefined ? { phone: phone ? String(phone).trim() : null } : {}),
-    ...(subject !== undefined ? { subject: subject ? String(subject).trim() : null } : {}),
+    ...(email !== undefined ? { email: clean(email) } : {}),
+    ...(phone !== undefined ? { phone: clean(phone) } : {}),
+    ...(subject !== undefined ? { subject: clean(subject) } : {}),
+    ...(address !== undefined ? { address: clean(address) } : {}),
+    ...(qualifications !== undefined ? { qualifications: clean(qualifications) } : {}),
+    ...(bankName !== undefined ? { bankName: clean(bankName) } : {}),
+    ...(bankAccount !== undefined ? { bankAccount: clean(bankAccount) } : {}),
   };
 }
 

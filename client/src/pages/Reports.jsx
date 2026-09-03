@@ -16,6 +16,8 @@ const FEE_TYPE_OPTIONS = [
   { value: 'EXAM', labelKey: 'pageBody.fees.types.EXAM' },
   { value: 'TRANSPORT', labelKey: 'pageBody.fees.types.TRANSPORT' },
   { value: 'UNIFORM', labelKey: 'pageBody.fees.types.UNIFORM' },
+  { value: 'EXTRACURRICULAR', labelKey: 'pageBody.fees.types.EXTRACURRICULAR' },
+  { value: 'CARRY_OVER', labelKey: 'pageBody.fees.types.CARRY_OVER' },
   { value: 'OTHER', labelKey: 'pageBody.fees.types.OTHER' },
   { value: 'CONFIRMATION', labelKey: 'pageBody.fees.types.CONFIRMATION' },
 ];

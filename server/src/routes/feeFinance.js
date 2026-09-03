@@ -2,10 +2,12 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { studentScopeWhere, campusYearWhere } from '../lib/scope.js';
 import { generateFeeReceiptNumber } from '../lib/deliberation.js';
+import { isNurseryGrade, isPrimaryGrade } from '../config/grades.js';
 
 const router = Router();
 
 const FINANCE_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'ACCOUNTANT'];
+const FEE_TERMS = new Set(['ANNUAL', 'TRIMESTRE_1', 'TRIMESTRE_2', 'TRIMESTRE_3', 'PRIOR_YEAR']);
 
 function requireFinance(req, res) {
   if (!FINANCE_ROLES.includes(req.user.role)) {
@@ -13,6 +15,22 @@ function requireFinance(req, res) {
     return false;
   }
   return true;
+}
+
+function normalizeTerm(term) {
+  if (term == null || term === '') return null;
+  const value = String(term).trim().toUpperCase();
+  return FEE_TERMS.has(value) ? value : null;
+}
+
+function defaultInstallments(feeType, term, requested) {
+  if (requested != null && requested !== '') {
+    return Math.max(1, Math.min(12, Number(requested) || 1));
+  }
+  if (feeType === 'TUITION' && ['TRIMESTRE_1', 'TRIMESTRE_2', 'TRIMESTRE_3'].includes(term)) {
+    return 2;
+  }
+  return 1;
 }
 
 function addDays(date, days) {
@@ -34,6 +52,75 @@ function splitInstallments(total, count) {
   return parts;
 }
 
+function feeDueAmount(fee) {
+  if (fee.originalAmount != null) return Number(fee.originalAmount) || 0;
+  return (Number(fee.amount) || 0) + (Number(fee.discountAmount) || 0);
+}
+
+function filterFees(fees, feeType, term = null) {
+  return fees.filter((f) => {
+    if (f.feeType !== feeType) return false;
+    if (term == null) return !f.term || f.term === 'ANNUAL';
+    return f.term === term || (!f.term && term === 'ANNUAL');
+  });
+}
+
+function summarizeSimple(fees) {
+  const list = fees || [];
+  const due = list.reduce((sum, f) => sum + feeDueAmount(f), 0);
+  const paid = list
+    .filter((f) => f.status === 'PAID' || f.status === 'WAIVED')
+    .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+  return {
+    due,
+    paid,
+    balance: Math.max(0, due - paid),
+    fees: list.map((f) => ({
+      id: f.id,
+      receiptNumber: f.receiptNumber,
+      amount: f.amount,
+      status: f.status,
+      installmentIndex: f.installmentIndex,
+    })),
+  };
+}
+
+function summarizeInstallments(fees) {
+  const list = fees || [];
+  const due = list.reduce((sum, f) => sum + feeDueAmount(f), 0);
+  const findInst = (n) => {
+    const byIndex = list.find((f) => f.installmentIndex === n);
+    if (byIndex) return byIndex;
+    if (n === 1 && list.length === 1 && !list[0].installmentIndex) return list[0];
+    return null;
+  };
+  const describe = (fee) => {
+    if (!fee) {
+      return { amount: null, paid: false, feeId: null, status: null, receiptNumber: null };
+    }
+    const paid = fee.status === 'PAID' || fee.status === 'WAIVED';
+    return {
+      amount: Number(fee.amount) || 0,
+      paid,
+      feeId: fee.id,
+      status: fee.status,
+      receiptNumber: fee.receiptNumber,
+    };
+  };
+  const inst1 = describe(findInst(1));
+  const inst2 = describe(findInst(2));
+  const paidTotal = list
+    .filter((f) => f.status === 'PAID' || f.status === 'WAIVED')
+    .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+  return {
+    due,
+    inst1,
+    inst2,
+    paidTotal,
+    balance: Math.max(0, due - paidTotal),
+  };
+}
+
 async function campusStudentFilter(req) {
   const where = await studentScopeWhere(req);
   return { student: where };
@@ -46,7 +133,7 @@ router.get('/structures', async (req, res) => {
     if (!requireFinance(req, res)) return;
     const structures = await prisma.feeStructure.findMany({
       where: campusYearWhere(req),
-      orderBy: [{ feeType: 'asc' }, { label: 'asc' }],
+      orderBy: [{ feeType: 'asc' }, { term: 'asc' }, { label: 'asc' }],
       include: {
         class: { select: { id: true, name: true, grade: true, section: true } },
         _count: { select: { payments: true } },
@@ -64,9 +151,10 @@ router.post('/structures', async (req, res) => {
     const {
       classId = null,
       feeType,
+      term = null,
       amount,
       label = null,
-      installments = 1,
+      installments,
       dueDate = null,
       isActive = true,
     } = req.body || {};
@@ -75,6 +163,7 @@ router.post('/structures', async (req, res) => {
       return res.status(400).json({ error: 'Fee type and a non-negative amount are required' });
     }
 
+    const normalizedTerm = normalizeTerm(term);
     if (classId) {
       const cls = await prisma.class.findFirst({
         where: { id: classId, ...campusYearWhere(req) },
@@ -88,9 +177,10 @@ router.post('/structures', async (req, res) => {
         academicYearId: req.academicYearId,
         classId: classId || null,
         feeType,
+        term: normalizedTerm,
         amount: Number(amount),
         label: label?.trim() || null,
-        installments: Math.max(1, Math.min(12, Number(installments) || 1)),
+        installments: defaultInstallments(feeType, normalizedTerm, installments),
         dueDate: dueDate ? new Date(dueDate) : null,
         isActive: Boolean(isActive),
       },
@@ -115,6 +205,7 @@ router.put('/structures/:id', async (req, res) => {
     const {
       classId,
       feeType,
+      term,
       amount,
       label,
       installments,
@@ -129,14 +220,20 @@ router.put('/structures/:id', async (req, res) => {
       if (!cls) return res.status(400).json({ error: 'Class not found in this campus year' });
     }
 
+    const nextType = feeType || existing.feeType;
+    const nextTerm = term !== undefined ? normalizeTerm(term) : existing.term;
+
     const structure = await prisma.feeStructure.update({
       where: { id: existing.id },
       data: {
         ...(classId !== undefined ? { classId: classId || null } : {}),
         ...(feeType ? { feeType } : {}),
+        ...(term !== undefined ? { term: nextTerm } : {}),
         ...(amount != null ? { amount: Number(amount) } : {}),
         ...(label !== undefined ? { label: label?.trim() || null } : {}),
-        ...(installments != null ? { installments: Math.max(1, Math.min(12, Number(installments) || 1)) } : {}),
+        ...(installments != null || feeType || term !== undefined
+          ? { installments: defaultInstallments(nextType, nextTerm, installments ?? existing.installments) }
+          : {}),
         ...(dueDate !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null } : {}),
         ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
       },
@@ -202,6 +299,7 @@ router.post('/structures/:id/generate', async (req, res) => {
             studentId: student.id,
             feeType: structure.feeType,
             structureId: structure.id,
+            ...(structure.term ? { term: structure.term } : {}),
             ...(installmentIndex ? { installmentIndex } : {}),
           },
           select: { id: true },
@@ -213,6 +311,7 @@ router.post('/structures/:id/generate', async (req, res) => {
 
         const noteParts = [
           structure.label || null,
+          structure.term || null,
           parts.length > 1 ? `Installment ${i + 1}/${parts.length}` : null,
         ].filter(Boolean);
 
@@ -221,6 +320,7 @@ router.post('/structures/:id/generate', async (req, res) => {
             receiptNumber: generateFeeReceiptNumber(),
             studentId: student.id,
             feeType: structure.feeType,
+            term: structure.term || null,
             amount: parts[i],
             originalAmount: parts[i],
             dueDate: addDays(baseDue, i * 30),
@@ -241,6 +341,94 @@ router.post('/structures/:id/generate', async (req, res) => {
       skipped,
       installments: parts.length,
       amountEach: parts,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** Excel-style tuition ledger for nursery or primary. */
+router.get('/tuition-ledger', async (req, res) => {
+  try {
+    if (!requireFinance(req, res)) return;
+    const level = String(req.query.level || 'nursery').toLowerCase() === 'primary' ? 'primary' : 'nursery';
+
+    const students = await prisma.student.findMany({
+      where: {
+        ...campusYearWhere(req),
+        registrationStatus: { in: ['APPROVED', 'AWAITING_CONFIRMATION'] },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        studentId: true,
+        firstName: true,
+        lastName: true,
+        postName: true,
+        registrationStatus: true,
+        class: { select: { id: true, name: true, grade: true, section: true } },
+      },
+    });
+
+    const filtered = students.filter((s) => {
+      const grade = s.class?.grade;
+      if (level === 'primary') return isPrimaryGrade(grade);
+      return isNurseryGrade(grade);
+    });
+
+    const studentIds = filtered.map((s) => s.id);
+    const fees = studentIds.length
+      ? await prisma.feePayment.findMany({
+        where: { studentId: { in: studentIds } },
+        orderBy: [{ dueDate: 'asc' }, { installmentIndex: 'asc' }],
+      })
+      : [];
+
+    const byStudent = new Map();
+    for (const fee of fees) {
+      if (!byStudent.has(fee.studentId)) byStudent.set(fee.studentId, []);
+      byStudent.get(fee.studentId).push(fee);
+    }
+
+    const rows = filtered.map((student, index) => {
+      const list = byStudent.get(student.id) || [];
+      return {
+        sn: index + 1,
+        student: {
+          id: student.id,
+          studentId: student.studentId,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          postName: student.postName,
+          registrationStatus: student.registrationStatus,
+          class: student.class,
+        },
+        branche: student.class?.name || '',
+        inscription: summarizeSimple(filterFees(list, 'REGISTRATION')),
+        uniforms: level === 'primary' ? summarizeSimple(filterFees(list, 'UNIFORM')) : null,
+        activities: level === 'primary'
+          ? {
+            t1: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_1')),
+            t2: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_2')),
+            t3: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_3')),
+          }
+          : null,
+        carryOver: summarizeSimple([
+          ...filterFees(list, 'CARRY_OVER', 'PRIOR_YEAR'),
+          ...filterFees(list, 'CARRY_OVER'),
+        ]),
+        trimesters: {
+          t1: summarizeInstallments(filterFees(list, 'TUITION', 'TRIMESTRE_1')),
+          t2: summarizeInstallments(filterFees(list, 'TUITION', 'TRIMESTRE_2')),
+          t3: summarizeInstallments(filterFees(list, 'TUITION', 'TRIMESTRE_3')),
+        },
+      };
+    });
+
+    res.json({
+      level,
+      studentCount: rows.length,
+      rows,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -331,7 +519,12 @@ router.get('/debtors', async (req, res) => {
             studentId: true,
             parentId: true,
             class: { select: { id: true, name: true } },
-            parent: { select: { firstName: true, lastName: true, phone: true } },
+            parent: {
+              select: {
+                phone: true,
+                user: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
           },
         },
       },

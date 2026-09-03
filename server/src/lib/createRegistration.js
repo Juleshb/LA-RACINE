@@ -6,6 +6,7 @@ import {
 } from './studentRegistration.js';
 import { resolveOrCreateClass } from './defaultClasses.js';
 import { resolveAcademicYearForCampus } from './resolveAcademicYear.js';
+import { assertClassHasSeat } from './classCapacity.js';
 
 export function validateRegistrationPayload(body, { requireDocuments = true } = {}) {
   const {
@@ -109,6 +110,8 @@ export async function createStudentRegistration({
     err.status = 400;
     throw err;
   }
+
+  await assertClassHasSeat(prisma, selectedClass.id);
 
   const {
     classGrade: _cg,

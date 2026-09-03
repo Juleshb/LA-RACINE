@@ -79,7 +79,13 @@ router.get('/confirmation-queue', async (req, res) => {
         student: {
           include: {
             class: { select: { id: true, name: true, grade: true, section: true } },
-            parent: { select: { id: true, firstName: true, lastName: true, phone: true } },
+            parent: {
+              select: {
+                id: true,
+                phone: true,
+                user: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
           },
         },
       },
@@ -283,6 +289,7 @@ router.post('/', async (req, res) => {
       structureId = null,
       installmentIndex = null,
       installmentTotal = null,
+      term = null,
     } = req.body;
 
     const scope = await studentScopeWhere(req);
@@ -298,12 +305,18 @@ router.post('/', async (req, res) => {
     }
     const finalAmount = Math.max(0, originalAmount - discount);
     const finalStatus = finalAmount === 0 ? 'WAIVED' : status;
+    const normalizedTerm = term
+      ? String(term).trim().toUpperCase()
+      : null;
 
     const fee = await prisma.feePayment.create({
       data: {
         receiptNumber: generateFeeReceiptNumber(),
         studentId,
         feeType,
+        term: ['ANNUAL', 'TRIMESTRE_1', 'TRIMESTRE_2', 'TRIMESTRE_3', 'PRIOR_YEAR'].includes(normalizedTerm)
+          ? normalizedTerm
+          : null,
         amount: finalAmount,
         originalAmount,
         discountAmount: discount,
