@@ -130,8 +130,31 @@ function MobileGroup({ title, items, open, onToggle }) {
   );
 }
 
+const BOOT_COPY = {
+  en: ['Loading…', 'Please wait while the page loads.', 'Still connecting to the school server…'],
+  fr: ['Chargement…', 'Veuillez patienter, la page se charge.', 'Connexion au serveur de l’école…'],
+  sw: ['Inapakia…', 'Tafadhali subiri ukurasa unapakia.', 'Bado inaunganisha na seva ya shule…'],
+  rw: ['Biratangira…', 'Nyamuneka tegereza, urupapuro ruratangira.', 'Turacyagerageza guhuza na seriveri y’ishuri…'],
+};
+
+function PublicSiteLoading({ locale, offline }) {
+  const [title, waiting, reconnecting] = BOOT_COPY[locale] || BOOT_COPY.en;
+  return (
+    <div className="public-site ps-boot" lang={locale} role="status" aria-live="polite" aria-busy="true">
+      <div className="ps-boot-card">
+        <span className="ps-boot-mark" aria-hidden="true">
+          <span className="ps-boot-ring" />
+          <img src="/logo.png" alt="" />
+        </span>
+        <p className="ps-boot-title">{title}</p>
+        <p className="ps-boot-sub">{offline ? reconnecting : waiting}</p>
+      </div>
+    </div>
+  );
+}
+
 function PublicShell() {
-  const { school, motto, campuses, page, locale, setLocale, locales } = usePublicSite();
+  const { school, motto, campuses, page, locale, setLocale, locales, loading, offline } = usePublicSite();
   const nav = page('nav');
   const home = page('home');
   const [scrolled, setScrolled] = useState(false);
@@ -158,8 +181,9 @@ function PublicShell() {
   }, [location.pathname, locale]);
 
   useEffect(() => {
+    if (loading) return;
     setCoverHero(Boolean(document.querySelector('.ps-hero, .ps-page-hero.has-photo')));
-  }, [location.pathname, locale]);
+  }, [location.pathname, locale, loading]);
 
   const brandName = (school?.name || 'École La RACINE')
     .replace(/\s*school\s*$/i, '')
@@ -186,6 +210,10 @@ function PublicShell() {
   const schoolGroupLabel = labelFor(nav, locale, 'menuSchool', 'school');
   const lifeGroupLabel = labelFor(nav, locale, 'menuLife', 'life');
   const showEnroll = enrollOpen && location.pathname !== '/admissions/apply';
+
+  if (loading) {
+    return <PublicSiteLoading locale={locale} offline={offline} />;
+  }
 
   return (
     <div className="public-site" lang={locale}>

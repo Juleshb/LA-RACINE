@@ -51,9 +51,11 @@ export function PublicSiteProvider({ children }) {
   const [locale, setLocaleState] = useState(readStoredLocale);
   const [data, setData] = useState(FALLBACK);
   const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
 
   const setLocale = useCallback((code) => {
     const next = FALLBACK_LOCALES.some((l) => l.code === code) ? code : 'en';
+    setLoading(true);
     setLocaleState(next);
     try {
       localStorage.setItem(STORAGE_KEY, next);
@@ -82,18 +84,32 @@ export function PublicSiteProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer = null;
     setLoading(true);
-    api.getPublicSite(locale)
-      .then((res) => {
-        if (!cancelled) setData({ ...FALLBACK, ...res, pages: res.pages || {} });
-      })
-      .catch(() => {
-        if (!cancelled) setData((prev) => ({ ...prev, locale }));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+    setOffline(false);
+
+    const load = () => {
+      api.getPublicSite(locale)
+        .then((res) => {
+          if (cancelled) return;
+          setData({ ...FALLBACK, ...res, pages: res.pages || {} });
+          setOffline(false);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Keep the loading screen up. An empty home hero is a full blue
+          // page, which looks like the site opened before any data arrived.
+          setOffline(true);
+          retryTimer = window.setTimeout(load, 2000);
+        });
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
   }, [locale]);
 
   const value = useMemo(() => ({
@@ -101,8 +117,9 @@ export function PublicSiteProvider({ children }) {
     locale,
     setLocale,
     loading,
+    offline,
     page: (slug) => data.pages?.[slug] || {},
-  }), [data, locale, setLocale, loading]);
+  }), [data, locale, setLocale, loading, offline]);
 
   return (
     <PublicSiteContext.Provider value={value}>

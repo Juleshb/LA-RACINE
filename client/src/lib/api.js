@@ -67,7 +67,7 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   getPublicSchool: () => request('/public/school'),
-  getPublicSite: (locale = 'en') => request(`/public/site?locale=${encodeURIComponent(locale)}`),
+  getPublicSite: (locale = 'en') => request(`/public/site?locale=${encodeURIComponent(locale)}`, { silent: true }),
   getPublicRegistrationOptions: (campusId) =>
     request(`/public/registration/options?campusId=${encodeURIComponent(campusId)}`),
   submitPublicRegistration: (data) =>
