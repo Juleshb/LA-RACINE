@@ -131,6 +131,7 @@ router.post('/reminders', async (req, res) => {
             id: true,
             firstName: true,
             lastName: true,
+            postName: true,
             studentId: true,
             parentId: true,
             class: { select: { name: true } },

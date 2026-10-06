@@ -13,6 +13,7 @@ import { useStudentPhotoUrl } from '../hooks/useStudentPhotoUrl';
 import { ROLE_LABELS } from '../config/permissions';
 import { PASSWORD_POLICY_HINT, passwordStrengthLabel, validateStrongPassword } from '../lib/passwordPolicy';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
+import { studentFullName } from '../lib/studentName';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -570,7 +571,7 @@ export default function Profile() {
                           <GraduationCap className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="profile-child-name">{child.firstName} {child.lastName}</p>
+                          <p className="profile-child-name">{studentFullName(child)}</p>
                           <p className="profile-child-meta">{child.studentId}</p>
                         </div>
                         <span className="profile-child-class">{child.class?.name || t('ui.noClass')}</span>

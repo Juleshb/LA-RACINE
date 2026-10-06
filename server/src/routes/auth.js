@@ -57,7 +57,7 @@ const meUserSelect = {
   teacher: { select: { id: true, name: true, subject: true, email: true, phone: true, campusId: true } },
   student: {
     select: {
-      id: true, studentId: true, firstName: true, lastName: true, campusId: true,
+      id: true, studentId: true, firstName: true, lastName: true, postName: true, campusId: true,
       classId: true, class: { select: { name: true, grade: true, section: true } },
     },
   },
@@ -67,7 +67,7 @@ const meUserSelect = {
       phone: true,
       students: {
         select: {
-          id: true, studentId: true, firstName: true, lastName: true, campusId: true,
+          id: true, studentId: true, firstName: true, lastName: true, postName: true, campusId: true,
           class: { select: { name: true } },
         },
       },

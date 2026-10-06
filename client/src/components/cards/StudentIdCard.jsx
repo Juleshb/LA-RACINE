@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { User } from 'lucide-react';
+import { studentParentFacts } from '../../lib/studentName';
 
 function fullStudentName(student) {
   return [student?.lastName, student?.postName, student?.firstName]
@@ -12,7 +13,7 @@ function Fact({ label, value }) {
   return (
     <div className="id-card-fact">
       <span className="id-card-label">{label}</span>
-      <span className="id-card-value">{value || '—'}</span>
+      <span className="id-card-value" title={value || undefined}>{value || '—'}</span>
     </div>
   );
 }
@@ -32,9 +33,10 @@ const StudentIdCard = forwardRef(function StudentIdCard({
 
   const className = student.class?.name || student.registrationClass || '—';
   const sex = student.gender === 'FEMALE' ? 'F' : student.gender === 'MALE' ? 'M' : '—';
+  const parentFacts = studentParentFacts(student);
 
   return (
-    <div ref={ref} id={id} className="id-card id-card-student">
+    <div ref={ref} id={id} className={`id-card id-card-student${parentFacts.length ? ' id-card-has-parents' : ''}`}>
       <div className="id-card-glow" aria-hidden="true" />
       <div className="id-card-mark" aria-hidden="true">
         <img src="/logo.png" alt="" crossOrigin="anonymous" />
@@ -72,6 +74,9 @@ const StudentIdCard = forwardRef(function StudentIdCard({
             <Fact label="Classe" value={className} />
             <Fact label="Année" value={academicYear || '—'} />
             <Fact label="Sexe" value={sex} />
+            {parentFacts.map((fact) => (
+              <Fact key={fact.label} label={fact.label} value={fact.value} />
+            ))}
           </div>
         </div>
       </div>

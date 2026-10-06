@@ -8,6 +8,7 @@ import PageHeader from '../components/PageHeader';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import StudentExcelImportModal from '../components/StudentExcelImportModal';
+import { studentFullName } from '../lib/studentName';
 
 const STATUS_STYLES = {
   PENDING: 'bg-amber-50 text-amber-700',
@@ -22,10 +23,6 @@ const STATUS_I18N = {
   AWAITING_CONFIRMATION: 'ui.awaitingConfirmation',
   REJECTED: 'ui.rejected',
 };
-
-function studentFullName(s) {
-  return [s?.lastName, s?.postName, s?.firstName].filter(Boolean).join(' ');
-}
 
 function compareStudents(a, b, sortKey) {
   if (sortKey === 'studentId') {
@@ -319,7 +316,7 @@ export default function Students() {
                 {displayed.map((s) => (
                   <tr key={s.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3 text-brand-600 font-medium">{s.studentId}</td>
-                    <td className="py-3">{s.lastName} {s.postName} {s.firstName}</td>
+                    <td className="py-3">{studentFullName(s)}</td>
                     <td className="py-3">{s.class?.name || s.registrationClass || '—'}</td>
                     {!isTeacher && (
                       <td className="py-3">

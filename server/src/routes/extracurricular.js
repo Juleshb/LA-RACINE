@@ -12,6 +12,7 @@ const studentInclude = {
     studentId: true,
     firstName: true,
     lastName: true,
+    postName: true,
     classId: true,
     class: { select: { id: true, name: true, grade: true, section: true } },
   },

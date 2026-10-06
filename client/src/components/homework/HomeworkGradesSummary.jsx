@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../../context/LanguageContext';
+import { studentFullName } from '../../lib/studentName';
 
 function scoreClass(percent) {
   if (percent == null) return '';
@@ -26,7 +27,7 @@ export default function HomeworkGradesSummary({
   if (!summary) return null;
 
   const { completed, pending, averagePercent, recentSubmissions, student } = summary;
-  const childName = student ? `${student.firstName} ${student.lastName}` : null;
+  const childName = student ? studentFullName(student) : null;
   const detailQs = studentId ? `?studentId=${studentId}` : '';
   const itemLink = (item) => `/campus/${campusId}/${detailSegment}/${item[itemIdField]}${detailQs}`;
 

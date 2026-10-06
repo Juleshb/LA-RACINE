@@ -10,6 +10,7 @@ import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import StudentSelect from '../components/StudentSelect';
+import { studentFullName } from '../lib/studentName';
 
 const CATEGORIES = [
   { value: 'GENERAL', labelKey: 'pages.communication.categoryGeneral' },
@@ -67,6 +68,7 @@ export default function Communication() {
   const isStudent = user?.role === 'STUDENT';
   const isTeacher = user?.role === 'TEACHER';
   const isSchool = !['PARENT', 'STUDENT'].includes(user?.role);
+  const canCompose = isSchool && !isTeacher;
   const isFamily = isParent || isStudent;
 
   const [inbox, setInbox] = useState([]);
@@ -158,7 +160,7 @@ export default function Communication() {
   };
 
   const loadContactInquiries = () => {
-    if (!isSchool) return;
+    if (!canCompose) return;
     setContactError('');
     api.getAdminContactInquiries()
       .then(setContactInquiries)
@@ -174,7 +176,7 @@ export default function Communication() {
     if (isParent) {
       api.getCommunicationChildren().then(setChildren).catch(console.error);
     }
-    if (isSchool) {
+    if (canCompose) {
       api.getClasses().then(setClasses).catch(console.error);
       api.getStudents().then(setStudents).catch(console.error);
       loadContactInquiries();
@@ -186,14 +188,14 @@ export default function Communication() {
           email: { configured: false },
         }));
     }
-  }, [isParent, isSchool]);
+  }, [isParent, canCompose]);
 
   useEffect(() => {
     activeInquiryIdRef.current = activeInquiry?.id || null;
   }, [activeInquiry?.id]);
 
   useEffect(() => {
-    if (!isSchool) return undefined;
+    if (!canCompose) return undefined;
     const socket = getSupportSocket();
     socket.emit('join_admin_contact');
 
@@ -239,17 +241,17 @@ export default function Communication() {
       socket.off('inquiry_updated', onUpdated);
       socket.off('typing', onTyping);
     };
-  }, [isSchool]);
+  }, [canCompose]);
 
   useEffect(() => {
-    if (!isSchool) return undefined;
+    if (!canCompose) return undefined;
     const socket = getSupportSocket();
     if (activeInquiry?.id) {
       socket.emit('join_inquiry', activeInquiry.id);
       return () => socket.emit('leave_inquiry', activeInquiry.id);
     }
     return undefined;
-  }, [isSchool, activeInquiry?.id]);
+  }, [canCompose, activeInquiry?.id]);
 
   useEffect(() => {
     if (thread) {
@@ -532,7 +534,7 @@ export default function Communication() {
               {t('pages.communication.contactSchool')}
             </button>
           )}
-          {isSchool && (
+          {canCompose && (
             <>
               <button
                 type="button"
@@ -564,7 +566,7 @@ export default function Communication() {
         </div>
       </header>
 
-      {isSchool && (
+      {canCompose && (
         <div className="comm-tabs" role="tablist" aria-label={t('pages.communication.title')}>
           <button
             type="button"
@@ -591,7 +593,7 @@ export default function Communication() {
         </div>
       )}
 
-      {(viewTab === 'inbox' || !isSchool) && (
+      {(viewTab === 'inbox' || !canCompose) && (
         <div className={`comm-shell ${thread ? 'has-thread' : ''}`}>
           <aside className={`comm-list-panel ${thread ? 'is-hidden-mobile' : ''}`}>
             <div className="comm-panel-head">
@@ -696,7 +698,7 @@ export default function Communication() {
                     {thread.student && (
                       <p>
                         {t('pages.communication.reStudent', {
-                          name: `${thread.student.firstName} ${thread.student.lastName}`,
+                          name: studentFullName(thread.student),
                           className: thread.student.class?.name || '',
                         })}
                       </p>
@@ -707,7 +709,7 @@ export default function Communication() {
                       </div>
                     )}
                   </div>
-                  {isSchool && thread.id && thread.status === 'OPEN' && (
+                  {canCompose && thread.id && thread.status === 'OPEN' && (
                     <button
                       type="button"
                       className="comm-btn comm-btn-sm"
@@ -769,7 +771,7 @@ export default function Communication() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {thread.id && !thread.isAnnouncement && (
+                {thread.id && !thread.isAnnouncement && canCompose && (
                   <form onSubmit={handleReply} className="comm-composer">
                     <input
                       className="comm-composer-input"
@@ -789,7 +791,7 @@ export default function Communication() {
         </div>
       )}
 
-      {isSchool && viewTab === 'website' && (
+      {canCompose && viewTab === 'website' && (
         <div className={`comm-shell ${activeInquiry ? 'has-thread' : ''}`}>
           <aside className={`comm-list-panel ${activeInquiry ? 'is-hidden-mobile' : ''}`}>
             <div className="comm-panel-head">
@@ -962,7 +964,7 @@ export default function Communication() {
               />
             </div>
           )}
-          {isSchool && (
+          {canCompose && (
             <div>
               <label className="label">{t('pages.communication.studentOptional')}</label>
               <StudentSelect
@@ -970,7 +972,7 @@ export default function Communication() {
                 value={form.studentId || ''}
                 onChange={(studentId) => setForm({ ...form, studentId })}
                 emptyLabel={t('pages.communication.generalNoStudent')}
-                getLabel={(s) => `${s.firstName} ${s.lastName} — ${s.class?.name || ''}`}
+                getLabel={(s) => `${studentFullName(s)} — ${s.class?.name || ''}`}
               />
             </div>
           )}
@@ -1029,7 +1031,7 @@ export default function Communication() {
                 value={form.targetStudentId || ''}
                 onChange={(targetStudentId) => setForm({ ...form, targetStudentId })}
                 emptyLabel={t('ui.select')}
-                getLabel={(s) => `${s.firstName} ${s.lastName}`}
+                getLabel={(s) => studentFullName(s)}
               />
             </div>
           )}

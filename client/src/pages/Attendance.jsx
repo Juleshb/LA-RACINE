@@ -10,6 +10,7 @@ import AppIcon from '../components/icons/AppIcon';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { studentFullName } from '../lib/studentName';
 
 const statusOptions = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
 const statusColors = {
@@ -133,7 +134,7 @@ export default function Attendance() {
   const getAttendanceSortValue = useCallback((row, key) => {
     switch (key) {
       case 'studentId': return row.studentId || '';
-      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'name': return studentFullName(row);
       case 'class': return row.class?.name || '';
       case 'status': return records[row.id] || '';
       default: return '';
@@ -270,7 +271,7 @@ export default function Attendance() {
                 {sorted.map((s) => (
                   <tr key={s.id} className="border-b border-gray-100 last:border-0">
                     <td className="py-3 text-brand-600">{s.studentId}</td>
-                    <td className="py-3 font-medium">{s.firstName} {s.lastName}</td>
+                    <td className="py-3 font-medium">{studentFullName(s)}</td>
                     <td className="py-3 text-gray-400">{s.class?.name || '—'}</td>
                     <td className="py-3">
                       {isFamily ? (

@@ -34,6 +34,20 @@ export async function ensureSubjectAssessments(db, subject) {
         where: { subjectId: subject.id, label: { equals: 'Exam', mode: 'insensitive' } },
       });
     }
+    for (const row of testsOnly) {
+      const expected = row.sortOrder === 1
+        ? subject.test1Max
+        : row.sortOrder === 2
+          ? subject.test2Max
+          : null;
+      if (expected != null && expected > 0 && row.maxScore !== expected) {
+        await db.subjectAssessment.update({
+          where: { id: row.id },
+          data: { maxScore: expected },
+        });
+        row.maxScore = expected;
+      }
+    }
     return testsOnly;
   }
 

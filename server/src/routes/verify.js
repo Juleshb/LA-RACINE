@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { verifyBulletinToken } from '../lib/bulletinVerification.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
-import { usesNurseryCompetence } from '../config/grades.js';
+import { usesCompetenceBulletin } from '../config/grades.js';
 
 const router = Router();
 
@@ -25,7 +25,7 @@ router.get('/bulletin/:token', async (req, res) => {
 
     let matchesCurrent = false;
     try {
-      if (usesNurseryCompetence(student.class?.grade)) {
+      if (usesCompetenceBulletin(student.class?.grade)) {
         await buildNurseryBulletinReport(prisma, {
           classId: decoded.classId,
           studentId: decoded.studentId,

@@ -11,6 +11,7 @@ import TimetableGrid, { TimetableSummaryBar } from '../components/timetable/Time
 import TimetablePeriodEditor from '../components/timetable/TimetablePeriodEditor';
 import ParentChildFilter from '../components/parent/ParentChildFilter';
 import { useTranslation } from '../context/LanguageContext';
+import { studentFullName } from '../lib/studentName';
 import {
   SCHOOL_DAYS,
   FALLBACK_PERIOD_DEFINITIONS,
@@ -581,7 +582,7 @@ export default function Timetable() {
         <div className="card empty-state py-16 text-center max-w-lg mx-auto">
           <p className="text-gray-900 font-medium">{t('pages.timetable.classNotAssigned')}</p>
           <p className="text-sm text-gray-600 mt-2">
-            {selectedChild.firstName} {selectedChild.lastName} is enrolled, but the school has not assigned a class yet.
+            {studentFullName(selectedChild)} is enrolled, but the school has not assigned a class yet.
             The weekly timetable will show here once a class is set.
           </p>
         </div>

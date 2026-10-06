@@ -177,10 +177,16 @@ function addCanvasAsPagedPdf(pdf, canvas, element, { marginMm = 6, footerMm = 8 
  * Content keeps natural size; tall bulletins continue on page 2+ without cutting rows.
  */
 export async function downloadBulletinPdf(element, filename = 'bulletin-scolaire.pdf') {
-  const isNursery = element.classList?.contains('nursery-bulletin-sheet');
+  const isNursery = element.classList?.contains('nursery-bulletin-sheet')
+    || Boolean(element.querySelector?.('.nursery-bulletin-sheet'));
+  const isAnnual = Boolean(element.querySelector?.('.bulletin-is-annual') || element.classList?.contains('bulletin-is-annual'));
   const canvas = await captureBulletinCanvas(element);
 
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pdf = new jsPDF({
+    orientation: isAnnual ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
   addCanvasAsPagedPdf(pdf, canvas, element, {
     marginMm: isNursery ? 6 : 7,
     footerMm: isNursery ? 8 : 7,

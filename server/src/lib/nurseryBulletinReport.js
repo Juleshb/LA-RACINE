@@ -10,14 +10,16 @@ import {
   NURSERY_FULL_YEAR_COLUMNS,
   resolveNurseryBulletinView,
 } from './nurseryGrade.js';
-import { isCrecheGrade, usesNurseryCompetence } from '../config/grades.js';
+import { usesCompetenceBulletin } from '../config/grades.js';
+import { resolveDirectorName } from './schoolDirector.js';
 
 async function buildMeta(db, { campusId, academicYearId, classTeacher, issuedAt }) {
   if (!campusId) return { meta: null, academicYearName: '' };
-  const [campus, school, year] = await Promise.all([
+  const [campus, school, year, directorName] = await Promise.all([
     db.campus.findUnique({ where: { id: campusId } }),
     db.schoolProfile.findFirst(),
     academicYearId ? db.academicYear.findUnique({ where: { id: academicYearId } }) : null,
+    resolveDirectorName(db),
   ]);
   const academicYearName = year?.name || '';
   return {
@@ -34,6 +36,7 @@ async function buildMeta(db, { campusId, academicYearId, classTeacher, issuedAt 
       website: school?.website || 'www.laracine.rw',
       academicYear: academicYearName,
       classTeacher: classTeacher || '',
+      directorName,
       issuedAt,
     },
   };
@@ -57,12 +60,7 @@ export async function buildNurseryBulletinReport(db, {
     select: { id: true, grade: true, campusId: true, name: true, section: true, bulletinConfig: true },
   });
   if (!cls) throw new Error('Class not found');
-  if (isCrecheGrade(cls.grade)) {
-    const err = new Error('La Crèche n\'utilise pas de bulletin');
-    err.status = 400;
-    throw err;
-  }
-  if (!usesNurseryCompetence(cls.grade)) {
+  if (!usesCompetenceBulletin(cls.grade)) {
     throw new Error('Class is not a nursery grade');
   }
 

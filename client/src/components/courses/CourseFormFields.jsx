@@ -18,6 +18,11 @@ export default function CourseFormFields({
         description={isEditing ? 'Move this sub-subject to another domain if needed' : 'Where this sub-subject belongs on the bulletin'}
       >
         {!isEditing && form.entryMode === 'template' ? (
+          curriculumDomains.length === 0 ? (
+            <p className="form-field-full md:col-span-2 text-sm text-gray-500">
+              This grade has no bulletin template. Use Custom to add a domain and sub-subject.
+            </p>
+          ) : (
           <>
             <div>
               <label className="label">Domain *</label>
@@ -62,6 +67,7 @@ export default function CourseFormFields({
               )}
             </div>
           </>
+          )
         ) : (
           <>
             <div>

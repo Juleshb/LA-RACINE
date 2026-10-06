@@ -330,19 +330,36 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+const CLASS_DELETE_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES'];
+
 router.delete('/:id', async (req, res) => {
   try {
-    if (!['SCHOOL_MANAGER','SCHOOL_ADMIN','SECRETARY'].includes(req.user.role)) {
+    if (!CLASS_DELETE_ROLES.includes(req.user.role)) {
       return res.status(403).json({ error: 'You cannot delete classes' });
     }
     const scope = await classScopeWhere(req);
     const existing = await prisma.class.findFirst({
       where: { id: req.params.id, ...scope },
+      include: { _count: { select: { students: true } } },
     });
     if (!existing) return res.status(404).json({ error: 'Class not found' });
-    await prisma.class.delete({ where: { id: req.params.id } });
-    res.json({ message: 'Class deleted' });
+
+    const unassignedStudents = existing._count.students;
+    await prisma.$transaction(async (tx) => {
+      await tx.student.updateMany({
+        where: { classId: existing.id },
+        data: { classId: null },
+      });
+      await tx.class.delete({ where: { id: existing.id } });
+    });
+
+    res.json({ message: 'Class deleted', unassignedStudents });
   } catch (error) {
+    if (error.code === 'P2003') {
+      return res.status(409).json({
+        error: 'This class still has related records that block deletion. Transfer students or remove linked records first.',
+      });
+    }
     res.status(500).json({ error: error.message });
   }
 });

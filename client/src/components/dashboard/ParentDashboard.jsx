@@ -9,6 +9,7 @@ import DashboardPanel from './DashboardPanel';
 import DashQuickLink from './DashQuickLink';
 import { formatCurrency } from '../../hooks/useDashboardData';
 import { useTranslation } from '../../context/LanguageContext';
+import { studentFullName } from '../../lib/studentName';
 
 export default function ParentDashboard({ campusId, data, userName }) {
   const { t, language } = useTranslation();
@@ -98,7 +99,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
                 to={`${base}/my-registrations/${r.id}`}
                 className="dash-app-item"
               >
-                <p className="dash-list-title">{r.firstName} {r.lastName}</p>
+                <p className="dash-list-title">{studentFullName(r)}</p>
                 <p className="dash-list-meta">
                   {r.registrationClass || t('staffDash.parent.classTbd')} · {t('staffDash.parent.submitted', { date: new Date(r.createdAt).toLocaleDateString() })}
                 </p>
@@ -162,7 +163,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
                       {(child.firstName?.[0] || '') + (child.lastName?.[0] || '?')}
                     </div>
                     <div className="dash-list-main">
-                      <p className="dash-list-title">{child.firstName} {child.lastName}</p>
+                      <p className="dash-list-title">{studentFullName(child)}</p>
                       <p className="dash-list-meta">{child.studentId} · {child.class?.name || t('ui.unassigned')}</p>
                     </div>
                     <span className={`dash-status-chip ${status.className}`}>{status.label}</span>
@@ -250,7 +251,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
               {homeworkGrades.map((entry) => (
                 <div key={entry.student.id} className="dash-grade-block">
                   <div className="dash-grade-head">
-                    <p className="dash-list-title">{entry.student.firstName} {entry.student.lastName}</p>
+                    <p className="dash-list-title">{studentFullName(entry.student)}</p>
                     <p className="dash-grade-meta">
                       <span className="font-semibold text-gray-900">{entry.completed}</span> {t('staffDash.parent.done')}
                       {entry.pending > 0 && (
@@ -293,7 +294,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
               {eLearningGrades.map((entry) => (
                 <div key={entry.student.id} className="dash-grade-block">
                   <div className="dash-grade-head">
-                    <p className="dash-list-title">{entry.student.firstName} {entry.student.lastName}</p>
+                    <p className="dash-list-title">{studentFullName(entry.student)}</p>
                     <p className="dash-grade-meta">
                       <span className="font-semibold text-gray-900">{entry.completed}</span> {t('staffDash.parent.done')}
                       {entry.pending > 0 && (
@@ -336,7 +337,7 @@ export default function ParentDashboard({ campusId, data, userName }) {
               {pendingFees.slice(0, 4).map((fee) => (
                 <div key={fee.id} className="dash-list-row">
                   <div className="dash-list-main">
-                    <p className="dash-list-title">{fee.student?.firstName} {fee.student?.lastName}</p>
+                    <p className="dash-list-title">{studentFullName(fee.student)}</p>
                     <p className="dash-list-meta">{fee.feeType} · {fee.status}</p>
                   </div>
                   <span className="font-semibold text-sm text-gray-900">{formatCurrency(fee.amount)}</span>

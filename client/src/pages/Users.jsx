@@ -13,6 +13,7 @@ import { useTranslation } from '../context/LanguageContext';
 import StudentSelect from '../components/StudentSelect';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
+import { studentFullName } from '../lib/studentName';
 
 const EMPTY_FORM = {
   email: '', password: '', firstName: '', lastName: '', phone: '', identityNumber: '', role: 'TEACHER',
@@ -50,11 +51,15 @@ function matchesSearch(user, query) {
     user.student?.studentId,
     user.student?.firstName,
     user.student?.lastName,
+    user.student?.postName,
+    studentFullName(user.student),
     user.student?.class?.name,
     user.phone,
     user.identityNumber,
     user.parent?.phone,
-    ...(user.parent?.students || []).flatMap((s) => [s.firstName, s.lastName, s.studentId, `${s.firstName} ${s.lastName}`]),
+    ...(user.parent?.students || []).flatMap((s) => [
+      s.firstName, s.lastName, s.postName, s.studentId, studentFullName(s),
+    ]),
   ]
     .filter(Boolean)
     .join(' ')
@@ -158,7 +163,10 @@ export default function Users() {
 
   const getUserSortValue = useCallback((row, key) => {
     switch (key) {
-      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'name':
+        return row.role === 'STUDENT'
+          ? (studentFullName(row.student) || `${row.firstName || ''} ${row.lastName || ''}`.trim())
+          : `${row.firstName || ''} ${row.lastName || ''}`.trim();
       case 'email': return row.email || '';
       case 'phone': return displayPhone(row);
       case 'identity': return row.identityNumber || '';
@@ -173,7 +181,7 @@ export default function Users() {
       case 'children': {
         const kids = row.parent?.students || [];
         return kids.length
-          ? kids.map((s) => `${s.firstName || ''} ${s.lastName || ''}`.trim()).join(', ')
+          ? kids.map((s) => studentFullName(s)).join(', ')
           : '';
       }
       default: return '';
@@ -612,7 +620,9 @@ export default function Users() {
                         <span className="users-avatar users-avatar-student">
                           {(u.firstName?.[0] || '?').toUpperCase()}{(u.lastName?.[0] || '').toUpperCase()}
                         </span>
-                        <span className="font-medium text-gray-900">{u.firstName} {u.lastName}</span>
+                        <span className="font-medium text-gray-900">
+                          {studentFullName(u.student) || `${u.firstName} ${u.lastName}`}
+                        </span>
                       </div>
                     </td>
                     <td className="text-gray-500">{u.email}</td>
@@ -666,7 +676,7 @@ export default function Users() {
                         <div className="users-children">
                           {u.parent.students.map((s) => (
                             <span key={s.id} className="users-child-chip">
-                              {s.firstName} {s.lastName}
+                              {studentFullName(s)}
                             </span>
                           ))}
                         </div>
@@ -803,20 +813,20 @@ export default function Users() {
               onChange={(e) => setForm({ ...form, role: e.target.value, teacherId: '', studentId: '', parentId: '' })}
             >
               {(modalMode === 'edit' ? Object.entries(ROLE_LABELS) : roleOptions).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-          {form.role === 'TEACHER' && (
-            <div className="form-field-full md:col-span-2">
-              <label className="label">{t('ui.linkTeacherProfile')}</label>
-              <select className="input" value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
-                <option value="">{t('ui.none')}</option>
-                {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
-          )}
-          {form.role === 'STUDENT' && (
+            {form.role === 'TEACHER' && (
+            <div className="form-field-full md:col-span-2">
+              <label className="label">{t('ui.linkTeacherProfile')}</label>
+                <select className="input" value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
+                <option value="">{t('ui.none')}</option>
+                {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+                </select>
+              </div>
+            )}
+            {form.role === 'STUDENT' && (
             <div className="form-field-full md:col-span-2">
               <label className="label">{t('ui.linkStudentRecord')}</label>
               <StudentSelect
@@ -824,7 +834,7 @@ export default function Users() {
                 value={form.studentId}
                 onChange={(studentId) => setForm({ ...form, studentId })}
                 emptyLabel={t('ui.none')}
-                getLabel={(s) => `${s.studentId} — ${s.firstName} ${s.lastName}`}
+                getLabel={(s) => `${s.studentId} — ${studentFullName(s)}`}
               />
             </div>
           )}
@@ -857,7 +867,7 @@ export default function Users() {
                   <option value="">{t('ui.selectParentRecord')}</option>
                   {parentOptions.map((p) => (
                     <option key={p.id} value={p.id} disabled={Boolean(p.user) && p.user.id !== editingUser?.id}>
-                      {p.phone || p.id.slice(0, 8)} — {p.students.map((s) => s.firstName).join(', ') || t('ui.none')}
+                      {p.phone || p.id.slice(0, 8)} — {p.students.map((s) => studentFullName(s)).filter(Boolean).join(', ') || t('ui.none')}
                       {p.user && p.user.id !== editingUser?.id ? ` (${p.user.email})` : ''}
                     </option>
                   ))}
@@ -935,9 +945,9 @@ export default function Users() {
                 <pre className="mt-3 whitespace-pre-wrap text-xs text-gray-700 bg-white border border-gray-200 rounded-lg p-3 max-h-64 overflow-auto">
                   {resetPreview.emailPreview?.body}
                 </pre>
-              </div>
-            </div>
-          </div>
+                    </div>
+        </div>
+      </div>
         )}
       </FormModeModal>
     </div>

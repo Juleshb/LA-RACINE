@@ -30,6 +30,8 @@ import {
 } from 'recharts';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useCampus } from '../context/CampusContext';
+import { downloadClassStudentList } from '../lib/studentListExport';
 import PageHeader from '../components/PageHeader';
 import { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
@@ -37,6 +39,7 @@ import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import Modal from '../components/form/Modal';
 import { isNurseryGrade, isPrimaryGrade } from '../lib/grades';
+import { studentFullName } from '../lib/studentName';
 
 const EMPTY_FORM = { name: '', grade: '', section: '', teacherId: '' };
 const CLASS_CAPACITY = 35;
@@ -70,71 +73,19 @@ function classLevel(grade) {
   return 'other';
 }
 
-function csvEscape(value) {
-  const s = String(value ?? '');
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
-
 function genderLabel(gender, t) {
   if (gender === 'MALE') return t('ui.male');
   if (gender === 'FEMALE') return t('ui.female');
   return gender || '—';
 }
 
-function formatDob(value) {
-  if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
-}
-
-function downloadClassCsv(cls, students, t) {
-  const headers = [
-    'S/N',
-    t('ui.studentId'),
-    t('ui.lastName'),
-    t('ui.postName'),
-    t('ui.firstName'),
-    t('ui.dateOfBirth'),
-    t('ui.gender'),
-    t('ui.fatherName'),
-    t('ui.motherName'),
-    t('ui.status'),
-    t('ui.phone'),
-  ];
-  const lines = [headers.map(csvEscape).join(',')];
-  (students || []).forEach((s, i) => {
-    const phone = s.parentPhone || s.fatherPhone || s.motherPhone || '';
-    lines.push([
-      i + 1,
-      s.studentId,
-      s.lastName,
-      s.postName || '',
-      s.firstName,
-      formatDob(s.dateOfBirth),
-      s.gender,
-      s.fatherName || '',
-      s.motherName || '',
-      s.registrationStatus,
-      phone,
-    ].map(csvEscape).join(','));
-  });
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const safe = String(cls.name || 'class').replace(/[^\w\-]+/g, '_');
-  a.download = `students-${safe}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function Classes() {
   const { user } = useAuth();
+  const { campus, academicYear } = useCampus();
   const { t } = useTranslation();
   const isTeacher = user?.role === 'TEACHER';
   const canManageClasses = !['TEACHER', 'ACCOUNTANT', 'ACTIVITIES_MANAGER', 'PARENT', 'STUDENT'].includes(user?.role);
+  const canDeleteClasses = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES'].includes(user?.role);
   const canTransfer = canManageClasses;
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -176,7 +127,7 @@ export default function Classes() {
   useEffect(() => {
     loadClasses();
     if (canManageClasses) {
-      api.getTeachers().then(setTeachers).catch(console.error);
+    api.getTeachers().then(setTeachers).catch(console.error);
     }
   }, [canManageClasses]);
 
@@ -392,7 +343,14 @@ export default function Classes() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm(t('pageBody.classes.deleteConfirm'))) return;
+    const cls = classes.find((c) => c.id === id) || (detailClass?.id === id ? detailClass : null);
+    const enrolled = classStats(cls || {}).students;
+    const ok = confirm(
+      enrolled > 0
+        ? t('pageBody.classes.deleteConfirmAssigned', { count: enrolled })
+        : t('pageBody.classes.deleteConfirm'),
+    );
+    if (!ok) return;
     try {
       await api.deleteClass(id);
       if (editingId === id) closeForm();
@@ -441,8 +399,17 @@ export default function Classes() {
   const handleExport = async (cls) => {
     setExportingId(cls.id);
     try {
-      const full = await api.getClass(cls.id);
-      downloadClassCsv(full, full.students || [], t);
+      const [full, school] = await Promise.all([
+        api.getClass(cls.id),
+        api.getSchool().catch(() => null),
+      ]);
+      await downloadClassStudentList({
+        cls: full,
+        students: full.students || [],
+        school,
+        campus,
+        academicYear,
+      });
     } catch (err) {
       alert(err.message);
     } finally {
@@ -546,7 +513,7 @@ export default function Classes() {
                   girls: schoolStats.nurseryGirls,
                 })}
               </p>
-            </div>
+      </div>
           </div>
           <div className="classes-stat">
             <span className="classes-stat-icon"><GraduationCap className="w-4 h-4" /></span>
@@ -887,6 +854,16 @@ export default function Classes() {
                     : <Download className="w-4 h-4" />}
                   {t('pageBody.classes.exportList')}
                 </button>
+                {canDeleteClasses && (
+                  <button
+                    type="button"
+                    className="classes-icon-btn is-danger"
+                    title={t('ui.delete')}
+                    onClick={() => handleDelete(detailClass.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
                 <button type="button" onClick={closeDetail} className="classes-icon-btn" aria-label={t('ui.close')}>
                   <X className="w-5 h-5" />
                 </button>
@@ -942,7 +919,7 @@ export default function Classes() {
                     <option value="">{t('pageBody.classes.selectStudent')}</option>
                     {(detailClass.students || []).map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.lastName} {s.postName} {s.firstName} ({s.studentId})
+                        {studentFullName(s)} ({s.studentId})
                       </option>
                     ))}
                   </select>
@@ -1116,24 +1093,24 @@ export default function Classes() {
                         : <Download className="w-4 h-4" />}
                     </button>
                     {canManageClasses && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => (isActive ? closeForm() : openEdit(cls))}
-                          className={`classes-icon-btn ${isActive ? 'is-active' : ''}`}
-                          title={t('ui.edit')}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(cls.id)}
-                          className="classes-icon-btn is-danger"
-                          title={t('ui.delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => (isActive ? closeForm() : openEdit(cls))}
+                        className={`classes-icon-btn ${isActive ? 'is-active' : ''}`}
+                        title={t('ui.edit')}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canDeleteClasses && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(cls.id)}
+                        className="classes-icon-btn is-danger"
+                        title={t('ui.delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
                 </header>
@@ -1186,7 +1163,7 @@ export default function Classes() {
               </article>
             );
           })}
-        </div>
+      </div>
       )}
     </div>
   );

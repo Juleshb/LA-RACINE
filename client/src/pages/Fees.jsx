@@ -10,6 +10,7 @@ import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { studentFullName } from '../lib/studentName';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -178,7 +179,7 @@ export default function Fees() {
   const getFeeSortValue = useCallback((fee, key) => {
     switch (key) {
       case 'receipt': return fee.receiptNumber || '';
-      case 'student': return `${fee.student?.lastName || ''} ${fee.student?.firstName || ''}`.trim();
+      case 'student': return studentFullName(fee.student);
       case 'feeType': return fee.feeType || '';
       case 'amount': return Number(fee.amount) || 0;
       case 'dueDate': return fee.dueDate ? new Date(fee.dueDate) : null;
@@ -261,7 +262,7 @@ export default function Fees() {
                   <tr key={fee.id} className="border-b border-blue-50 last:border-0">
                     <td className="py-2.5">
                       <Link to={`/campus/${campusId}/fees/${fee.id}`} className="font-medium text-brand-700 hover:underline">
-                        {fee.student.firstName} {fee.student.lastName}
+                        {studentFullName(fee.student)}
                       </Link>
                       <p className="text-xs text-gray-500">{fee.student.studentId}</p>
                     </td>
@@ -341,7 +342,7 @@ export default function Fees() {
                         {fee.receiptNumber}
                       </Link>
                     </td>
-                    <td className="py-3">{fee.student.firstName} {fee.student.lastName}</td>
+                    <td className="py-3">{studentFullName(fee.student)}</td>
                     <td className="py-3 text-gray-400">{FEE_TYPE_KEYS[fee.feeType] ? t(FEE_TYPE_KEYS[fee.feeType]) : fee.feeType}</td>
                     <td className="py-3 font-medium">{formatCurrency(fee.amount)}</td>
                     <td className="py-3 text-gray-400">{new Date(fee.dueDate).toLocaleDateString()}</td>

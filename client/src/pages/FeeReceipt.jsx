@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
+import { studentFullName } from '../lib/studentName';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -71,7 +72,7 @@ export default function FeeReceipt() {
         <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
           <div>
             <p className="text-gray-400 print:text-gray-600 mb-1">Student:</p>
-            <p className="font-semibold">{fee.student.firstName} {fee.student.lastName}</p>
+            <p className="font-semibold">{studentFullName(fee.student)}</p>
             <p className="text-gray-400 print:text-gray-600">{fee.student.studentId}</p>
             {fee.student.class && <p className="text-gray-400 print:text-gray-600">Class: {fee.student.class.name}</p>}
           </div>

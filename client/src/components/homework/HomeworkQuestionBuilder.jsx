@@ -20,7 +20,7 @@ export function createEmptyQuestion() {
   return emptyQuestion();
 }
 
-export default function HomeworkQuestionBuilder({ questions, onChange }) {
+export default function HomeworkQuestionBuilder({ questions, onChange, promptRequired = true }) {
   const updateQuestion = (index, patch) => {
     onChange(questions.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   };
@@ -85,11 +85,11 @@ export default function HomeworkQuestionBuilder({ questions, onChange }) {
           </div>
 
           <div>
-            <label className="label">Question *</label>
+            <label className="label">Question{promptRequired ? ' *' : ''}</label>
             <textarea
               className="input"
               rows={2}
-              required
+              required={promptRequired}
               value={q.prompt}
               onChange={(e) => updateQuestion(index, { prompt: e.target.value })}
             />

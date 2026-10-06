@@ -8,7 +8,9 @@ import {
   ensureSubjectAssessments,
 } from './subjectAssessments.js';
 import { isPrimaryGrade } from '../config/grades.js';
+import { getCurriculum } from '../config/curriculum/index.js';
 import { getPublishedMidtermsForTerm } from './midterms.js';
+import { resolveDirectorName } from './schoolDirector.js';
 
 function assessmentValue(rows, key) {
   const row = rows.find((r) => r.key === key);
@@ -52,6 +54,12 @@ function buildFlexibleSubject(subject, assessments, markMap) {
     })),
     columns: {
       tests: { score: summary.testsCombined.score, max: summary.testsCombined.max },
+      test1: summary.testRows[0]
+        ? { score: summary.testRows[0].score, max: summary.testRows[0].max }
+        : { score: null, max: 0 },
+      test2: summary.testRows[1]
+        ? { score: summary.testRows[1].score, max: summary.testRows[1].max }
+        : { score: null, max: 0 },
       exam: summary.exam,
       total: summary.total,
     },
@@ -213,6 +221,14 @@ function buildDomainColumns(subjects) {
       tests,
       exam,
       total,
+      test1: {
+        score: subjects.reduce((s, sub) => s + (sub.columns?.test1?.score ?? 0), 0),
+        max: subjects.reduce((s, sub) => s + (sub.columns?.test1?.max ?? 0), 0),
+      },
+      test2: {
+        score: subjects.reduce((s, sub) => s + (sub.columns?.test2?.score ?? 0), 0),
+        max: subjects.reduce((s, sub) => s + (sub.columns?.test2?.max ?? 0), 0),
+      },
     };
   }
 
@@ -234,7 +250,334 @@ function buildDomainColumns(subjects) {
   };
 }
 
+function sumDomainColumns(domains, flexible) {
+  if (flexible) {
+    return {
+      flexible: true,
+      tests: {
+        score: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.score ?? 0), 0),
+        max: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.max ?? 0), 0),
+      },
+      exam: {
+        score: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.score ?? 0), 0),
+        max: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.max ?? 0), 0),
+      },
+      total: {
+        score: domains.reduce((sum, d) => sum + (d.domainColumns.total?.score ?? 0), 0),
+        max: domains.reduce((sum, d) => sum + (d.domainColumns.total?.max ?? 0), 0),
+      },
+    };
+  }
+  return {
+    flexible: false,
+    test1: {
+      score: domains.reduce((s, d) => s + (d.domainColumns.test1?.score || 0), 0),
+      max: domains.reduce((s, d) => s + (d.domainColumns.test1?.max || 0), 0),
+    },
+    test2: {
+      score: domains.reduce((s, d) => s + (d.domainColumns.test2?.score || 0), 0),
+      max: domains.reduce((s, d) => s + (d.domainColumns.test2?.max || 0), 0),
+    },
+    exam: {
+      score: domains.reduce((s, d) => s + (d.domainColumns.exam?.score || 0), 0),
+      max: domains.reduce((s, d) => s + (d.domainColumns.exam?.max || 0), 0),
+    },
+    total: {
+      score: domains.reduce((s, d) => s + (d.domainColumns.total?.score || 0), 0),
+      max: domains.reduce((s, d) => s + (d.domainColumns.total?.max || 0), 0),
+    },
+  };
+}
+
+function totalsFromColumns(columns) {
+  const max = columns.total?.max || 0;
+  const obtained = columns.total?.score ?? 0;
+  return {
+    obtained: max ? obtained : null,
+    max,
+    percentage: max > 0 ? Math.round((obtained / max) * 1000) / 10 : null,
+  };
+}
+
+export const PRIMARY_YEAR_TERMS = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'];
+
+export function isAnnualBulletinTerm(term) {
+  return /^(annuel|annual|ann[eé]e)$/i.test(String(term || '').trim());
+}
+
+function emptyCell() {
+  return { score: null, max: 0 };
+}
+
+function addScoreCells(a, b) {
+  const max = (a?.max || 0) + (b?.max || 0);
+  const hasScore = a?.score != null || b?.score != null;
+  const score = hasScore ? (a?.score || 0) + (b?.score || 0) : null;
+  return { score: max ? score : null, max };
+}
+
+function midtermMaps(midterms) {
+  const map = { mt1: new Map(), mt2: new Map() };
+  (midterms?.mt1?.subjects || []).forEach((s) => map.mt1.set(s.subjectId, s));
+  (midterms?.mt2?.subjects || []).forEach((s) => map.mt2.set(s.subjectId, s));
+  return map;
+}
+
+function subjectPeriodCells(sub, midterms, courseMarkOnly) {
+  if (midterms?.mt1 || midterms?.mt2) {
+    const maps = midtermMaps(midterms);
+    const m1 = maps.mt1.get(sub.id);
+    const m2 = maps.mt2.get(sub.id);
+    const exam = sub.columns?.exam || emptyCell();
+    const fixedMax = Math.max(
+      m1?.maxScore || 0,
+      m2?.maxScore || 0,
+      Number(sub.testsMarkMax) || 0,
+      (Number(sub.test1Max) || 0) + (Number(sub.test2Max) || 0),
+    );
+    const mt1 = { score: m1?.obtained ?? null, max: fixedMax };
+    const mt2 = { score: m2?.obtained ?? null, max: fixedMax };
+    const continuous = mt2.score != null ? mt2 : mt1;
+    return [mt1, mt2, exam, addScoreCells(continuous, exam)];
+  }
+  if (courseMarkOnly) {
+    return [
+      sub.columns?.tests || emptyCell(),
+      sub.columns?.exam || emptyCell(),
+      sub.columns?.total || emptyCell(),
+    ];
+  }
+  return [
+    sub.columns?.test1 || emptyCell(),
+    sub.columns?.test2 || emptyCell(),
+    sub.columns?.exam || emptyCell(),
+    sub.columns?.total || emptyCell(),
+  ];
+}
+
+function summaryPeriodCells(columns, midterms, courseMarkOnly, subjects) {
+  if (midterms?.mt1 || midterms?.mt2) {
+    return [0, 1, 2, 3].map((i) => subjects.reduce((acc, sub) => (
+      addScoreCells(acc, subjectPeriodCells(sub, midterms, false)[i] || emptyCell())
+    ), emptyCell()));
+  }
+  if (courseMarkOnly) {
+    return [columns?.tests, columns?.exam, columns?.total].map((c) => c || emptyCell());
+  }
+  return [columns?.test1, columns?.test2, columns?.exam, columns?.total].map((c) => c || emptyCell());
+}
+
+function annualFromTermCells(termCellSets) {
+  const totals = termCellSets.map((cells) => cells[cells.length - 1] || emptyCell());
+  const max = totals.reduce((sum, col) => sum + (col.max || 0), 0);
+  const hasScore = totals.some((col) => col.score != null);
+  const score = hasScore ? totals.reduce((sum, col) => sum + (col.score || 0), 0) : null;
+  return { score: max ? score : null, max };
+}
+
+async function computeAnnualClassRank(db, {
+  classId, studentId, terms, subjects, config, assessmentsBySubject,
+}) {
+  const students = await db.student.findMany({
+    where: { classId },
+    select: { id: true },
+  });
+  if (!students.length) return { place: null, totalStudents: 0 };
+
+  const subjectIds = subjects.map((s) => s.id);
+  const allMarks = await db.mark.findMany({
+    where: {
+      term: { in: terms },
+      subjectId: { in: subjectIds },
+      studentId: { in: students.map((s) => s.id) },
+    },
+  });
+
+  const rankings = students.map((st) => {
+    let obtained = 0;
+    let max = 0;
+    let hasAny = false;
+    for (const termName of terms) {
+      const markMap = new Map();
+      for (const m of allMarks) {
+        if (m.studentId === st.id && m.term === termName) {
+          markMap.set(`${m.subjectId}:${m.assessment}:${m.catNumber}`, m);
+        }
+      }
+      const subjectEntries = subjects.map((subject) => {
+        const assessments = assessmentsBySubject.get(subject.id) || [];
+        if (assessments.length) return buildFlexibleSubject(subject, assessments, markMap);
+        return buildLegacySubject(subject, config, markMap);
+      });
+      const tot = grandTotalFromSubjects(subjectEntries);
+      obtained += tot.obtained;
+      max += tot.max;
+      hasAny = hasAny || tot.hasAny;
+    }
+    const pct = max > 0 ? (obtained / max) * 100 : 0;
+    return { studentId: st.id, obtained, max, pct, hasAny };
+  });
+
+  rankings.sort((a, b) => b.pct - a.pct || b.obtained - a.obtained);
+  const idx = rankings.findIndex((r) => r.studentId === studentId);
+  return {
+    place: idx >= 0 ? idx + 1 : null,
+    totalStudents: students.length,
+  };
+}
+
+async function buildAnnualClassBulletinReport(db, { classId, studentId, campusId, academicYearId }) {
+  const slices = [];
+  for (const termName of PRIMARY_YEAR_TERMS) {
+    slices.push(await buildClassBulletinReport(db, {
+      classId,
+      studentId,
+      term: termName,
+      campusId,
+      academicYearId,
+    }));
+  }
+
+  const base = slices[0];
+  const domains = base.domains.map((domain, domainIdx) => ({
+    ...domain,
+    subjects: domain.subjects.map((sub, subIdx) => {
+      const termCells = slices.map((slice) => {
+        const match = slice.domains[domainIdx]?.subjects[subIdx];
+        return subjectPeriodCells(
+          match || sub,
+          slice.midterms,
+          Boolean(slice.config?.courseMarkOnly),
+        );
+      });
+      return {
+        ...sub,
+        year: {
+          maxima: subjectPeriodCells(sub, null, false),
+          terms: slices.map((slice, i) => ({
+            term: slice.term,
+            cells: termCells[i],
+          })),
+          annual: annualFromTermCells(termCells),
+        },
+      };
+    }),
+  }));
+
+  const packSummary = (kind, sliceSubjects) => {
+    const termCells = slices.map((slice) => summaryPeriodCells(
+      slice.summary?.[kind]?.columns || slice.summary?.columns,
+      slice.midterms,
+      Boolean(slice.config?.courseMarkOnly),
+      sliceSubjects(slice),
+    ));
+    return {
+      maxima: summaryPeriodCells(
+        slices[0].summary?.[kind]?.columns || slices[0].summary?.columns,
+        null,
+        false,
+        sliceSubjects(slices[0]),
+      ),
+      terms: slices.map((slice, i) => ({
+        term: slice.term,
+        cells: termCells[i],
+      })),
+      annual: annualFromTermCells(termCells),
+    };
+  };
+
+  const generalOf = (slice) => slice.domains.filter((d) => !d.excludeFromGeneral).flatMap((d) => d.subjects);
+  const otherOf = (slice) => slice.domains.filter((d) => d.excludeFromGeneral).flatMap((d) => d.subjects);
+  const allOf = (slice) => slice.domains.flatMap((d) => d.subjects);
+
+  const yearSummary = {
+    general: packSummary('general', generalOf),
+    otherLanguages: packSummary('otherLanguages', otherOf),
+    overall: packSummary('overall', allOf),
+  };
+
+  const cls = await db.class.findUnique({
+    where: { id: classId },
+    include: { subjects: true },
+  });
+  const config = resolveBulletinConfig(cls.bulletinConfig, cls.grade);
+  const assessmentsBySubject = new Map();
+  for (const subject of cls.subjects) {
+    assessmentsBySubject.set(subject.id, await ensureSubjectAssessments(db, subject));
+  }
+  const generalSubjectIds = new Set(generalOf(base).map((s) => s.id));
+  const generalSubjects = cls.subjects.filter((s) => generalSubjectIds.has(s.id));
+  const rank = await computeAnnualClassRank(db, {
+    classId,
+    studentId,
+    terms: PRIMARY_YEAR_TERMS,
+    subjects: generalSubjects.length ? generalSubjects : cls.subjects,
+    config,
+    assessmentsBySubject,
+  });
+  const overallRank = otherOf(base).length
+    ? await computeAnnualClassRank(db, {
+      classId,
+      studentId,
+      terms: PRIMARY_YEAR_TERMS,
+      subjects: cls.subjects,
+      config,
+      assessmentsBySubject,
+    })
+    : rank;
+
+  const annualPct = yearSummary.general.annual.max
+    ? Math.round(((yearSummary.general.annual.score || 0) / yearSummary.general.annual.max) * 1000) / 10
+    : null;
+
+  const issuedAt = base.meta?.issuedAt || new Date().toISOString();
+  const verificationToken = createBulletinVerificationToken({
+    studentId: base.student.id,
+    studentCode: base.student.studentId,
+    classId: base.class.id,
+    term: 'Annuel',
+    percentage: annualPct,
+    place: rank.place,
+    totalStudents: rank.totalStudents,
+    academicYear: base.meta?.academicYear || '',
+    issuedAt,
+  });
+
+  return {
+    ...base,
+    term: 'Annuel',
+    annual: true,
+    domains,
+    rank,
+    overallRank,
+    midterms: null,
+    year: {
+      terms: slices.map((slice) => ({
+        term: slice.term,
+        rank: slice.rank,
+        overallRank: slice.overallRank,
+        midterms: slice.midterms,
+        courseMarkOnly: Boolean(slice.config?.courseMarkOnly),
+      })),
+      summary: yearSummary,
+    },
+    summary: {
+      ...base.summary,
+      obtained: yearSummary.general.annual.score,
+      max: yearSummary.general.annual.max,
+      percentage: annualPct,
+    },
+    verification: {
+      token: verificationToken,
+      verifyUrl: buildVerifyUrl(verificationToken),
+    },
+  };
+}
+
 export async function buildClassBulletinReport(db, { classId, studentId, term, campusId, academicYearId }) {
+  if (isAnnualBulletinTerm(term)) {
+    return buildAnnualClassBulletinReport(db, { classId, studentId, campusId, academicYearId });
+  }
   const cls = await db.class.findUnique({
     where: { id: classId },
     include: {
@@ -278,10 +621,11 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
   }
 
   const grouped = groupCoursesByCategory(cls.subjects);
+  const curriculum = getCurriculum(cls.grade);
+  const domainMetaByName = new Map((curriculum?.domains || []).map((d) => [d.name, d]));
   const domains = [];
-  let grandObtained = 0;
-  let grandMax = 0;
   let usesFlexibleTests = false;
+  const pairedPeriodes = cls.subjects.every((s) => Number(s.test1Max) > 0 && Number(s.test2Max) > 0);
 
   for (const group of grouped) {
     const subjects = group.courses.map((subject) => {
@@ -296,9 +640,9 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
     const domainColumns = buildDomainColumns(subjects);
     const domainObtained = subjects.reduce((sum, sub) => sum + (sub.obtained ?? 0), 0);
     const domainMax = subjects.reduce((sum, sub) => sum + (sub.max ?? 0), 0);
-
-    grandObtained += domainObtained;
-    grandMax += domainMax;
+    const meta = domainMetaByName.get(group.category) || {};
+    const excludeFromGeneral = Boolean(meta.excludeFromGeneral)
+      || /autres langues/i.test(group.category || '');
 
     domains.push({
       category: group.category,
@@ -307,18 +651,43 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       domainObtained: domainMax ? domainObtained : null,
       domainMax,
       domainColumns,
+      excludeFromGeneral,
+      subtotalGroup: meta.subtotalGroup || null,
+      subtotalLabel: meta.subtotalLabel || 'Sous-total',
     });
   }
 
-  const percentage = grandMax > 0 ? Math.round((grandObtained / grandMax) * 1000) / 10 : null;
+  const generalDomains = domains.filter((d) => !d.excludeFromGeneral);
+  const otherLanguageDomains = domains.filter((d) => d.excludeFromGeneral);
+  const layoutFlexible = usesFlexibleTests && !pairedPeriodes;
+  const generalColumns = sumDomainColumns(generalDomains, layoutFlexible);
+  const otherLanguageColumns = sumDomainColumns(otherLanguageDomains, layoutFlexible);
+  const overallColumns = sumDomainColumns(domains, layoutFlexible);
+  const generalTotals = totalsFromColumns(generalColumns);
+  const overallTotals = totalsFromColumns(overallColumns);
+
+  const generalSubjects = generalDomains.flatMap((d) => d.subjects).map((s) => cls.subjects.find((c) => c.id === s.id)).filter(Boolean);
+  const allSubjects = cls.subjects;
+
+  const percentage = generalTotals.percentage;
   const rank = await computeClassRank(db, {
     classId,
     studentId,
     term,
-    subjects: cls.subjects,
+    subjects: generalSubjects.length ? generalSubjects : allSubjects,
     config,
     assessmentsBySubject,
   });
+  const overallRank = otherLanguageDomains.length
+    ? await computeClassRank(db, {
+      classId,
+      studentId,
+      term,
+      subjects: allSubjects,
+      config,
+      assessmentsBySubject,
+    })
+    : rank;
 
   const photoUrl = loadPhotoDataUrl(student.documents || []);
   const issuedAt = new Date().toISOString();
@@ -326,10 +695,11 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
   let meta = null;
   let academicYearName = '';
   if (campusId) {
-    const [campus, school, year] = await Promise.all([
+    const [campus, school, year, directorName] = await Promise.all([
       db.campus.findUnique({ where: { id: campusId } }),
       db.schoolProfile.findFirst(),
       academicYearId ? db.academicYear.findUnique({ where: { id: academicYearId } }) : null,
+      resolveDirectorName(db),
     ]);
     academicYearName = year?.name || '';
     meta = {
@@ -341,6 +711,7 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       country: campus?.country || school?.country || 'RWANDA',
       academicYear: academicYearName,
       classTeacher: cls.teacher?.name || '',
+      directorName,
       issuedAt,
     };
   }
@@ -357,35 +728,7 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
     issuedAt,
   });
 
-  const summaryColumns = usesFlexibleTests
-    ? {
-        flexible: true,
-        tests: {
-          score: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.score ?? 0), 0),
-          max: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.max ?? 0), 0),
-        },
-        exam: {
-          score: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.score ?? 0), 0),
-          max: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.max ?? 0), 0),
-        },
-        total: { score: grandMax ? grandObtained : null, max: grandMax },
-      }
-    : {
-        flexible: false,
-        test1: {
-          score: domains.reduce((s, d) => s + (d.domainColumns.test1?.score || 0), 0),
-          max: domains.reduce((s, d) => s + d.domainColumns.test1?.max, 0),
-        },
-        test2: {
-          score: domains.reduce((s, d) => s + (d.domainColumns.test2?.score || 0), 0),
-          max: domains.reduce((s, d) => s + d.domainColumns.test2?.max, 0),
-        },
-        exam: {
-          score: domains.reduce((s, d) => s + (d.domainColumns.exam?.score || 0), 0),
-          max: domains.reduce((s, d) => s + d.domainColumns.exam?.max, 0),
-        },
-        total: { score: grandMax ? grandObtained : null, max: grandMax },
-      };
+  const summaryColumns = generalColumns;
 
   let midterms = null;
   if (isPrimaryGrade(cls.grade) && campusId && academicYearId) {
@@ -415,16 +758,29 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       label: config.label,
       assessments: config.assessments,
       flexibleTests: usesFlexibleTests,
-      courseMarkOnly: usesFlexibleTests,
+      courseMarkOnly: layoutFlexible,
     },
     domains,
     summary: {
-      obtained: grandMax ? grandObtained : null,
-      max: grandMax,
+      obtained: generalTotals.obtained,
+      max: generalTotals.max,
       percentage,
       columns: summaryColumns,
+      general: {
+        ...generalTotals,
+        columns: generalColumns,
+      },
+      otherLanguages: {
+        ...totalsFromColumns(otherLanguageColumns),
+        columns: otherLanguageColumns,
+      },
+      overall: {
+        ...overallTotals,
+        columns: overallColumns,
+      },
     },
     rank,
+    overallRank,
     midterms,
     meta,
     photoUrl,

@@ -24,6 +24,7 @@ import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import { isPrimaryGrade } from '../lib/grades';
 import { exportPeriodReportExcel, exportPeriodReportPdf } from '../lib/periodReportExport';
+import { studentFullName as studentDisplayName } from '../lib/studentName';
 
 function formatDateInput(value) {
   if (!value) return '';
@@ -41,10 +42,6 @@ function formatDateFr(value) {
 
 function periodCode(sequence) {
   return sequence === 2 ? 'P2' : 'P1';
-}
-
-function studentDisplayName(student) {
-  return [student?.lastName, student?.postName, student?.firstName].filter(Boolean).join(' ');
 }
 
 function subjectMark(row, subjectId) {

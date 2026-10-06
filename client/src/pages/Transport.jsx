@@ -10,6 +10,7 @@ import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import StudentSelect from '../components/StudentSelect';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { studentFullName } from '../lib/studentName';
 
 const TABS = [
   { id: 'overview', labelKey: 'pages.transport.tabOverview', icon: Bus },
@@ -238,7 +239,7 @@ export default function Transport() {
 
   const getPassengerSortValue = useCallback((row, key) => {
     switch (key) {
-      case 'student': return `${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim();
+      case 'student': return studentFullName(row.student);
       case 'class': return row.student?.class?.name || '';
       case 'route': return row.route?.name || '';
       case 'stop': return row.stop?.name || '';
@@ -259,7 +260,7 @@ export default function Transport() {
 
   const getFeeSortValue = useCallback((row, key) => {
     switch (key) {
-      case 'student': return `${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim();
+      case 'student': return studentFullName(row.student);
       case 'class': return row.student?.class?.name || '';
       case 'amount': return Number(row.amount) || 0;
       case 'due': return row.dueDate ? new Date(row.dueDate) : null;
@@ -356,7 +357,7 @@ export default function Transport() {
             if (!t) return null;
             return (
               <div key={s.id} className="card p-5">
-                <h3 className="font-bold text-lg">{s.firstName} {s.lastName}</h3>
+                <h3 className="font-bold text-lg">{studentFullName(s)}</h3>
                 <p className="text-sm text-gray-500 mb-4">{s.class?.name}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
@@ -406,12 +407,14 @@ export default function Transport() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 ${isTeacher ? '' : 'md:grid-cols-2'} gap-4`}>
+            {!isTeacher && (
             <div className="card p-4">
               <p className="text-sm font-semibold text-gray-700 mb-1">Transport fees</p>
               <p className="text-xl font-bold">{formatCurrency(overview.transportFeesCollected)}</p>
               <p className="text-xs text-gray-400">collected of {formatCurrency(overview.transportFeesTotal)} billed</p>
             </div>
+            )}
             <div className="card p-4">
               <p className="text-sm font-semibold text-gray-700 mb-1">Alerts (7 days)</p>
               <p className="text-xl font-bold">{overview.recentAlerts}</p>
@@ -568,18 +571,22 @@ export default function Transport() {
                   <SortableTh label="Class" columnKey="class" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
                   <SortableTh label="Route" columnKey="route" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
                   <SortableTh label="Stop" columnKey="stop" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
-                  <SortableTh label="Monthly fee" columnKey="monthlyFee" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  {!isTeacher && (
+                    <SortableTh label="Monthly fee" columnKey="monthlyFee" sortKey={passengerSortKey} sortDir={passengerSortDir} onSort={togglePassengerSort} className="p-3" />
+                  )}
                   <th className="p-3" />
                 </tr>
               </thead>
               <tbody>
                 {sortedPassengers.map((p) => (
                   <tr key={p.id} className="border-b border-gray-50">
-                    <td className="p-3 font-medium">{p.student.firstName} {p.student.lastName}</td>
+                    <td className="p-3 font-medium">{studentFullName(p.student)}</td>
                     <td className="p-3">{p.student.class?.name}</td>
                     <td className="p-3">{p.route.name}</td>
                     <td className="p-3">{p.stop.name}</td>
-                    <td className="p-3">{p.monthlyFee ? formatCurrency(p.monthlyFee) : '—'}</td>
+                    {!isTeacher && (
+                      <td className="p-3">{p.monthlyFee ? formatCurrency(p.monthlyFee) : '—'}</td>
+                    )}
                     <td className="p-3">
                       {canManage && (
                         <button type="button" className="text-red-500 text-xs" onClick={async () => { if (confirm('Remove?')) { await api.removeTransportPassenger(p.studentId); loadPassengers(); } }}>Remove</button>
@@ -685,7 +692,7 @@ export default function Transport() {
       )}
 
       {/* Fees */}
-      {!isFamily && tab === 'fees' && (
+      {!isFamily && !isTeacher && tab === 'fees' && (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -700,7 +707,7 @@ export default function Transport() {
             <tbody>
               {sortedFees.map((f) => (
                 <tr key={f.id} className="border-b border-gray-50">
-                  <td className="p-3">{f.student.firstName} {f.student.lastName}</td>
+                  <td className="p-3">{studentFullName(f.student)}</td>
                   <td className="p-3">{f.student.class?.name}</td>
                   <td className="p-3">{formatCurrency(f.amount)}</td>
                   <td className="p-3">{new Date(f.dueDate).toLocaleDateString()}</td>
@@ -776,7 +783,7 @@ export default function Transport() {
               value={form.studentId || ''}
               onChange={(studentId) => setForm({ ...form, studentId })}
               emptyLabel="Select student"
-              getLabel={(s) => `${s.firstName} ${s.lastName} — ${s.class?.name || ''}`}
+              getLabel={(s) => `${studentFullName(s)} — ${s.class?.name || ''}`}
             />
           </div>
           <div>

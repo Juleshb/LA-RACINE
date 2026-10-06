@@ -6,7 +6,7 @@ export const NURSERY_GRADES = [
   'CRECHE', 'N1', 'N2', 'N3',
 ];
 
-/** Crèche: attendance/care only — no marks and no bulletin. */
+/** Crèche uses the competence bulletin built from the courses on the class. */
 export const CRECHE_GRADES = ['CRECHE'];
 
 export function isPrimaryGrade(grade) {
@@ -22,12 +22,17 @@ export function isCrecheGrade(grade) {
   return CRECHE_GRADES.includes(g) || g === 'CRECHE' || g === 'CRÈCHE';
 }
 
-/** Nursery classes that use A/B/C/D competence marks + bulletin (excludes Crèche). */
+/** Nursery classes that use the official A/B/C/D competence template (excludes Crèche). */
 export function usesNurseryCompetence(grade) {
   return isNurseryGrade(grade) && !isCrecheGrade(grade);
 }
 
+/** Competence bulletin (A/B/C/D), including Crèche courses added on the class. */
+export function usesCompetenceBulletin(grade) {
+  return usesNurseryCompetence(grade) || isCrecheGrade(grade);
+}
+
 /** Any class that records academic marks / bulletins. */
 export function usesMarksAndBulletin(grade) {
-  return isPrimaryGrade(grade) || usesNurseryCompetence(grade);
+  return isPrimaryGrade(grade) || usesCompetenceBulletin(grade);
 }

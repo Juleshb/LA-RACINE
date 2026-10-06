@@ -5,6 +5,7 @@ export default function BulletinDirectorStamp({
   className = '',
   showLabel = true,
   compact = false,
+  directorName = '',
 }) {
   return (
     <div className={`bulletin-director-stamp ${compact ? 'is-compact' : ''} ${className}`.trim()}>
@@ -27,6 +28,7 @@ export default function BulletinDirectorStamp({
         />
       </div>
       {showLabel && <p className="bulletin-directeur-label">Le Directeur</p>}
+      {directorName ? <p className="sig-name bulletin-directeur-name">{directorName}</p> : null}
     </div>
   );
 }

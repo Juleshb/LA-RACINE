@@ -15,6 +15,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import PageHeader from '../PageHeader';
+import { studentFullName } from '../../lib/studentName';
 
 const AUTO_SAVE_DELAY_MS = 1200;
 const DEFAULT_LETTERS = ['A', 'B', 'C', 'D'];
@@ -382,7 +383,7 @@ export default function NurseryCompetenceMarks({
             >
               <option value="">Tous les élèves</option>
               {allStudents.map((s) => (
-                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+                <option key={s.id} value={s.id}>{studentFullName(s)}</option>
               ))}
             </select>
           </div>
@@ -477,10 +478,9 @@ export default function NurseryCompetenceMarks({
                       className={`nc-student-col ${focusStudentId === s.id ? 'is-focus' : ''}`}
                     >
                       <div className="nc-student-head">
-                        <span className="nc-student-name" title={`${s.firstName} ${s.lastName}`}>
-                          {s.firstName}
+                        <span className="nc-student-name" title={studentFullName(s)}>
+                          {studentFullName(s)}
                         </span>
-                        <span className="nc-student-last">{s.lastName}</span>
                         <div className="nc-fill-row" title="Remplir toute la colonne">
                           {letters.map((letter) => (
                             <button

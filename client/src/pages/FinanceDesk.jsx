@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
+import { studentFullName } from '../lib/studentName';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', {
@@ -277,7 +278,7 @@ export default function FinanceDesk() {
     for (const d of debtors.debtors) {
       rows.push([
         d.student.studentId,
-        `${d.student.firstName} ${d.student.lastName}`,
+        studentFullName(d.student),
         d.student.class?.name || '',
         d.totalDue,
         d.oldestOverdueDays,
@@ -301,7 +302,7 @@ export default function FinanceDesk() {
       rows.push([
         f.receiptNumber,
         f.paidDate ? new Date(f.paidDate).toLocaleDateString() : '',
-        `${f.student.firstName} ${f.student.lastName}`,
+        studentFullName(f.student),
         f.student.class?.name || '',
         f.feeType,
         f.amount,
@@ -472,7 +473,7 @@ export default function FinanceDesk() {
                         {fee.receiptNumber}
                       </Link>
                     </td>
-                    <td className="py-2">{fee.student.firstName} {fee.student.lastName}</td>
+                    <td className="py-2">{studentFullName(fee.student)}</td>
                     <td className="py-2">{feeTypeLabel(fee.feeType)}</td>
                     <td className="py-2 font-medium">{formatCurrency(fee.amount)}</td>
                     <td className="py-2 text-gray-500">
@@ -609,7 +610,7 @@ export default function FinanceDesk() {
                 {debtors.debtors.map((d) => (
                   <tr key={d.student.id} className="border-b border-gray-50 align-top">
                     <td className="py-2.5">
-                      <p className="font-medium">{d.student.firstName} {d.student.lastName}</p>
+                      <p className="font-medium">{studentFullName(d.student)}</p>
                       <p className="text-xs text-gray-500">{d.student.studentId}</p>
                     </td>
                     <td className="py-2.5">{d.student.class?.name || '—'}</td>
@@ -666,7 +667,7 @@ export default function FinanceDesk() {
                   <tr key={fee.id} className="border-b border-gray-50">
                     <td className="py-2">
                       <Link to={`/campus/${campusId}/fees/${fee.id}`} className="text-brand-600 hover:underline">
-                        {fee.student.firstName} {fee.student.lastName}
+                        {studentFullName(fee.student)}
                       </Link>
                     </td>
                     <td className="py-2">{fee.routeName || '—'}</td>

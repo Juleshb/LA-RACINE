@@ -20,7 +20,7 @@ export async function applyCurriculumToClass(db, campusId, classId, grade) {
 
   const existing = await db.subject.findMany({
     where: { classId },
-    select: { id: true, code: true, name: true, category: true, subcategory: true, categoryOrder: true, sortOrder: true },
+    select: { id: true, code: true, name: true, category: true, subcategory: true, categoryOrder: true, sortOrder: true, test1Max: true, test2Max: true, examMax: true, totalMax: true },
   });
   const existingByCode = new Map(existing.map((s) => [s.code, s]));
   const isCompetence = curriculum.mode === 'COMPETENCE';
@@ -61,21 +61,18 @@ export async function applyCurriculumToClass(db, campusId, classId, grade) {
         || (current.subcategory || null) !== payload.subcategory
         || current.categoryOrder !== payload.categoryOrder
         || current.sortOrder !== payload.sortOrder
+        || current.test1Max !== payload.test1Max
+        || current.test2Max !== payload.test2Max
+        || current.examMax !== payload.examMax
+        || current.totalMax !== payload.totalMax
       ) {
         toUpdate.push({ id: current.id, data: payload });
       }
     });
   }
 
-  // For competence nursery curricula, remove obsolete numeric/old skill subjects
-  let removed = 0;
-  if (isCompetence) {
-    const obsoleteIds = existing.filter((s) => !desiredCodes.has(s.code)).map((s) => s.id);
-    if (obsoleteIds.length) {
-      await db.subject.deleteMany({ where: { id: { in: obsoleteIds } } });
-      removed = obsoleteIds.length;
-    }
-  }
+  // Courses the school added by hand stay on the class so they still appear on the bulletin.
+  const kept = existing.filter((s) => !desiredCodes.has(s.code)).length;
 
   for (const row of toUpdate) {
     await db.subject.update({ where: { id: row.id }, data: row.data });
@@ -88,8 +85,9 @@ export async function applyCurriculumToClass(db, campusId, classId, grade) {
   return {
     created: toCreate.length,
     updated: toUpdate.length,
-    removed,
-    skipped: existing.length - removed,
+    removed: 0,
+    kept,
+    skipped: existing.length,
     grade: resolvedGrade,
     className: cls.name,
     grandTotalMax: curriculum.grandTotalMax,

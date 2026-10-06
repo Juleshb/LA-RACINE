@@ -12,6 +12,7 @@ import { feeStatusColors } from './ChartCard';
 import { formatCurrency } from '../../hooks/useDashboardData';
 import { buildAccountantRegistrationBreakdown } from '../../hooks/useAccountantDashboardData';
 import { useTranslation } from '../../context/LanguageContext';
+import { studentFullName } from '../../lib/studentName';
 
 export default function AccountantDashboard({ campusId, data, userName }) {
   const { t, language } = useTranslation();
@@ -206,7 +207,7 @@ export default function AccountantDashboard({ campusId, data, userName }) {
                       <Wallet className="w-4 h-4" />
                     </div>
                     <div className="dash-list-main">
-                      <p className="dash-list-title">{fee.student.firstName} {fee.student.lastName}</p>
+                      <p className="dash-list-title">{studentFullName(fee.student)}</p>
                       <p className="dash-list-meta">
                         {fee.feeType?.replace(/_/g, ' ') || t('staffDash.accountant.fee')} · {formatCurrency(fee.amount)}
                       </p>
@@ -234,7 +235,7 @@ export default function AccountantDashboard({ campusId, data, userName }) {
                       <Wallet className="w-4 h-4" />
                     </div>
                     <div className="dash-list-main">
-                      <p className="dash-list-title">{fee.student.firstName} {fee.student.lastName}</p>
+                      <p className="dash-list-title">{studentFullName(fee.student)}</p>
                       <p className="dash-list-meta">{formatCurrency(fee.amount)}</p>
                     </div>
                     <span className={feeStatusColors.PAID}>{fee.status}</span>

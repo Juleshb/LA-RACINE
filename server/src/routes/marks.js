@@ -5,7 +5,7 @@ import { assertTeacherCourseAccess, resolveTeacherId } from '../lib/teacherAcces
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
-import { isCrecheGrade, usesNurseryCompetence } from '../config/grades.js';
+import { usesCompetenceBulletin, usesNurseryCompetence } from '../config/grades.js';
 import {
   ensureSubjectAssessments,
   resolveTotalMax,
@@ -166,13 +166,7 @@ router.get('/report', async (req, res) => {
       return res.status(403).json({ error: 'You cannot view this student bulletin' });
     }
 
-    if (isCrecheGrade(cls.grade)) {
-      return res.status(400).json({
-        error: 'La Crèche n\'utilise pas de notes ni de bulletin',
-      });
-    }
-
-    if (usesNurseryCompetence(cls.grade)) {
+    if (usesCompetenceBulletin(cls.grade)) {
       const report = await buildNurseryBulletinReport(prisma, {
         classId,
         studentId,
@@ -413,14 +407,13 @@ router.get('/competence', async (req, res) => {
       },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
-    if (isCrecheGrade(cls.grade)) {
-      return res.status(400).json({ error: 'La Crèche n\'utilise pas de notes de compétence' });
-    }
-    if (!usesNurseryCompetence(cls.grade)) {
+    if (!usesCompetenceBulletin(cls.grade)) {
       return res.status(400).json({ error: 'This class does not use competence grading' });
     }
 
-    await ensureNurseryCurriculum(prisma, req.campusId, classId, cls.grade);
+    if (usesNurseryCompetence(cls.grade)) {
+      await ensureNurseryCurriculum(prisma, req.campusId, classId, cls.grade);
+    }
 
     const refreshed = await prisma.class.findFirst({
       where: { id: classId, ...scope },
@@ -510,10 +503,7 @@ router.put('/competence/bulk', async (req, res) => {
       include: { subjects: { select: { id: true, teacherId: true } } },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
-    if (isCrecheGrade(cls.grade)) {
-      return res.status(400).json({ error: 'La Crèche n\'utilise pas de notes de compétence' });
-    }
-    if (!usesNurseryCompetence(cls.grade)) {
+    if (!usesCompetenceBulletin(cls.grade)) {
       return res.status(400).json({ error: 'This class does not use competence grading' });
     }
 
@@ -647,6 +637,7 @@ router.get('/', async (req, res) => {
         studentId: s.studentId,
         firstName: s.firstName,
         lastName: s.lastName,
+        postName: s.postName,
         mark: s.marks[0] || null,
       })),
     });

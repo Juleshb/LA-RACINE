@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
 import StudentSelect from '../components/StudentSelect';
+import { studentFullName } from '../lib/studentName';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -113,7 +114,7 @@ export default function CreateFee() {
               onChange={(studentId) => setForm({ ...form, studentId })}
               emptyLabel="Select student..."
               getLabel={(s) =>
-                `${s.studentId} — ${s.firstName} ${s.lastName}${s.class ? ` (${s.class.name})` : ''}`
+                `${s.studentId} — ${studentFullName(s)}${s.class ? ` (${s.class.name})` : ''}`
               }
             />
           </div>

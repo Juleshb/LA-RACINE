@@ -4,6 +4,7 @@ import { Check, Gavel } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
+import { studentFullName } from '../lib/studentName';
 
 export default function Deliberation() {
   const { campus, academicYear } = useCampus();
@@ -164,7 +165,7 @@ export default function Deliberation() {
                     />
                   </td>
                   <td className="py-3">
-                    <p className="font-medium text-gray-900">{r.lastName} {r.firstName}</p>
+                    <p className="font-medium text-gray-900">{studentFullName(r)}</p>
                     <p className="text-xs text-gray-500">{r.studentId}</p>
                   </td>
                   <td className="py-3 text-sm text-gray-600">{r.class?.name || '—'}</td>

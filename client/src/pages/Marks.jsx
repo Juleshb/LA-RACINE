@@ -16,7 +16,7 @@ import MarksExcelImportModal from '../components/marks/MarksExcelImportModal';
 import { downloadMarksImportTemplate } from '../lib/marksExcelImport';
 import ScoreBadge from '../components/bulletin/ScoreBadge';
 import { formatGradingScale, groupCoursesByCategory } from '../lib/curriculum';
-import { isCrecheGrade, usesNurseryCompetence } from '../lib/grades';
+import { usesCompetenceBulletin } from '../lib/grades';
 import {
   getMaxForAssessment,
   courseUsesBulletinScale,
@@ -25,6 +25,7 @@ import {
   DEFAULT_TERMS,
 } from '../lib/bulletin';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { studentFullName } from '../lib/studentName';
 
 const LEGACY_TERMS = ['Term 1', 'Term 2', 'Term 3'];
 const LEGACY_ASSESSMENTS = ['CAT', 'Mid-term', 'Final'];
@@ -610,7 +611,7 @@ export default function Marks() {
     const q = studentSearch.trim().toLowerCase();
     if (!q) return students;
     return students.filter((s) => {
-      const hay = `${s.firstName || ''} ${s.lastName || ''} ${s.studentId || ''}`.toLowerCase();
+      const hay = `${studentFullName(s)} ${s.studentId || ''}`.toLowerCase();
       return hay.includes(q);
     });
   }, [students, studentSearch]);
@@ -618,7 +619,7 @@ export default function Marks() {
   const getMarksSortValue = useCallback((row, key) => {
     switch (key) {
       case 'studentId': return row.studentId || '';
-      case 'name': return `${row.firstName || ''} ${row.lastName || ''}`.trim();
+      case 'name': return studentFullName(row);
       case 'score': {
         const score = records[row.id]?.score;
         if (score === '' || score == null || Number.isNaN(Number(score))) return null;
@@ -681,38 +682,11 @@ export default function Marks() {
     return <Navigate to={`/campus/${campusId}/bulletin-report`} replace />;
   }
 
-  if (isCrecheGrade(selectedClass?.grade)) {
-    return (
-      <div>
-        <PageHeader
-          title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
-          description="Crèche — pas de notes ni de bulletin"
-        />
-        <div className="card empty-state py-16 text-center">
-          <p className="text-gray-800 font-semibold text-lg">Crèche</p>
-          <p className="text-gray-500 mt-2 max-w-md mx-auto">
-            Aucune note ni bulletin n&apos;est requis pour la Crèche.
-            Choisissez une autre classe (maternelle M1–TOP ou primaire) pour saisir des notes.
-          </p>
-          <div className="mt-6 max-w-sm mx-auto text-left">
-            <label className="label">{t('ui.class')}</label>
-            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              <option value="">Select class</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.grade})</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (usesNurseryCompetence(selectedClass?.grade)) {
+  if (usesCompetenceBulletin(selectedClass?.grade)) {
     return (
       <NurseryCompetenceMarks
         campusId={campusId}
-        classes={classes.filter((c) => usesNurseryCompetence(c.grade))}
+        classes={classes.filter((c) => usesCompetenceBulletin(c.grade))}
         classId={classId}
         onClassChange={setClassId}
         t={t}
@@ -1130,7 +1104,7 @@ export default function Marks() {
                       <td className="pm-col-idx text-gray-400 tabular-nums">{idx + 1}</td>
                       <td className="pm-col-id font-mono text-xs text-gray-500">{s.studentId}</td>
                       <td className="pm-col-name font-medium text-gray-900">
-                        {s.firstName} {s.lastName}
+                        {studentFullName(s)}
                       </td>
                       <td className="pm-col-score text-center">
                         <input
@@ -1144,7 +1118,7 @@ export default function Marks() {
                           onChange={(e) => setScore(s.id, e.target.value)}
                           onKeyDown={(e) => onScoreKeyDown(e, idx)}
                           placeholder="—"
-                          aria-label={`${s.firstName} ${s.lastName} score`}
+                          aria-label={`${studentFullName(s)} score`}
                         />
                       </td>
                       <td className="pm-col-pct text-center">

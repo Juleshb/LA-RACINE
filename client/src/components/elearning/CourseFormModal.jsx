@@ -159,7 +159,7 @@ export default function CourseFormModal({
           </FormSection>
 
           <div className="form-field-full md:col-span-2 mt-4">
-            <HomeworkQuestionBuilder questions={exercises} onChange={setExercises} />
+            <HomeworkQuestionBuilder questions={exercises} onChange={setExercises} promptRequired={false} />
           </div>
         </>
       )}

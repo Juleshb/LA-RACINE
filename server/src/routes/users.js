@@ -79,6 +79,7 @@ router.get('/', async (req, res) => {
             studentId: true,
             firstName: true,
             lastName: true,
+            postName: true,
             class: { select: { id: true, name: true } },
           },
         },
@@ -87,7 +88,7 @@ router.get('/', async (req, res) => {
             id: true,
             phone: true,
             students: {
-              select: { id: true, studentId: true, firstName: true, lastName: true },
+              select: { id: true, studentId: true, firstName: true, lastName: true, postName: true },
             },
           },
         },
@@ -142,7 +143,7 @@ router.get('/parents', async (req, res) => {
           select: { id: true, email: true, isActive: true, firstName: true, lastName: true, phone: true },
         },
         students: {
-          select: { id: true, studentId: true, firstName: true, lastName: true },
+          select: { id: true, studentId: true, firstName: true, lastName: true, postName: true },
         },
       },
     });

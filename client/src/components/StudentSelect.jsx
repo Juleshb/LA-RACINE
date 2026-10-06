@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { matchesSearch } from './ListSearch';
 import { useTranslation } from '../context/LanguageContext';
+import { studentFullName } from '../lib/studentName';
 
 function defaultLabel(s) {
-  const name = [s.firstName, s.lastName].filter(Boolean).join(' ').trim() || s.name || '';
+  const name = studentFullName(s);
   const id = s.studentId ? ` · ${s.studentId}` : '';
   const cls = s.class?.name || s.className ? ` — ${s.class?.name || s.className}` : '';
   return `${name}${id}${cls}`.trim() || s.id;
@@ -46,6 +47,8 @@ export default function StudentSelect({
         query,
         s.firstName,
         s.lastName,
+        s.postName,
+        studentFullName(s),
         s.name,
         s.studentId,
         s.class?.name,

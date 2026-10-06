@@ -223,10 +223,13 @@ export default function Courses() {
     }
   };
 
+  const hasBulletinTemplate = curriculumDomains.length > 0;
+
   const openCreateForm = (entryMode = 'template', domainPrefill = null) => {
+    const mode = entryMode === 'template' && !hasBulletinTemplate ? 'custom' : entryMode;
     setForm({
       ...EMPTY_FORM,
-      entryMode,
+      entryMode: mode,
       ...(domainPrefill || {}),
     });
     setEditingId(null);
@@ -350,7 +353,7 @@ export default function Courses() {
   };
 
   const handleApplyAll = async () => {
-    if (!confirm('Load bulletin courses for ALL classes in this academic year?\n(Primary P1–P6: 21 sub-subjects · Nursery/Crèche: 12 sub-subjects)')) return;
+    if (!confirm('Load bulletin courses for ALL classes in this academic year?\n(Primary: P1–P2 21 · P3–P4 26 · P5–P6 28 sub-subjects · Nursery: competence template)')) return;
     setApplyingAll(true);
     setMessage('');
     try {
@@ -491,9 +494,11 @@ export default function Courses() {
         subtitle={
           isEditing
             ? 'Update domain, grading scale, or teacher assignment'
-            : form.entryMode === 'template'
-              ? 'Pick from the grade bulletin template'
-              : 'Create a custom domain and sub-subject'
+            : !hasBulletinTemplate
+              ? 'This grade has no bulletin template. Add a custom domain and sub-subject.'
+              : form.entryMode === 'template'
+                ? 'Pick from the grade bulletin template'
+                : 'Create a custom domain and sub-subject'
         }
         context={isEditing ? editingCourse?.code : selectedClass?.grade}
         onClose={closeForm}
@@ -506,8 +511,13 @@ export default function Courses() {
         headerExtra={!isEditing ? (
           <SegmentedControl
             value={form.entryMode}
-            onChange={(v) => setForm({ ...EMPTY_FORM, entryMode: v })}
-            options={ENTRY_OPTIONS}
+            onChange={(v) => {
+              if (v === 'template' && !hasBulletinTemplate) return;
+              setForm({ ...EMPTY_FORM, entryMode: v });
+            }}
+            options={ENTRY_OPTIONS.map((opt) => (
+              opt.value === 'template' && !hasBulletinTemplate ? { ...opt, disabled: true } : opt
+            ))}
           />
         ) : null}
       >

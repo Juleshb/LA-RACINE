@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
+import { studentFullName } from '../lib/studentName';
 
 function formatCurrency(amount) {
   if (amount == null || amount === '') return '—';
@@ -104,7 +105,7 @@ export default function TuitionLedger() {
     ];
     const lines = [headers.join(',')];
     for (const row of data.rows) {
-      const name = `${row.student.firstName} ${row.student.lastName}`.trim();
+      const name = studentFullName(row.student);
       const cells = [
         row.sn,
         `"${name}"`,
@@ -264,7 +265,7 @@ export default function TuitionLedger() {
                   <td className="sticky left-0 z-10 bg-white px-3 py-1.5 border-r text-xs text-gray-500">{row.sn}</td>
                   <td className="sticky left-10 z-10 bg-white px-3 py-1.5 border-r">
                     <p className="font-medium text-gray-900 text-xs">
-                      {row.student.firstName} {row.student.lastName}
+                      {studentFullName(row.student)}
                     </p>
                     <p className="text-[10px] text-gray-400">{row.student.studentId}</p>
                   </td>

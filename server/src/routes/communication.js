@@ -22,6 +22,10 @@ function isSchoolStaff(role) {
   return SCHOOL_ROLES.includes(role);
 }
 
+function canSendSchoolMessages(role) {
+  return isSchoolStaff(role) && role !== 'TEACHER';
+}
+
 function senderLabel(user) {
   if (!user) return 'Unknown';
   if (user.role === 'PARENT') return `${user.firstName} ${user.lastName} (Parent)`;
@@ -340,12 +344,16 @@ router.get('/children', async (req, res) => {
         id: true,
         firstName: true,
         lastName: true,
+        postName: true,
         class: { select: { name: true, grade: true } },
       },
     });
     res.json(children.map((c) => ({
       id: c.id,
-      name: `${c.firstName} ${c.lastName}`.trim(),
+      firstName: c.firstName,
+      lastName: c.lastName,
+      postName: c.postName,
+      name: [c.lastName, c.postName, c.firstName].filter(Boolean).join(' '),
       className: c.class?.name,
     })));
   } catch (error) {
@@ -415,7 +423,7 @@ router.get('/inbox', async (req, res) => {
       include: {
         createdBy: { select: { firstName: true, lastName: true, role: true } },
         targetClass: { select: { name: true } },
-        targetStudent: { select: { firstName: true, lastName: true } },
+        targetStudent: { select: { firstName: true, lastName: true, postName: true } },
         reads: ['PARENT', 'STUDENT'].includes(req.user.role)
           ? { where: { userId: req.user.id } }
           : false,
@@ -442,7 +450,7 @@ router.get('/inbox', async (req, res) => {
         priority: b.priority,
         targetType: b.targetType,
         targetLabel: b.targetClass?.name
-          || (b.targetStudent ? `${b.targetStudent.firstName} ${b.targetStudent.lastName}` : 'All parents'),
+          || (b.targetStudent ? [b.targetStudent.lastName, b.targetStudent.postName, b.targetStudent.firstName].filter(Boolean).join(' ') : 'All parents'),
         createdAt: b.createdAt,
         createdBy: senderLabel(b.createdBy),
         isRead: ['PARENT', 'STUDENT'].includes(req.user.role) ? b.reads?.length > 0 : true,
@@ -486,7 +494,7 @@ router.get('/inbox', async (req, res) => {
       orderBy: { lastMessageAt: 'desc' },
       take: 30,
       include: {
-        student: { select: { firstName: true, lastName: true, class: { select: { name: true } } } },
+        student: { select: { firstName: true, lastName: true, postName: true, class: { select: { name: true } } } },
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -504,7 +512,7 @@ router.get('/inbox', async (req, res) => {
         body: lastMsg?.body || '',
         category: t.category,
         status: t.status,
-        studentName: t.student ? `${t.student.firstName} ${t.student.lastName}` : null,
+        studentName: t.student ? [t.student.lastName, t.student.postName, t.student.firstName].filter(Boolean).join(' ') : null,
         className: t.student?.class?.name,
         createdAt: t.lastMessageAt,
         lastSender: lastMsg ? senderLabel(lastMsg.sender) : null,
@@ -565,7 +573,7 @@ router.get('/broadcasts', async (req, res) => {
 
 router.post('/broadcasts', async (req, res) => {
   try {
-    if (!isSchoolStaff(req.user.role)) {
+    if (!canSendSchoolMessages(req.user.role)) {
       return res.status(403).json({ error: 'Only school staff can send announcements' });
     }
 
@@ -813,7 +821,7 @@ router.post('/threads', async (req, res) => {
 
       parentId = student.parentId || null;
       initiatedBy = 'PARENT';
-    } else if (!isSchoolStaff(req.user.role)) {
+    } else if (!canSendSchoolMessages(req.user.role)) {
       return res.status(403).json({ error: 'Access denied' });
     } else if (studentId) {
       const student = await prisma.student.findFirst({
@@ -879,6 +887,9 @@ router.post('/threads/:id/messages', async (req, res) => {
     if (req.user.role === 'STUDENT' && thread.studentId !== req.user.studentId) {
       return res.status(403).json({ error: 'Access denied' });
     }
+    if (req.user.role === 'TEACHER') {
+      return res.status(403).json({ error: 'Teachers can read messages but cannot send replies' });
+    }
 
     if (thread.status === 'ARCHIVED') {
       return res.status(400).json({ error: 'This conversation is archived' });
@@ -920,7 +931,7 @@ router.post('/threads/:id/messages', async (req, res) => {
 
 router.patch('/threads/:id/status', async (req, res) => {
   try {
-    if (!isSchoolStaff(req.user.role)) {
+    if (!canSendSchoolMessages(req.user.role)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 

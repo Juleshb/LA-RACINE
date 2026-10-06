@@ -84,7 +84,9 @@ router.get('/overview', async (req, res) => {
       }),
     ]);
 
-    const transportFees = await prisma.feePayment.aggregate({
+    const transportFees = isTeacher
+      ? { _sum: { amount: 0 }, _count: 0 }
+      : await prisma.feePayment.aggregate({
       where: {
         feeType: 'TRANSPORT',
         ...(teacherStudentIds ? { studentId: { in: teacherStudentIds.length ? teacherStudentIds : [] } } : { student: { ...base } }),
@@ -93,7 +95,9 @@ router.get('/overview', async (req, res) => {
       _count: true,
     });
 
-    const paidTransportFees = await prisma.feePayment.aggregate({
+    const paidTransportFees = isTeacher
+      ? { _sum: { amount: 0 } }
+      : await prisma.feePayment.aggregate({
       where: {
         feeType: 'TRANSPORT',
         status: 'PAID',
@@ -815,6 +819,9 @@ router.get('/my', async (req, res) => {
 
 router.get('/fees', async (req, res) => {
   try {
+    if (req.user.role === 'TEACHER') {
+      return res.status(403).json({ error: 'Teachers cannot view transport fees' });
+    }
     const scope = await studentScopeWhere(req);
     const fees = await prisma.feePayment.findMany({
       where: {

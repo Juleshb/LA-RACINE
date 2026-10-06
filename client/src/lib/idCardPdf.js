@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { studentParentFacts } from './studentName';
 
 /** CR80 ID card size in mm */
 export const ID_CARD_WIDTH_MM = 85.6;
@@ -418,15 +419,17 @@ export async function renderIdCardCanvas({
   });
 
   const rows = fields?.rows || [];
+  const rowCount = Math.ceil(rows.length / 2);
+  const rowPitch = rowCount > 2 ? 28 : 36;
   const colXs = [fieldX, 260];
   rows.forEach((row, index) => {
     const col = index % 2;
     const rowIndex = Math.floor(index / 2);
     const x = colXs[col];
-    const y = 96 + rowIndex * 36;
+    const y = (rowCount > 2 ? 90 : 96) + rowIndex * rowPitch;
 
     ctx.fillStyle = theme.factBorder;
-    ctx.fillRect(x, y, 2, 28);
+    ctx.fillRect(x, y, 2, rowCount > 2 ? 24 : 28);
 
     drawText(ctx, row.label, x + 10, y + 10, {
       size: 8,
@@ -434,11 +437,11 @@ export async function renderIdCardCanvas({
       color: theme.muted,
       maxWidth: 120,
     });
-    drawText(ctx, row.value, x + 10, y + 24, {
-      size: 12,
+    drawText(ctx, row.value, x + 10, y + (rowCount > 2 ? 22 : 24), {
+      size: rowCount > 2 ? 11 : 12,
       weight: '700',
       color: theme.ink,
-      maxWidth: 120,
+      maxWidth: 130,
     });
   });
 
@@ -511,6 +514,10 @@ export function studentCardExportFields(student, academicYear) {
         label: 'SEXE',
         value: student?.gender === 'FEMALE' ? 'F' : student?.gender === 'MALE' ? 'M' : '—',
       },
+      ...studentParentFacts(student).map((fact) => ({
+        label: fact.label.toUpperCase(),
+        value: fact.value,
+      })),
     ],
   };
 }

@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
+import { studentFullName } from '../lib/studentName';
 
 function ChildAccountCard({ child, campusId, onUpdated }) {
   const [email, setEmail] = useState('');
@@ -78,7 +79,7 @@ function ChildAccountCard({ child, campusId, onUpdated }) {
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-gray-900">
-            {child.firstName} {child.lastName}
+            {studentFullName(child)}
           </h2>
           <p className="text-sm text-brand-600 font-medium">{child.studentCode}</p>
           {child.class?.name && (

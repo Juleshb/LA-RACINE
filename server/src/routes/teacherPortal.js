@@ -128,7 +128,7 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
           take: 5,
           include: {
             messages: { orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: { role: true } } } },
-            student: { select: { firstName: true, lastName: true } },
+            student: { select: { firstName: true, lastName: true, postName: true } },
           },
         });
       })(),

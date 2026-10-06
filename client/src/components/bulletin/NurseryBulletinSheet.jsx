@@ -229,7 +229,7 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
             </div>
             <div className="nursery-sig nursery-sig-director">
               <p className="nursery-sig-label">Sceau et signature de la direction</p>
-              <BulletinDirectorStamp compact />
+              <BulletinDirectorStamp compact directorName={meta?.directorName} />
             </div>
             {verification?.verifyUrl && (
               <div className="nursery-bulletin-qr">

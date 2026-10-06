@@ -22,6 +22,7 @@ import {
   buildRegistrationBreakdown,
 } from '../../hooks/useDashboardData';
 import { useTranslation } from '../../context/LanguageContext';
+import { studentFullName } from '../../lib/studentName';
 
 export default function DashboardOverview({ campusId, data, shellProps }) {
   const { t, language } = useTranslation();
@@ -180,7 +181,7 @@ export default function DashboardOverview({ campusId, data, shellProps }) {
                       {(student.firstName?.[0] || '') + (student.lastName?.[0] || '')}
                     </div>
                     <div className="dash-list-main">
-                      <p className="dash-list-title">{student.firstName} {student.lastName}</p>
+                      <p className="dash-list-title">{studentFullName(student)}</p>
                       <p className="dash-list-meta">{student.studentId}</p>
                     </div>
                     <span className="dash-list-badge">{student.class?.name || t('ui.unassigned')}</span>
@@ -206,7 +207,7 @@ export default function DashboardOverview({ campusId, data, shellProps }) {
                       <Wallet className="w-4 h-4" />
                     </div>
                     <div className="dash-list-main">
-                      <p className="dash-list-title">{fee.student.firstName} {fee.student.lastName}</p>
+                      <p className="dash-list-title">{studentFullName(fee.student)}</p>
                       <p className="dash-list-meta">{formatCurrency(fee.amount)}</p>
                     </div>
                     <span className={feeStatusColors[fee.status]}>{fee.status}</span>

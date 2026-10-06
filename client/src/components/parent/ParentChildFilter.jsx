@@ -1,3 +1,5 @@
+import { studentFullName } from '../../lib/studentName';
+
 export default function ParentChildFilter({
   children,
   value,
@@ -18,7 +20,7 @@ export default function ParentChildFilter({
       <div className="mb-6 p-4 rounded-xl border border-brand-100 bg-brand-50/40">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Your child</p>
         <p className="text-sm font-semibold text-gray-900">
-          {child.firstName} {child.lastName}
+          {studentFullName(child)}
           <span className="text-gray-500 font-normal"> · {child.class?.name || child.className || 'Unassigned'}</span>
         </p>
       </div>
@@ -31,7 +33,7 @@ export default function ParentChildFilter({
       <select className="input max-w-md" value={value || ''} onChange={(e) => onChange(e.target.value)}>
         {children.map((child) => (
           <option key={child.id} value={child.id}>
-            {child.firstName} {child.lastName} — {child.class?.name || child.className || 'Unassigned'}
+            {studentFullName(child)} — {child.class?.name || child.className || 'Unassigned'}
           </option>
         ))}
       </select>
