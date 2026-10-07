@@ -1102,16 +1102,6 @@ export default function Classes() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                     )}
-                    {canDeleteClasses && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(cls.id)}
-                        className="classes-icon-btn is-danger"
-                        title={t('ui.delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </header>
 
@@ -1151,14 +1141,26 @@ export default function Classes() {
                       <span className="classes-metric-label">{t('ui.section')}</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="classes-open-btn"
-                    onClick={() => openDetail(cls)}
-                  >
-                    <Users className="w-4 h-4" />
-                    {t('pageBody.classes.viewStudents')}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="classes-open-btn flex-1"
+                      onClick={() => openDetail(cls)}
+                    >
+                      <Users className="w-4 h-4" />
+                      {t('pageBody.classes.viewStudents')}
+                    </button>
+                    {canDeleteClasses && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(cls.id)}
+                        className="btn-secondary inline-flex items-center justify-center gap-1.5 text-sm text-red-600 hover:text-red-700 hover:border-red-200 px-3"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {t('ui.delete')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             );
