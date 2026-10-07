@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Bell, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Bell, CheckCircle2, Loader2, FileSpreadsheet } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 import { studentFullName } from '../lib/studentName';
+import FinanceExcelImportModal from '../components/fees/FinanceExcelImportModal';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
@@ -67,6 +68,7 @@ export default function Fees() {
     body: '',
     sendEmail: true,
   });
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadFees = () => api.getFees().then(setFees).catch(console.error);
   const loadConfirmationQueue = () => {
@@ -212,6 +214,12 @@ export default function Fees() {
               <button type="button" onClick={() => openReminders('outstanding')} className="btn-secondary flex items-center gap-2">
                 <Bell className="w-4 h-4" />
                 {t('pageBody.fees.sendReminders')}
+              </button>
+            )}
+            {canFinanceTools && (
+              <button type="button" onClick={() => setImportOpen(true)} className="btn-secondary flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('pages.fees.importExcel')}
               </button>
             )}
             <Link to={`/campus/${campusId}/fees/new`} className="btn-primary flex items-center gap-2">
@@ -448,6 +456,15 @@ export default function Fees() {
           </label>
         </FormSection>
       </FormModeModal>
+
+      <FinanceExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => {
+          loadFees();
+          loadConfirmationQueue();
+        }}
+      />
     </div>
   );
 }

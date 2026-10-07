@@ -381,6 +381,7 @@ export const api = {
   applyFeeDiscount: (id, data) => request(`/fees/${id}/discount`, { method: 'PATCH', body: JSON.stringify(data) }),
   suggestFeeAmount: (studentId, feeType) => request(`/fees/suggest-amount?studentId=${encodeURIComponent(studentId)}&feeType=${encodeURIComponent(feeType)}`),
   createFee: (data) => request('/fees', { method: 'POST', body: JSON.stringify(data) }),
+  importFees: (rows) => request('/fees/import', { method: 'POST', body: JSON.stringify({ rows }) }),
   updateFeeStatus: (id, status) => request(`/fees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   deleteFee: (id) => request(`/fees/${id}`, { method: 'DELETE' }),
 

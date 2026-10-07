@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Banknote, Bus, Calculator, ClipboardList, Loader2, Plus, RefreshCw, Trash2, Wand2,
+  Banknote, Bus, Calculator, ClipboardList, FileSpreadsheet, Loader2, Plus, RefreshCw, Trash2, Wand2,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
+import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { studentFullName } from '../lib/studentName';
+import FinanceExcelImportModal from '../components/fees/FinanceExcelImportModal';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', {
@@ -57,9 +59,13 @@ function monthStartIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+const FINANCE_ROLES = new Set(['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'ACCOUNTANT']);
+
 export default function FinanceDesk() {
   const { campusId } = useCampus();
+  const { user } = useAuth();
   const { t } = useTranslation();
+  const canImport = FINANCE_ROLES.has(user?.role);
   const [tab, setTab] = useState('cash');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -92,6 +98,7 @@ export default function FinanceDesk() {
   const [discountFee, setDiscountFee] = useState(null);
   const [discountForm, setDiscountForm] = useState({ discountAmount: '', discountReason: '', waive: false });
   const [discountSubmitting, setDiscountSubmitting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadCash = useCallback(async () => {
     setLoading(true);
@@ -342,6 +349,12 @@ export default function FinanceDesk() {
             <Link to={`/campus/${campusId}/fees`} className="btn-secondary text-sm">
               {t('pages.fees.title')}
             </Link>
+            {canImport && (
+              <button type="button" onClick={() => setImportOpen(true)} className="btn-secondary text-sm flex items-center gap-1.5">
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('pages.fees.importExcel')}
+              </button>
+            )}
             <Link to={`/campus/${campusId}/fees/new`} className="btn-primary text-sm flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               {t('pages.fees.newFee')}
@@ -836,6 +849,18 @@ export default function FinanceDesk() {
           </label>
         </FormSection>
       </FormModeModal>
+
+      {canImport && (
+      <FinanceExcelImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => {
+          if (tab === 'cash') loadCash();
+          else if (tab === 'debtors') loadDebtors();
+          else if (tab === 'transport') loadTransport();
+        }}
+      />
+      )}
     </div>
   );
 }

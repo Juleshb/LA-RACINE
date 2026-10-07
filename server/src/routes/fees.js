@@ -255,6 +255,184 @@ router.post('/reminders', async (req, res) => {
   }
 });
 
+const IMPORT_FEE_TYPES = new Set([
+  'TUITION', 'REGISTRATION', 'CONFIRMATION', 'EXAM', 'TRANSPORT',
+  'UNIFORM', 'EXTRACURRICULAR', 'CARRY_OVER', 'OTHER',
+]);
+const IMPORT_TERMS = new Set(['ANNUAL', 'TRIMESTRE_1', 'TRIMESTRE_2', 'TRIMESTRE_3', 'PRIOR_YEAR']);
+const IMPORT_STATUSES = new Set(['PENDING', 'PAID', 'OVERDUE', 'WAIVED']);
+const FINANCE_IMPORT_ROLES = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'ACCOUNTANT'];
+
+function personKey(parts) {
+  return parts
+    .map((part) => String(part || '').trim().toLowerCase())
+    .join('|');
+}
+
+/** Create fee records from a parsed Excel sheet. Finance staff only. */
+router.post('/import', async (req, res) => {
+  try {
+    if (!FINANCE_IMPORT_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Only finance staff can import fee records' });
+    }
+
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ error: 'No fee rows to import' });
+    if (rows.length > 4000) return res.status(400).json({ error: 'Maximum 4000 fee rows per import' });
+
+    const scope = await studentScopeWhere(req);
+    const students = await prisma.student.findMany({
+      where: scope,
+      select: {
+        id: true,
+        studentId: true,
+        lastName: true,
+        postName: true,
+        firstName: true,
+        registrationStatus: true,
+      },
+    });
+
+    const byCode = new Map();
+    const byName = new Map();
+    const byFullName = new Map();
+    for (const student of students) {
+      const code = String(student.studentId || '').trim().toLowerCase();
+      if (code) byCode.set(code, student);
+      const key = personKey([student.lastName, student.postName, student.firstName]);
+      if (key !== '||') {
+        const list = byName.get(key) || [];
+        list.push(student);
+        byName.set(key, list);
+      }
+      const full = [student.lastName, student.postName, student.firstName]
+        .map((part) => String(part || '').trim().toLowerCase())
+        .filter(Boolean)
+        .join(' ');
+      if (full) {
+        const list = byFullName.get(full) || [];
+        list.push(student);
+        byFullName.set(full, list);
+      }
+    }
+
+    const created = [];
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i] || {};
+      const excelRow = row.sheet
+        ? `${row.sheet} row ${Number(row.row) || i + 2}`
+        : (Number(row.row) || i + 2);
+      const feeType = String(row.feeType || '').trim().toUpperCase();
+      const amount = Number(row.amount);
+      const status = IMPORT_STATUSES.has(String(row.status || '').toUpperCase())
+        ? String(row.status).toUpperCase()
+        : 'PENDING';
+      const termRaw = row.term ? String(row.term).trim().toUpperCase() : '';
+      const term = IMPORT_TERMS.has(termRaw) ? termRaw : null;
+
+      if (!IMPORT_FEE_TYPES.has(feeType)) {
+        errors.push({ row: excelRow, error: 'Fee type is missing or not recognized' });
+        continue;
+      }
+      if (!Number.isFinite(amount) || amount < 0) {
+        errors.push({ row: excelRow, error: 'Amount must be zero or more' });
+        continue;
+      }
+      const parsedDue = row.dueDate ? new Date(row.dueDate) : new Date();
+      if (Number.isNaN(parsedDue.getTime())) {
+        errors.push({ row: excelRow, error: 'Due date is missing or invalid' });
+        continue;
+      }
+
+      const code = String(row.studentCode || '').trim().toLowerCase();
+      let student = code ? byCode.get(code) : null;
+      if (!student) {
+        const matches = byName.get(personKey([row.lastName, row.postName, row.firstName])) || [];
+        if (matches.length === 1) [student] = matches;
+        else if (matches.length > 1) {
+          errors.push({ row: excelRow, error: 'More than one student matches this name. Use the student ID.' });
+          continue;
+        }
+      }
+      if (!student && row.fullName) {
+        const full = String(row.fullName).trim().toLowerCase().replace(/\s+/g, ' ');
+        const matches = byFullName.get(full) || [];
+        if (matches.length === 1) [student] = matches;
+        else if (matches.length > 1) {
+          errors.push({ row: excelRow, error: 'More than one student matches this name. Use the student ID.' });
+          continue;
+        }
+      }
+      if (!student) {
+        errors.push({ row: excelRow, error: 'Student not found in this campus and year' });
+        continue;
+      }
+
+      const finalStatus = amount === 0 ? 'WAIVED' : status;
+      const installmentIndex = row.installmentIndex ? Number(row.installmentIndex) : null;
+      const installmentTotal = row.installmentTotal ? Number(row.installmentTotal) : null;
+
+      try {
+        let fee = null;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          try {
+            fee = await prisma.feePayment.create({
+              data: {
+                receiptNumber: generateFeeReceiptNumber(),
+                studentId: student.id,
+                feeType,
+                term,
+                amount,
+                originalAmount: amount,
+                dueDate: parsedDue,
+                paidDate: finalStatus === 'PAID' ? new Date() : null,
+                status: finalStatus,
+                notes: row.notes ? String(row.notes).trim().slice(0, 500) : null,
+                installmentIndex: Number.isFinite(installmentIndex) && installmentIndex > 0
+                  ? installmentIndex
+                  : null,
+                installmentTotal: Number.isFinite(installmentTotal) && installmentTotal > 0
+                  ? installmentTotal
+                  : null,
+              },
+            });
+            break;
+          } catch (err) {
+            if (err.code !== 'P2002' || attempt === 4) throw err;
+          }
+        }
+
+        if (
+          fee.feeType === 'CONFIRMATION'
+          && ['PAID', 'WAIVED'].includes(finalStatus)
+          && student.registrationStatus === 'AWAITING_CONFIRMATION'
+        ) {
+          await prisma.student.update({
+            where: { id: student.id },
+            data: { registrationStatus: 'APPROVED' },
+          });
+          student.registrationStatus = 'APPROVED';
+        }
+
+        created.push({ row: excelRow, id: fee.id, receiptNumber: fee.receiptNumber });
+      } catch (err) {
+        errors.push({ row: excelRow, error: err.message || 'Could not save this row' });
+      }
+    }
+
+    res.json({
+      created: created.length,
+      skipped: errors.length,
+      errors: errors.slice(0, 50),
+      receipts: created.slice(0, 20).map((item) => item.receiptNumber),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const filter = await campusStudentFilter(req);
