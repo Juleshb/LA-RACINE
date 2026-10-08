@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { User } from 'lucide-react';
 import BulletinQrCode from './BulletinQrCode';
 import BulletinDirectorStamp from './BulletinDirectorStamp';
+import { reportSchoolTitle } from '../../lib/reportSchoolTitle';
 
 const GRADE_COLORS = {
   A: 'nursery-grade-a',
@@ -57,11 +58,7 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
   const colSpan = 2 + columns.length;
   const isFullYear = report.viewMode === 'FULL_YEAR' || columns.length > 1;
 
-  const schoolBase = (meta?.schoolName || 'LA RACINE')
-    .replace(/^\s*ecole\s+/i, '')
-    .replace(/\s*school\s*$/i, '')
-    .trim()
-    .toUpperCase();
+  const schoolTitle = reportSchoolTitle(meta?.schoolName);
 
   const studentName = [student.lastName, student.postName, student.firstName]
     .filter(Boolean)
@@ -107,7 +104,7 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
             <img src="/logo.png" alt="École La RACINE logo" />
           </div>
           <div className="nursery-bulletin-header-center">
-            <h1>ECOLE {schoolBase}</h1>
+            <h1>{schoolTitle}</h1>
             <p className="nursery-bulletin-place">
               {(meta?.district || 'RUBAVU').toUpperCase()} — {(meta?.city || 'GISENYI').toUpperCase()}
             </p>

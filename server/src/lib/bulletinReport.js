@@ -11,6 +11,7 @@ import { isPrimaryGrade } from '../config/grades.js';
 import { getCurriculum } from '../config/curriculum/index.js';
 import { getPublishedMidtermsForTerm } from './midterms.js';
 import { resolveDirectorName } from './schoolDirector.js';
+import { maximaIdentityHolds, periodExamColumns } from './bulletinMaxima.js';
 
 function assessmentValue(rows, key) {
   const row = rows.find((r) => r.key === key);
@@ -36,6 +37,22 @@ function buildLegacyAssessmentRows(subject, config, markMap) {
 
 function buildFlexibleSubject(subject, assessments, markMap) {
   const summary = buildSubjectMarkSummary(subject, assessments, markMap);
+  const test1 = summary.testRows.find((t) => t.sortOrder === 1) || summary.testRows[0];
+  const test2 = summary.testRows.find((t) => t.sortOrder === 2) || summary.testRows[1];
+  const aligned = periodExamColumns({
+    period1Max: subject.test1Max ?? test1?.max,
+    period2Max: subject.test2Max ?? test2?.max,
+    testsMax: summary.testsCombined.max,
+    examMax: summary.exam.max,
+    examScore: summary.exam.score,
+    period1Score: test1?.score ?? null,
+    period1ScoreMax: test1?.max,
+    period2Score: test2?.score ?? null,
+    period2ScoreMax: test2?.max,
+    continuousScore: summary.testsCombined.score,
+    continuousScoreMax: summary.testsCombined.max,
+  });
+  const [period1, period2, exam, total] = aligned.cells;
 
   return {
     id: subject.id,
@@ -44,7 +61,7 @@ function buildFlexibleSubject(subject, assessments, markMap) {
     flexible: true,
     tests: summary.testRows,
     testsCombined: summary.testsCombined,
-    exam: summary.exam,
+    exam,
     assessments: summary.testRows.map((t) => ({
       key: `TEST:${t.sortOrder}`,
       label: t.label,
@@ -52,22 +69,21 @@ function buildFlexibleSubject(subject, assessments, markMap) {
       max: t.max,
       maxScore: t.max,
     })),
+    test1Max: period1.max,
+    test2Max: period2.max,
     columns: {
-      tests: { score: summary.testsCombined.score, max: summary.testsCombined.max },
-      test1: summary.testRows[0]
-        ? { score: summary.testRows[0].score, max: summary.testRows[0].max }
-        : { score: null, max: 0 },
-      test2: summary.testRows[1]
-        ? { score: summary.testRows[1].score, max: summary.testRows[1].max }
-        : { score: null, max: 0 },
-      exam: summary.exam,
-      total: summary.total,
+      tests: { score: summary.testsCombined.score, max: period1.max + period2.max },
+      test1: period1,
+      test2: period2,
+      exam,
+      total,
     },
-    testsMarkMax: summary.testsCombined.max,
-    obtained: summary.hasAny ? summary.total.score : null,
-    max: summary.total.max,
-    total: summary.hasAny ? summary.total.score : null,
-    totalMax: summary.total.max,
+    testsMarkMax: period1.max + period2.max,
+    obtained: summary.hasAny ? total.score : null,
+    max: total.max,
+    total: summary.hasAny ? total.score : null,
+    totalMax: total.max,
+    maximaVerified: maximaIdentityHolds(aligned.cells),
   };
 }
 
@@ -329,16 +345,20 @@ function subjectPeriodCells(sub, midterms, courseMarkOnly) {
     const m1 = maps.mt1.get(sub.id);
     const m2 = maps.mt2.get(sub.id);
     const exam = sub.columns?.exam || emptyCell();
-    const fixedMax = Math.max(
-      m1?.maxScore || 0,
-      m2?.maxScore || 0,
-      Number(sub.testsMarkMax) || 0,
-      (Number(sub.test1Max) || 0) + (Number(sub.test2Max) || 0),
-    );
-    const mt1 = { score: m1?.obtained ?? null, max: fixedMax };
-    const mt2 = { score: m2?.obtained ?? null, max: fixedMax };
-    const continuous = mt2.score != null ? mt2 : mt1;
-    return [mt1, mt2, exam, addScoreCells(continuous, exam)];
+    const continuous = m2?.obtained != null ? m2 : (m1?.obtained != null ? m1 : null);
+    return periodExamColumns({
+      period1Max: sub.test1Max ?? sub.columns?.test1?.max,
+      period2Max: sub.test2Max ?? sub.columns?.test2?.max,
+      testsMax: sub.testsMarkMax,
+      examMax: exam.max,
+      examScore: exam.score,
+      period1Score: m1?.obtained ?? null,
+      period1ScoreMax: m1?.maxScore,
+      period2Score: m2?.obtained ?? null,
+      period2ScoreMax: m2?.maxScore,
+      continuousScore: continuous?.obtained ?? null,
+      continuousScoreMax: continuous?.maxScore,
+    }).cells;
   }
   if (courseMarkOnly) {
     return [
@@ -740,7 +760,19 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
     });
   }
 
+  const maximaSubjects = domains.flatMap((domain) => domain.subjects);
+  const maximaCheck = {
+    ok: maximaSubjects.every((sub) => sub.maximaVerified !== false && maximaIdentityHolds([
+      sub.columns?.test1,
+      sub.columns?.test2,
+      sub.columns?.exam,
+      sub.columns?.total,
+    ])),
+    rule: 'period1 + period2 = exam',
+  };
+
   return {
+    maximaCheck,
     class: { id: cls.id, name: cls.name, grade: cls.grade, section: cls.section },
     student: {
       id: student.id,

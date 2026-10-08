@@ -2,6 +2,8 @@ import { Fragment } from 'react';
 import { User } from 'lucide-react';
 import BulletinQrCode from './BulletinQrCode';
 import BulletinDirectorStamp from './BulletinDirectorStamp';
+import { periodExamColumns } from '../../lib/bulletinMaxima';
+import { reportSchoolTitle } from '../../lib/reportSchoolTitle';
 
 function fmtScore(col) {
   if (!col || col.max === 0) return '';
@@ -74,21 +76,20 @@ function midtermSubjectColumns(sub, maps) {
   const m1 = maps.mt1.get(sub.id);
   const m2 = maps.mt2.get(sub.id);
   const exam = sub.columns?.exam || cell(null, 0);
-
-  // Same MAXIMA for MT1 and MT2 = subject continuous-tests max
-  const fixedMax = Math.max(
-    m1?.maxScore || 0,
-    m2?.maxScore || 0,
-    Number(sub.testsMarkMax) || 0,
-    (Number(sub.test1Max) || 0) + (Number(sub.test2Max) || 0),
-  );
-
-  const mt1 = cell(m1?.obtained ?? null, fixedMax);
-  const mt2 = cell(m2?.obtained ?? null, fixedMax);
-  // TOT = cumulative midterm 2 (averaged continuous) + exam
-  const continuous = mt2.score != null ? mt2 : mt1;
-  const total = addCells(continuous, exam);
-  return [mt1, mt2, exam, total];
+  const continuous = m2?.obtained != null ? m2 : (m1?.obtained != null ? m1 : null);
+  return periodExamColumns({
+    period1Max: sub.test1Max ?? sub.columns?.test1?.max,
+    period2Max: sub.test2Max ?? sub.columns?.test2?.max,
+    testsMax: sub.testsMarkMax,
+    examMax: exam.max,
+    examScore: exam.score,
+    period1Score: m1?.obtained ?? null,
+    period1ScoreMax: m1?.maxScore,
+    period2Score: m2?.obtained ?? null,
+    period2ScoreMax: m2?.maxScore,
+    continuousScore: continuous?.obtained ?? null,
+    continuousScoreMax: continuous?.maxScore,
+  }).cells;
 }
 
 function sumColumn(subjects, index, maps, midtermMode, courseMarkOnly) {
@@ -159,13 +160,7 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
     : [columnLabels];
   const columnSpan = annual ? (termLabelSets[0]?.length || 4) : columnLabels.length;
 
-  const schoolBase = (meta?.schoolName || 'LA RACINE')
-    .replace(/\s*school\s*$/i, '')
-    .trim()
-    .toUpperCase();
-  const schoolTitle = meta?.campusName
-    ? `ÉCOLE ${schoolBase} ${meta.campusName.toUpperCase()}`
-    : `ÉCOLE ${schoolBase}`;
+  const schoolTitle = reportSchoolTitle(meta?.schoolName);
 
   const locationLine = [meta?.city, meta?.district, meta?.country || 'Rwanda'].filter(Boolean).join(' - ').toUpperCase();
   const studentName = [student.lastName, student.postName, student.firstName].filter(Boolean).join(' ').toUpperCase();

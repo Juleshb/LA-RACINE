@@ -114,7 +114,10 @@ export function getExamMark(markMap, subjectId) {
 }
 
 export function buildTestRows(subject, assessments, markMap) {
-  return filterTestAssessments(assessments).map((a) => {
+  return filterTestAssessments(assessments)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((a) => {
     const mark = getMarkForTest(markMap, subject.id, a.sortOrder);
     return {
       id: a.id,
