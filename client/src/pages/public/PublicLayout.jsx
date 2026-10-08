@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import AppIcon from '../../components/icons/AppIcon';
 import { PublicSiteProvider, usePublicSite } from '../../hooks/usePublicSite';
 import SupportChatWidget from './SupportChatWidget';
@@ -389,7 +389,14 @@ function PublicShell() {
   );
 }
 
+function launchedAsInstalledApp() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
 export default function PublicLayout() {
+  if (launchedAsInstalledApp()) return <Navigate to="/app" replace />;
+
   return (
     <PublicSiteProvider>
       <PublicShell />

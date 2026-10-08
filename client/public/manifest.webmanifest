@@ -2,7 +2,7 @@
   "name": "École La RACINE — Management System",
   "short_name": "La Racine",
   "description": "École La RACINE management portal for students, parents, teachers, and school administration. Attendance, fees, homework, e-learning, and more.",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "id": "/",
   "display": "standalone",
@@ -14,22 +14,28 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [],
@@ -38,8 +44,8 @@
       "name": "Sign in",
       "short_name": "Login",
       "description": "Open École La RACINE login",
-      "url": "/login",
-      "icons": [{ "src": "/logo.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "/app",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

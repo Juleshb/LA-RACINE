@@ -84,7 +84,30 @@
 
   /* Sidebar */
   .sidebar {
-    @apply fixed top-0 left-0 z-30 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shrink-0;
+    @apply fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 flex flex-col shrink-0;
+    transition: transform 0.22s ease;
+  }
+
+  .app-menu-btn {
+    @apply shrink-0 w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-700
+      inline-flex items-center justify-center hover:bg-gray-50;
+  }
+
+  .sidebar-scrim {
+    @apply fixed inset-0 z-30 border-0 bg-slate-900/40;
+  }
+
+  @media (max-width: 1023px) {
+    .sidebar {
+      transform: translateX(-105%);
+      visibility: hidden;
+    }
+
+    .sidebar.is-open {
+      transform: translateX(0);
+      visibility: visible;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.28);
+    }
   }
 
   .sidebar-manager {
@@ -109,6 +132,177 @@
 
   .sidebar-footer {
     @apply p-3 border-t border-gray-200 bg-white;
+  }
+
+  .portal-install {
+    position: relative;
+    margin-bottom: 0.35rem;
+  }
+
+  .portal-install-btn {
+    @apply w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+      text-sm font-semibold text-brand-700 bg-brand-50 border border-brand-100
+      hover:bg-brand-100 transition-colors;
+  }
+
+  .portal-install-mark {
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 0.35rem;
+    object-fit: cover;
+    background: #fff;
+  }
+
+  .portal-install-preview {
+    @apply mt-4 flex items-center gap-3;
+  }
+
+  .portal-install-preview img {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 0.9rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  }
+
+  .portal-install-preview p {
+    @apply text-sm font-medium text-gray-800;
+  }
+
+  .ask-racine-page {
+    @apply max-w-3xl mx-auto flex flex-col gap-4 min-h-[70vh];
+  }
+
+  .ask-racine-head {
+    @apply flex items-start gap-3;
+  }
+
+  .ask-racine-head h1 {
+    @apply text-xl sm:text-2xl font-bold text-gray-900;
+  }
+
+  .ask-racine-head p {
+    @apply mt-1 text-sm text-gray-600;
+  }
+
+  .ask-racine-mark {
+    @apply w-10 h-10 rounded-xl bg-brand-50 text-brand-700 inline-flex items-center justify-center shrink-0;
+  }
+
+  .ask-racine-thread {
+    @apply flex-1 flex flex-col gap-3;
+  }
+
+  .ask-racine-empty p {
+    @apply text-sm font-medium text-gray-700;
+  }
+
+  .ask-racine-suggestions {
+    @apply mt-3 flex flex-wrap gap-2;
+  }
+
+  .ask-racine-suggestions button {
+    @apply rounded-full border border-brand-100 bg-white px-3 py-1.5 text-sm text-brand-800 hover:bg-brand-50;
+  }
+
+  .ask-racine-msg {
+    @apply rounded-2xl px-4 py-3;
+  }
+
+  .ask-racine-msg.is-user {
+    @apply bg-brand-600 text-white self-end max-w-[90%];
+  }
+
+  .ask-racine-msg.is-assistant {
+    @apply bg-white border border-gray-200 text-gray-800;
+  }
+
+  .ask-racine-msg-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide opacity-70;
+  }
+
+  .ask-racine-msg-body {
+    @apply mt-1 text-sm leading-relaxed whitespace-pre-wrap;
+  }
+
+  .ask-racine-steps {
+    @apply mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed;
+  }
+
+  .ask-racine-actions {
+    @apply mt-4 flex flex-col items-start gap-2;
+  }
+
+  .ask-racine-actions p {
+    @apply text-xs font-semibold uppercase tracking-wide text-gray-500;
+  }
+
+  .ask-racine-actions a {
+    @apply inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-800 hover:bg-brand-100;
+  }
+
+  .ask-racine-thinking,
+  .ask-racine-error {
+    @apply text-sm;
+  }
+
+  .ask-racine-thinking {
+    @apply text-gray-500;
+  }
+
+  .ask-racine-error {
+    @apply text-red-600;
+  }
+
+  .ask-racine-form {
+    @apply sticky bottom-0 flex flex-col sm:flex-row gap-2 bg-gray-50/95 py-2;
+  }
+
+  .ask-racine-form input {
+    @apply flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm;
+  }
+
+  .ask-racine-launcher {
+    @apply fixed bottom-4 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-brand-700;
+  }
+
+  .portal-install-login {
+    width: min(100%, 24rem);
+    margin: 0.25rem auto 0.75rem;
+  }
+
+  .portal-install-scrim {
+    @apply fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-6;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .portal-install-dialog {
+    @apply relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl;
+  }
+
+  .portal-install-dialog h2 {
+    @apply text-lg font-bold text-gray-900 pr-8;
+  }
+
+  .portal-install-lead {
+    @apply mt-2 text-sm leading-relaxed text-gray-600;
+  }
+
+  .portal-install-device {
+    @apply mt-4 rounded-xl bg-gray-50 p-3;
+  }
+
+  .portal-install-device h3 {
+    @apply text-sm font-semibold text-gray-900;
+  }
+
+  .portal-install-device ol {
+    @apply mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-600;
+  }
+
+  .portal-install-dialog-close {
+    @apply absolute top-3 right-3 w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700
+      inline-flex items-center justify-center;
   }
 
   .nav-group {
@@ -166,7 +360,7 @@
 
   /* Manager top bar */
   .manager-topbar {
-    @apply sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4;
+    @apply sticky top-0 z-20 bg-white border-b border-gray-200 px-3 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between gap-2 sm:gap-4;
   }
 
   .manager-topbar-actions {
@@ -202,7 +396,7 @@
   }
 
   .top-profile-menu-panel {
-    @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-xl border border-gray-200 bg-white shadow-lg py-1.5;
+    @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 max-w-[calc(100vw-1.25rem)] rounded-xl border border-gray-200 bg-white shadow-lg py-1.5;
   }
 
   .top-profile-menu-head {
@@ -262,7 +456,7 @@
   }
 
   .top-campus-menu-panel {
-    @apply absolute left-0 top-[calc(100%+0.5rem)] z-50 w-72 rounded-xl border border-gray-200 bg-white shadow-lg py-1.5;
+    @apply absolute left-0 top-[calc(100%+0.5rem)] z-50 w-72 max-w-[calc(100vw-1.25rem)] rounded-xl border border-gray-200 bg-white shadow-lg py-1.5;
   }
 
   .top-campus-menu-head {
@@ -369,6 +563,8 @@
     isolation: isolate;
     max-width: 90rem;
     margin: 0 auto;
+    min-width: 0;
+    overflow-x: clip;
     font-family: Outfit, Inter, system-ui, sans-serif;
   }
 
@@ -426,9 +622,9 @@
     position: relative;
     z-index: 1;
     display: grid;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    padding: 1.5rem 1.5rem 1.35rem;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem 1rem 0.95rem;
     border-radius: 1.75rem;
     border: 1px solid rgba(186, 230, 253, 0.7);
     background:
@@ -443,7 +639,19 @@
     .dash-dayboard {
       grid-template-columns: 1fr auto;
       align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
       padding: 1.75rem 1.75rem 1.5rem;
+    }
+
+    .dash-pulse {
+      width: 8.5rem;
+      height: 8.5rem;
+    }
+
+    .dash-pulse-core {
+      width: 6.8rem;
+      height: 6.8rem;
     }
   }
 
@@ -517,8 +725,8 @@
   .dash-pulse {
     --dash-rate: 0%;
     position: relative;
-    width: 8.5rem;
-    height: 8.5rem;
+    width: 6.75rem;
+    height: 6.75rem;
     border-radius: 999px;
     display: grid;
     place-items: center;
@@ -544,8 +752,8 @@
     position: relative;
     z-index: 1;
     text-align: center;
-    width: 6.8rem;
-    height: 6.8rem;
+    width: 5.35rem;
+    height: 5.35rem;
     border-radius: inherit;
     display: grid;
     place-content: center;
@@ -656,11 +864,18 @@
 
   .dash-metric-value {
     margin: 0.15rem 0 0;
-    font-size: 1.35rem;
+    font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: -0.03em;
     color: #0f172a;
     line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 640px) {
+    .dash-metric-value {
+      font-size: 1.35rem;
+    }
   }
 
   .dash-metric-sub {
@@ -747,11 +962,18 @@
   .dash-spotlight-value {
     display: flex;
     align-items: baseline;
+    flex-wrap: wrap;
     gap: 0.45rem;
-    font-size: 2rem;
+    font-size: 1.55rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     color: #0f172a;
+  }
+
+  @media (min-width: 640px) {
+    .dash-spotlight-value {
+      font-size: 2rem;
+    }
   }
 
   .dash-spotlight-value small {
@@ -836,8 +1058,15 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
-    padding: 1.15rem 1.25rem 0.65rem;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 1rem 1rem 0.55rem;
+  }
+
+  @media (min-width: 640px) {
+    .dash-panel-head {
+      padding: 1.15rem 1.25rem 0.65rem;
+    }
   }
 
   .dash-panel-title {
@@ -854,7 +1083,13 @@
   }
 
   .dash-panel-body {
-    padding: 0 1.25rem 1.25rem;
+    padding: 0 1rem 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .dash-panel-body {
+      padding: 0 1.25rem 1.25rem;
+    }
   }
 
   .dash-panel-body-flush {
@@ -877,7 +1112,22 @@
 
   .dash-chart-body {
     min-height: 220px;
-    padding: 0 1.25rem 1.25rem;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 0.35rem 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .dash-chart-body {
+      padding: 0 1.25rem 1.25rem;
+    }
+  }
+
+  .dash-charts-grid > *,
+  .dash-activity-grid > *,
+  .dash-role-grid > *,
+  .dash-bento > * {
+    min-width: 0;
   }
 
   .dash-link {
@@ -905,10 +1155,18 @@
 
   .dash-list-row {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.75rem;
     padding: 0.85rem 0;
     border-bottom: 1px solid #f1f5f9;
+  }
+
+  @media (min-width: 640px) {
+    .dash-list-row {
+      align-items: center;
+      flex-wrap: nowrap;
+    }
   }
 
   .dash-list-row:last-child {
@@ -1352,7 +1610,8 @@
   }
 
   .dashboard-legend {
-    @apply grid grid-cols-3 gap-2 mt-2;
+    @apply grid gap-2 mt-2;
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
   }
 
   .dashboard-legend-item {
@@ -2168,8 +2427,12 @@
   }
 
   .student-hero {
-    @apply flex items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl
+    @apply flex items-center justify-between gap-3 p-4 sm:p-6 rounded-3xl
       bg-gradient-to-br from-violet-500 via-violet-400 to-sky-400 text-white shadow-lg shadow-violet-200/50;
+  }
+
+  .student-hero-content {
+    @apply min-w-0;
   }
 
   .student-hero-wave {
@@ -2306,7 +2569,7 @@
   }
 
   .student-card-head h3 {
-    @apply flex-1 font-bold text-base;
+    @apply flex-1 min-w-0 font-bold text-base;
   }
 
   .student-card-link {

@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, School, Users, GraduationCap, BookOpen, BookMarked, Award,
   ClipboardCheck, Wallet, Shield, LogOut, ChevronRight,
-  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3, Globe, CreditCard,
+  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3,   Globe, CreditCard, Bot,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
@@ -16,6 +16,7 @@ import ManagerTopBar from './ManagerTopBar';
 import Logo from './Logo';
 import AcademicYearBanner from './AcademicYearBanner';
 import { StudentBottomNav } from './student/StudentPortalNav';
+import InstallPortalApp from './InstallPortalApp';
 import StudentNavbar from './student/StudentNavbar';
 import StudentSidebar from './student/StudentSidebar';
 import StudentLiveClassBanner from './student/StudentLiveClassBanner';
@@ -44,14 +45,16 @@ const iconMap = {
   BarChart3,
   Globe,
   CreditCard,
+  Bot,
 };
 
-function NavItem({ to, icon, label, campusId, end, badge }) {
+function NavItem({ to, icon, label, campusId, end, badge, onNavigate }) {
   const Icon = iconMap[icon];
   return (
     <NavLink
       to={to}
       end={end ?? to === `/campus/${campusId}`}
+      onClick={onNavigate}
       className={({ isActive }) => `group nav-item ${isActive ? 'nav-item-active' : ''}`}
     >
       <Icon className="w-[18px] h-[18px] shrink-0" />
@@ -92,6 +95,7 @@ export default function Layout() {
     `laracine_nav_groups_${user?.role || 'guest'}`,
   );
   const [commUnread, setCommUnread] = useState(0);
+  const [navOpen, setNavOpen] = useState(false);
   const { primaryLive, hasLiveClass, upcomingSessions } = useLiveOnlineClasses(
     isStudent && Boolean(campusId),
   );
@@ -114,6 +118,10 @@ export default function Layout() {
     return () => clearInterval(t);
   }, [campusId, user?.role]);
 
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
+
   const commBadge = (to) => (to?.includes('/communication') ? commUnread : 0);
 
   const handleLogout = () => {
@@ -129,7 +137,16 @@ export default function Layout() {
           badges={studentNavBadges}
         />
       ) : (
-      <aside className={`sidebar ${isManager ? 'sidebar-manager' : ''} ${isStaff && !isManager ? 'sidebar-staff' : ''} ${isParent ? 'sidebar-parent' : ''} ${isTeacher ? 'sidebar-teacher' : ''}`}>
+      <>
+      {navOpen && (
+        <button
+          type="button"
+          className="sidebar-scrim lg:hidden"
+          aria-label={t('app.closeMenu')}
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+      <aside className={`sidebar ${navOpen ? 'is-open' : ''} ${isManager ? 'sidebar-manager' : ''} ${isStaff && !isManager ? 'sidebar-staff' : ''} ${isParent ? 'sidebar-parent' : ''} ${isTeacher ? 'sidebar-teacher' : ''}`}>
         <div className="sidebar-brand">
           <Logo size="sm" showSubtitle />
         </div>
@@ -145,20 +162,21 @@ export default function Layout() {
                 isActiveGroup={activeGroupId === group.id}
               >
                 {group.items.map(({ to, icon, label }) => (
-                  <NavItem key={to} to={to} icon={icon} label={label} campusId={campusId} badge={commBadge(to)} />
+                  <NavItem key={to} to={to} icon={icon} label={label} campusId={campusId} badge={commBadge(to)} onNavigate={() => setNavOpen(false)} />
                 ))}
               </SidebarNavGroup>
             ))
           ) : (
             <div className="space-y-0.5 px-2">
               {navItems.map(({ to, icon, label }) => (
-                <NavItem key={to} to={to} icon={icon} label={label} campusId={campusId} badge={commBadge(to)} />
+                <NavItem key={to} to={to} icon={icon} label={label} campusId={campusId} badge={commBadge(to)} onNavigate={() => setNavOpen(false)} />
               ))}
             </div>
           )}
         </nav>
 
         <div className="sidebar-footer">
+          <InstallPortalApp />
           <button
             onClick={handleLogout}
             className="nav-item w-full text-red-600 hover:bg-red-50 hover:text-red-700"
@@ -168,21 +186,23 @@ export default function Layout() {
           </button>
         </div>
       </aside>
+      </>
       )}
 
-      <main className={`flex-1 flex flex-col min-w-0 ${isStudent ? 'student-main lg:ml-64' : 'ml-64'}`}>
+      <main className={`flex-1 flex flex-col min-w-0 ${isStudent ? 'student-main lg:ml-64' : 'lg:ml-64'}`}>
         {isStudent ? (
           <StudentNavbar campus={campus} campusId={campusId} user={user} academicYear={academicYear} />
         ) : isManager ? (
-          <ManagerTopBar />
+          <ManagerTopBar onOpenMenu={() => setNavOpen(true)} />
         ) : (
           <SchoolHeader
             portalLabel={isParent ? t('app.familyPortal') : isTeacher ? t('app.teacherPortal') : t('app.campus')}
+            onOpenMenu={() => setNavOpen(true)}
           />
         )}
         <div
           className={`flex-1 overflow-auto ${
-            isStudent ? 'student-main-content p-4 sm:p-6 lg:p-8' : 'p-6 lg:p-8'
+            isStudent ? 'student-main-content p-3 sm:p-6 lg:p-8' : 'p-3 sm:p-6 lg:p-8'
           }${isAiTutor ? ' is-ai-tutor-shell' : ''}`}
         >
           {!isStudent && <AcademicYearBanner />}
@@ -193,6 +213,12 @@ export default function Layout() {
         )}
         {isStudent && (
           <StudentBottomNav campusId={campusId} badges={studentNavBadges} />
+        )}
+        {!isStudent && !isParent && campusId && !location.pathname.endsWith('/ask-ai') && (
+          <NavLink to={`/campus/${campusId}/ask-ai`} className="ask-racine-launcher">
+            <Bot className="w-4 h-4" aria-hidden />
+            {t('app.askAi.title')}
+          </NavLink>
         )}
       </main>
     </div>

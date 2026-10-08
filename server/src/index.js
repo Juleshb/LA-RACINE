@@ -28,6 +28,7 @@ import communicationRoutes from './routes/communication.js';
 import reportRoutes from './routes/reports.js';
 import parentRoutes from './routes/parent.js';
 import teacherPortalRoutes from './routes/teacherPortal.js';
+import staffGuideRoutes from './routes/staffGuide.js';
 import studentPortalRoutes from './routes/studentPortal.js';
 import { authenticate } from './middleware/auth.js';
 import { requireCampus } from './middleware/campus.js';
@@ -99,6 +100,7 @@ app.use('/api/communication', communicationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/teacher', teacherPortalRoutes);
+app.use('/api/staff', staffGuideRoutes);
 app.use('/api/student', studentPortalRoutes);
 
 app.use((err, _req, res, _next) => {

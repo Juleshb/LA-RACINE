@@ -1,7 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGroq } from '@ai-sdk/groq';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { generateText, streamText } from 'ai';
 
 const MAX_MESSAGES = 24;
 const MAX_MESSAGE_CHARS = 2000;
@@ -61,7 +61,7 @@ function listCandidateModels() {
     const groq = createGroq({ apiKey: groqKey });
     const models = customModel && forced === 'groq'
       ? [customModel]
-      : [customModel || 'llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'gemma2-9b-it'].filter(
+      : [customModel || 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'].filter(
         (v, i, arr) => v && arr.indexOf(v) === i,
       );
     for (const id of models) {
@@ -188,6 +188,45 @@ async function streamWithModel({ model, messages, system, res }) {
  * Stream an AI reply into an Express response as plain text chunks.
  * Tries Groq first, then other free providers if quota fails.
  */
+/** One-shot completion for staff guidance. Tries each configured provider. */
+export async function completeAiText({ system, prompt }) {
+  const candidates = listCandidateModels();
+  if (!candidates.length) {
+    const err = new Error('AI is not configured');
+    err.status = 503;
+    throw err;
+  }
+
+  let lastError;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    try {
+      const result = await generateText({
+        model: candidate.model,
+        system,
+        prompt,
+        temperature: 0.3,
+        maxOutputTokens: 700,
+        maxRetries: 1,
+      });
+      const text = String(result.text || '').trim();
+      if (!text) throw new Error('Empty AI reply');
+      return text;
+    } catch (error) {
+      lastError = error;
+      if (i < candidates.length - 1) {
+        console.warn(`[staff-guide] ${candidate.name} failed — trying next provider`);
+        continue;
+      }
+      break;
+    }
+  }
+
+  const err = new Error(friendlyAiError(lastError));
+  err.status = isQuotaError(lastError) ? 429 : (lastError?.statusCode || lastError?.status || 502);
+  throw err;
+}
+
 export async function streamStudentAiReply({ messages, student, res }) {
   const candidates = listCandidateModels();
   if (!candidates.length) {

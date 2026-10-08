@@ -2,9 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      (function () {
+        var deferred = null;
+        window.__getPortalInstallPrompt = function () { return deferred; };
+        window.__clearPortalInstallPrompt = function () { deferred = null; };
+        window.addEventListener('beforeinstallprompt', function (event) {
+          event.preventDefault();
+          deferred = event;
+          window.dispatchEvent(new Event('portal-install-ready'));
+        });
+        window.addEventListener('appinstalled', function () {
+          deferred = null;
+          window.dispatchEvent(new Event('portal-install-done'));
+        });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0ea5e9" />
     <meta name="description" content="École La RACINE — bilingual education in Rubavu, Rwanda. Discipline · Intelligence · Innovation." />

@@ -24,6 +24,7 @@ export const PERMISSIONS = {
   REPORTS: 'reports',
   WEBSITE: 'website',
   AI_TUTOR: 'ai_tutor',
+  STAFF_GUIDE: 'staff_guide',
 };
 
 export const ROLE_LABELS = {
@@ -70,6 +71,7 @@ const CAMPUS_ADMIN = [
   PERMISSIONS.USERS,
   PERMISSIONS.REPORTS,
   PERMISSIONS.WEBSITE,
+  PERMISSIONS.STAFF_GUIDE,
 ];
 
 export const ROLE_PERMISSIONS = {
@@ -95,6 +97,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.REPORTS,
     PERMISSIONS.WEBSITE,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   HEAD_OF_DISCIPLINE: [
     PERMISSIONS.DASHBOARD,
@@ -107,6 +110,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.REPORTS,
     PERMISSIONS.WEBSITE,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   ACCOUNTANT: [
     PERMISSIONS.DASHBOARD,
@@ -118,17 +122,20 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.REPORTS,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   ACTIVITIES_MANAGER: [
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.EXTRACURRICULAR,
     PERMISSIONS.REPORTS,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   LIBRARIAN: [
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.LIBRARY,
     PERMISSIONS.E_LIBRARY,
     PERMISSIONS.REPORTS,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   TEACHER: [
     PERMISSIONS.DASHBOARD,
@@ -145,6 +152,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EXTRACURRICULAR,
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.STAFF_GUIDE,
   ],
   PARENT: [
     PERMISSIONS.DASHBOARD,
@@ -172,6 +180,7 @@ export const ROLE_PERMISSIONS = {
 
 export const NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Dashboard' },
+  { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Communication' },
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'Students' },
@@ -229,6 +238,7 @@ export const PARENT_NAV_GROUPS = [
 /** Teacher-facing menu — daily classroom tools */
 export const TEACHER_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
   { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'My classes' },
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'My students' },
@@ -243,7 +253,7 @@ export const TEACHER_NAV_ITEMS = [
 ];
 
 export const TEACHER_NAV_GROUPS = [
-  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD] },
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.STAFF_GUIDE] },
   { id: 'messages', title: 'Messages', permissions: [PERMISSIONS.COMMUNICATION] },
   { id: 'classroom', title: 'My classroom', permissions: [PERMISSIONS.CLASSES, PERMISSIONS.STUDENTS, PERMISSIONS.COURSES, PERMISSIONS.ATTENDANCE] },
   { id: 'teaching', title: 'Teaching', permissions: [PERMISSIONS.MARKS, PERMISSIONS.HOMEWORK, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.TIMETABLE] },
@@ -267,6 +277,7 @@ export const STUDENT_NAV_GROUPS = [
 /** Accountant-facing menu — finance, students, and school services */
 export const ACCOUNTANT_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
   { to: 'students', permission: PERMISSIONS.STUDENTS, icon: 'Users', label: 'Students' },
@@ -282,7 +293,7 @@ export const ACCOUNTANT_NAV_ITEMS = [
 ];
 
 export const ACCOUNTANT_NAV_GROUPS = [
-  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION] },
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION, PERMISSIONS.STAFF_GUIDE] },
   { id: 'students', title: 'Students', permissions: [PERMISSIONS.STUDENTS, PERMISSIONS.CLASSES] },
   { id: 'finance', title: 'Finance', permissions: [PERMISSIONS.FEES] },
   { id: 'services', title: 'Services', permissions: [PERMISSIONS.TRANSPORT] },
@@ -292,12 +303,13 @@ export const ACCOUNTANT_NAV_GROUPS = [
 /** Activities Manager — activities only (list, add, enroll, assign coach, reports) */
 export const ACTIVITIES_MANAGER_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'extracurricular', permission: PERMISSIONS.EXTRACURRICULAR, icon: 'Sparkles', label: 'Activities' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Activity reports' },
 ];
 
 export const ACTIVITIES_MANAGER_NAV_GROUPS = [
-  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD] },
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.STAFF_GUIDE] },
   { id: 'activities', title: 'Activities', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.REPORTS] },
 ];
 
@@ -314,7 +326,7 @@ const STAFF_ROLES = new Set([
 
 /** Staff / admin sidebar groups — collapsible sections */
 export const ADMIN_NAV_GROUPS = [
-  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION] },
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.REPORTS, PERMISSIONS.COMMUNICATION, PERMISSIONS.STAFF_GUIDE] },
   { id: 'people', title: 'People', permissions: [PERMISSIONS.STUDENTS, PERMISSIONS.TEACHERS, PERMISSIONS.USERS] },
   { id: 'classes', title: 'Classes & courses', permissions: [PERMISSIONS.CLASSES, PERMISSIONS.COURSES, PERMISSIONS.TIMETABLE] },
   { id: 'assessment', title: 'Assessment', permissions: [PERMISSIONS.MARKS, PERMISSIONS.ATTENDANCE, PERMISSIONS.HOMEWORK] },

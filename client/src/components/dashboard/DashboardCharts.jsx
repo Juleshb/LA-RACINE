@@ -10,6 +10,7 @@ const ATTENDANCE_COLORS = {
   present: '#65a30d',
   absent: '#ef4444',
   late: '#f59e0b',
+  excused: '#0ea5e9',
 };
 
 function ChartTooltip({ active, payload, label }) {
@@ -29,7 +30,7 @@ function ChartTooltip({ active, payload, label }) {
 
 export function AttendanceDonutChart({ stats }) {
   const { t } = useTranslation();
-  const keys = ['present', 'absent', 'late'];
+  const keys = ['present', 'absent', 'late', 'excused'];
   const data = keys.map((key) => ({
     key,
     name: t(`staffDash.attendance.${key}`),
@@ -89,6 +90,7 @@ export function AttendanceTrendChart({ weeklyTrend = [] }) {
   const presentLabel = t('staffDash.attendance.present');
   const absentLabel = t('staffDash.attendance.absent');
   const lateLabel = t('staffDash.attendance.late');
+  const excusedLabel = t('staffDash.attendance.excused');
 
   return (
     <ChartCard
@@ -113,6 +115,7 @@ export function AttendanceTrendChart({ weeklyTrend = [] }) {
             <Area type="monotone" dataKey="present" name={presentLabel} stroke="#65a30d" fill="url(#presentFill)" strokeWidth={2.5} />
             <Area type="monotone" dataKey="absent" name={absentLabel} stroke="#ef4444" fill="transparent" strokeWidth={2} />
             <Area type="monotone" dataKey="late" name={lateLabel} stroke="#f59e0b" fill="transparent" strokeWidth={2} />
+            <Area type="monotone" dataKey="excused" name={excusedLabel} stroke="#0ea5e9" fill="transparent" strokeWidth={2} />
           </AreaChart>
         </ResponsiveContainer>
       )}

@@ -6,6 +6,7 @@ import { STUDENT_NAV_ITEMS } from '../../config/permissions';
 import { translateStudentNavItem, useTranslation } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../icons/AppIcon';
+import InstallPortalApp from '../InstallPortalApp';
 
 const iconMap = {
   LayoutDashboard,
@@ -111,6 +112,7 @@ export default function StudentSidebar({ campusId, badges = {} }) {
       </nav>
 
       <div className="student-sidebar-footer">
+        <InstallPortalApp />
         <button type="button" onClick={handleLogout} className="student-sidebar-signout">
           <LogOut className="w-[18px] h-[18px]" />
           {t('common.signOut')}

@@ -7,6 +7,7 @@ import ModernStatCard from './ModernStatCard';
 import DashboardShell from './DashboardShell';
 import DashboardPanel from './DashboardPanel';
 import DashQuickLink from './DashQuickLink';
+import { AttendanceDonutChart, AttendanceTrendChart } from './DashboardCharts';
 import { useTranslation } from '../../context/LanguageContext';
 
 function formatTime(value) {
@@ -26,7 +27,16 @@ export default function TeacherDashboard({ campusId, data, userName }) {
     recentMessages,
     upcomingHomework,
     attendanceToday,
+    weeklyTrend = [],
   } = data;
+
+  const attendanceChart = {
+    presentToday: attendanceToday.present,
+    absentToday: attendanceToday.absent,
+    lateToday: attendanceToday.late,
+    excusedToday: attendanceToday.excused,
+    attendanceRate: attendanceToday.attendanceRate ?? null,
+  };
 
   const homeroomCount = classes.filter((c) => c.isHomeroom).length;
   const todayLabel = new Date().toLocaleDateString(
@@ -97,6 +107,17 @@ export default function TeacherDashboard({ campusId, data, userName }) {
           sub={t('staffDash.teacher.announcementsParentReplies')}
           accent="gold"
         />
+      </div>
+
+      <div className="dash-section">
+        <div className="dash-section-label">
+          <h2>{t('staffDash.charts.attendanceTrend.title')}</h2>
+          <p>{t('staffDash.charts.attendanceTrend.description')}</p>
+        </div>
+        <div className="dash-charts-grid">
+          <AttendanceDonutChart stats={attendanceChart} />
+          <AttendanceTrendChart weeklyTrend={weeklyTrend} />
+        </div>
       </div>
 
       <div className="dash-role-grid">

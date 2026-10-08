@@ -6,6 +6,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import App from './App';
 import ApiLoader from './components/ApiLoader';
 import './index.css';
+import './lib/portalInstall';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

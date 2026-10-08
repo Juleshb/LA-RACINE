@@ -6,6 +6,7 @@ import { useTranslation } from '../context/LanguageContext';
 import { getLoginRedirect } from '../config/permissions';
 import { setActiveCampus, api } from '../lib/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import InstallPortalApp from '../components/InstallPortalApp';
 
 export default function Login() {
   const { login, verifyLoginOtp } = useAuth();
@@ -407,6 +408,7 @@ export default function Login() {
           )}
         </div>
 
+        <InstallPortalApp className="portal-install-login" />
         <p className="login-footer-motto">Discipline · Intelligence · Innovation</p>
       </section>
     </div>

@@ -33,7 +33,8 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
         unreadCount: 0,
         recentMessages: [],
         upcomingHomework: [],
-        attendanceToday: { present: 0, absent: 0, late: 0, excused: 0, total: 0, marked: 0 },
+        attendanceToday: { present: 0, absent: 0, late: 0, excused: 0, total: 0, marked: 0, attendanceRate: null },
+        weeklyTrend: [],
       });
     }
 
@@ -41,6 +42,8 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dayIndex = schoolDayIndex(today);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 6);
 
     const classIds = await getTeacherClassIds(teacherId, req.campusId, req.academicYearId);
 
@@ -53,7 +56,7 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
       broadcasts,
       openThreads,
       students,
-      todayAttendance,
+      weekAttendance,
     ] = await Promise.all([
       prisma.class.findMany({
         where: { teacherId, ...base },
@@ -145,10 +148,10 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
       classIds.length
         ? prisma.attendance.findMany({
             where: {
-              date: today,
+              date: { gte: weekStart, lte: today },
               student: { classId: { in: classIds }, ...base, registrationStatus: 'APPROVED' },
             },
-            select: { status: true },
+            select: { status: true, date: true },
           })
         : [],
     ]);
@@ -182,14 +185,38 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
       })),
     ];
 
+    const todayKey = today.toISOString().split('T')[0];
+    const todayAttendance = weekAttendance.filter(
+      (row) => new Date(row.date).toISOString().split('T')[0] === todayKey,
+    );
+    const countStatus = (rows, status) => rows.filter((row) => row.status === status).length;
     const attendanceToday = {
-      present: todayAttendance.filter((a) => a.status === 'PRESENT').length,
-      absent: todayAttendance.filter((a) => a.status === 'ABSENT').length,
-      late: todayAttendance.filter((a) => a.status === 'LATE').length,
-      excused: todayAttendance.filter((a) => a.status === 'EXCUSED').length,
+      present: countStatus(todayAttendance, 'PRESENT'),
+      absent: countStatus(todayAttendance, 'ABSENT'),
+      late: countStatus(todayAttendance, 'LATE'),
+      excused: countStatus(todayAttendance, 'EXCUSED'),
       marked: todayAttendance.length,
       total: students.length,
+      attendanceRate: todayAttendance.length
+        ? Math.round((countStatus(todayAttendance, 'PRESENT') / todayAttendance.length) * 1000) / 10
+        : null,
     };
+    const weeklyTrend = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(weekStart);
+      day.setDate(weekStart.getDate() + index);
+      const key = day.toISOString().split('T')[0];
+      const rows = weekAttendance.filter(
+        (row) => new Date(row.date).toISOString().split('T')[0] === key,
+      );
+      return {
+        date: key,
+        label: day.toLocaleDateString('en-US', { weekday: 'short' }),
+        present: countStatus(rows, 'PRESENT'),
+        absent: countStatus(rows, 'ABSENT'),
+        late: countStatus(rows, 'LATE'),
+        excused: countStatus(rows, 'EXCUSED'),
+      };
+    });
 
     const unreadBroadcasts = broadcasts.filter((b) => !b.reads.length);
     const unreadThreads = openThreads.filter((t) => t.messages[0]?.sender?.role === 'PARENT');
@@ -231,6 +258,7 @@ router.get('/dashboard', authorizePermission(PERMISSIONS.DASHBOARD), async (req,
       recentMessages,
       upcomingHomework: homeworkItems,
       attendanceToday,
+      weeklyTrend,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

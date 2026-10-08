@@ -558,6 +558,10 @@ export const api = {
   setParentChildAccountStatus: (studentId, isActive) => request(`/parent/children/${studentId}/account/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 
   getTeacherDashboard: () => request('/teacher/dashboard'),
+  askStaffGuide: (messages, language) => request('/staff/ask', {
+    method: 'POST',
+    body: JSON.stringify({ messages, language }),
+  }),
   getStudentDashboard: () => request('/student/dashboard'),
   getStudentAiStatus: () => request('/student/ai-status'),
   getStudentAiChats: () => request('/student/ai-chats'),
