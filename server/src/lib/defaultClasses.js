@@ -120,7 +120,7 @@ export async function ensureDefaultClasses(db, campusId, academicYearId) {
   const toCreate = DEFAULT_CLASS_LEVELS.filter(
     (lvl) => !existingKeys.has(`${lvl.grade}:${lvl.section}`),
   );
-  if (!toCreate.length) return 0;
+  if (!toCreate.length || existing.length > 0) return 0;
 
   await db.class.createMany({
     data: toCreate.map((lvl) => ({

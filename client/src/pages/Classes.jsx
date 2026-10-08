@@ -96,6 +96,7 @@ export default function Classes() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState('');
+  const [pageNotice, setPageNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -351,13 +352,15 @@ export default function Classes() {
         : t('pageBody.classes.deleteConfirm'),
     );
     if (!ok) return;
+    setPageNotice(null);
     try {
       await api.deleteClass(id);
       if (editingId === id) closeForm();
       if (detailClass?.id === id) closeDetail();
+      setPageNotice({ type: 'success', text: t('pageBody.classes.deleted') });
       loadClasses();
     } catch (err) {
-      alert(err.message);
+      setPageNotice({ type: 'error', text: err.message || t('ui.delete') });
     }
   };
 
@@ -706,6 +709,12 @@ export default function Classes() {
           </div>
         </div>
       </section>
+
+      {pageNotice && (
+        <p className={`mb-4 text-sm rounded-lg px-3 py-2 ${pageNotice.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800'}`}>
+          {pageNotice.text}
+        </p>
+      )}
 
       <section className="classes-toolbar">
         <div className="classes-search">
