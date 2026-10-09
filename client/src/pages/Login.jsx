@@ -6,6 +6,7 @@ import { useTranslation } from '../context/LanguageContext';
 import { getLoginRedirect } from '../config/permissions';
 import { setActiveCampus, api } from '../lib/api';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import PortalThemeToggle from '../components/PortalThemeToggle';
 import InstallPortalApp from '../components/InstallPortalApp';
 
 export default function Login() {
@@ -176,7 +177,10 @@ export default function Login() {
             <ArrowLeft className="w-4 h-4" aria-hidden />
             {t('app.login.backWebsite')}
           </Link>
-          <LanguageSwitcher tone="app" />
+          <span className="inline-flex items-center gap-2">
+            <PortalThemeToggle />
+            <LanguageSwitcher tone="app" />
+          </span>
         </div>
 
         <div className="login-mobile-brand lg:hidden">

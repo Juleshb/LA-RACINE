@@ -7,10 +7,10 @@ import ChartCard from './ChartCard';
 import { useTranslation } from '../../context/LanguageContext';
 
 const ATTENDANCE_COLORS = {
-  present: '#65a30d',
+  present: '#0284c7',
   absent: '#ef4444',
   late: '#f59e0b',
-  excused: '#0ea5e9',
+  excused: '#0c4a6e',
 };
 
 function ChartTooltip({ active, payload, label }) {
@@ -104,15 +104,15 @@ export function AttendanceTrendChart({ weeklyTrend = [] }) {
           <AreaChart data={weeklyTrend} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
             <defs>
               <linearGradient id="presentFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#84cc16" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#84cc16" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#0284c7" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#0284c7" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="present" name={presentLabel} stroke="#65a30d" fill="url(#presentFill)" strokeWidth={2.5} />
+            <Area type="monotone" dataKey="present" name={presentLabel} stroke="#0284c7" fill="url(#presentFill)" strokeWidth={2.5} />
             <Area type="monotone" dataKey="absent" name={absentLabel} stroke="#ef4444" fill="transparent" strokeWidth={2} />
             <Area type="monotone" dataKey="late" name={lateLabel} stroke="#f59e0b" fill="transparent" strokeWidth={2} />
             <Area type="monotone" dataKey="excused" name={excusedLabel} stroke="#0ea5e9" fill="transparent" strokeWidth={2} />
@@ -126,7 +126,7 @@ export function AttendanceTrendChart({ weeklyTrend = [] }) {
 export function FeeStatusChart({ stats }) {
   const { t } = useTranslation();
   const data = [
-    { name: t('staffDash.feeStatus.paid'), value: stats.paid || 0, color: '#65a30d' },
+    { name: t('staffDash.feeStatus.paid'), value: stats.paid || 0, color: '#0284c7' },
     { name: t('staffDash.feeStatus.pending'), value: stats.pending || 0, color: '#f59e0b' },
     { name: t('staffDash.feeStatus.overdue'), value: stats.overdue || 0, color: '#ef4444' },
   ];
@@ -170,7 +170,7 @@ export function StudentsByClassChart({ data }) {
             <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis type="category" dataKey="name" width={92} tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
             <Tooltip content={<ChartTooltip />} />
-            <Bar dataKey="count" name={t('staffDash.charts.students')} fill="#65a30d" radius={[0, 6, 6, 0]} />
+            <Bar dataKey="count" name={t('staffDash.charts.students')} fill="#0369a1" radius={[0, 6, 6, 0]} />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -217,12 +217,12 @@ export function RegistrationChart({ data }) {
 }
 
 const MARKS_ASSESSMENT_COLORS = {
-  TEST1: '#65a30d',
-  TEST2: '#84cc16',
-  EX: '#4d7c0f',
+  TEST1: '#0b2840',
+  TEST2: '#0369a1',
+  EX: '#0284c7',
   SCORE: '#0ea5e9',
-  Final: '#8b5cf6',
-  CAT: '#f59e0b',
+  Final: '#075985',
+  CAT: '#7dd3fc',
 };
 
 function marksBarColor(name) {
@@ -278,7 +278,7 @@ export function MarksRecordingChart({ marksStats }) {
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="count" name={marksLabel} fill="#65a30d" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="count" name={marksLabel} fill="#0284c7" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -306,7 +306,7 @@ export function MarksByClassChart({ data }) {
             <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis type="category" dataKey="name" width={92} tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
             <Tooltip content={<ChartTooltip />} />
-            <Bar dataKey="count" name={t('staffDash.charts.marks')} fill="#4d7c0f" radius={[0, 6, 6, 0]} />
+            <Bar dataKey="count" name={t('staffDash.charts.marks')} fill="#0c4a6e" radius={[0, 6, 6, 0]} />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -331,7 +331,7 @@ export function MarksRecordingTrendChart({ weeklyRecording = [] }) {
             <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <Tooltip content={<ChartTooltip />} />
-            <Bar dataKey="count" name={t('staffDash.charts.marksSaved')} fill="#84cc16" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="count" name={t('staffDash.charts.marksSaved')} fill="#0369a1" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       )}

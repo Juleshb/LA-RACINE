@@ -10,6 +10,7 @@ import { useTranslation } from '../context/LanguageContext';
 import { api, setActiveCampus } from '../lib/api';
 import Logo, { MottoBanner } from '../components/Logo';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import PortalThemeToggle from '../components/PortalThemeToggle';
 import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 
@@ -179,6 +180,7 @@ export default function Campuses() {
         <div className="campuses-topbar-inner">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
+            <PortalThemeToggle />
             <LanguageSwitcher tone="app" />
             <Link
               to="/profile"
@@ -213,7 +215,7 @@ export default function Campuses() {
             </p>
           </div>
           {isManager && (
-            <button onClick={openCreate} className="btn-primary flex items-center gap-2 shrink-0">
+            <button type="button" onClick={openCreate} className="campuses-create">
               <Plus className="w-4 h-4" />
               {t('staffDash.campuses.newCampus')}
             </button>
@@ -456,14 +458,14 @@ export default function Campuses() {
 
         {isManager && campuses.length > 0 && (
           <div className="campuses-guide">
-            <h3 className="font-semibold text-gray-900 mb-2">{t('staffDash.campuses.managerGuide')}</h3>
-            <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+            <h3 className="campuses-guide-title">{t('staffDash.campuses.managerGuide')}</h3>
+            <ol className="campuses-steps">
               <li>{t('staffDash.campuses.guide1')}</li>
               <li>{t('staffDash.campuses.guide2')}</li>
               <li>{t('staffDash.campuses.guide3')}</li>
               <li>{t('staffDash.campuses.guide4')}</li>
             </ol>
-            <p className="text-xs text-gray-400 mt-3">{t('staffDash.campuses.statsNote')}</p>
+            <p className="campuses-guide-note">{t('staffDash.campuses.statsNote')}</p>
           </div>
         )}
       </div>

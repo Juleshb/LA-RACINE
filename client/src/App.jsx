@@ -69,6 +69,7 @@ import PublicContact from './pages/public/PublicContact';
 
 export default function App() {
   return (
+    <div className="app-frame">
     <Routes>
       <Route path="/verify/bulletin/:token" element={<VerifyBulletin />} />
 
@@ -149,5 +150,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </div>
   );
 }

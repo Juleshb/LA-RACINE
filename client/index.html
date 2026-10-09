@@ -7,6 +7,19 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>
       (function () {
+        try {
+          var path = location.pathname;
+          var portal = /^\/(login|reset-password|set-new-password|app|profile|campuses|campus)(\/|$)/.test(path);
+          if (portal) document.documentElement.classList.add('portal-canvas');
+          if (portal && localStorage.getItem('laracine-portal-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script>
+      (function () {
         var deferred = null;
         window.__getPortalInstallPrompt = function () { return deferred; };
         window.__clearPortalInstallPrompt = function () { deferred = null; };

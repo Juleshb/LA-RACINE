@@ -1,0 +1,927 @@
+/* Portal dark mode. Public pages stay light because the dark class is only set on portal routes. */
+
+html.dark {
+  color-scheme: dark;
+  --portal-bg: #071422;
+  --portal-surface: #102033;
+  --portal-surface-2: #16304a;
+  --portal-line: rgba(125, 211, 252, 0.18);
+  --portal-ink: #e8f4fc;
+  --portal-muted: #94a8bc;
+  --portal-sky: #7dd3fc;
+}
+
+html.dark body {
+  background: var(--portal-bg);
+  color: var(--portal-ink);
+}
+
+html.dark .bg-white,
+html.dark .bg-white\/80,
+html.dark .bg-white\/90,
+html.dark .bg-white\/95 {
+  background-color: var(--portal-surface);
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-gray-50\/50,
+html.dark .bg-gray-50\/60,
+html.dark .bg-gray-50\/70,
+html.dark .bg-gray-50\/80,
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .bg-gray-100 {
+  background-color: var(--portal-bg);
+}
+
+html.dark .bg-gray-200,
+html.dark .bg-slate-200 {
+  background-color: #1c3a56;
+}
+
+html.dark .hover\:bg-white:hover,
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover,
+html.dark .hover\:bg-slate-50:hover {
+  background-color: var(--portal-surface-2);
+}
+
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-black,
+html.dark .hover\:text-gray-900:hover {
+  color: var(--portal-ink);
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-600,
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: #c5d5e4;
+}
+
+html.dark .text-gray-500,
+html.dark .text-gray-400,
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: var(--portal-muted);
+}
+
+html.dark .text-brand-900,
+html.dark .text-brand-800 {
+  color: #e0f2fe;
+}
+
+html.dark .text-brand-700,
+html.dark .text-brand-600 {
+  color: var(--portal-sky);
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--portal-line);
+}
+
+html.dark .bg-brand-50,
+html.dark .bg-sky-50,
+html.dark .bg-sky-100,
+html.dark .hover\:bg-brand-50:hover,
+html.dark .hover\:bg-sky-50:hover {
+  background-color: rgba(14, 165, 233, 0.14);
+}
+
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.14); }
+html.dark .bg-amber-50,
+html.dark .bg-yellow-50 { background-color: rgba(245, 158, 11, 0.14); }
+html.dark .bg-emerald-50,
+html.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.14); }
+html.dark .text-red-600,
+html.dark .text-red-700 { color: #fca5a5; }
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-yellow-800 { color: #fcd34d; }
+html.dark .text-emerald-700,
+html.dark .text-emerald-800,
+html.dark .text-green-700 { color: #6ee7b7; }
+
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="file"]):not([type="color"]),
+html.dark select,
+html.dark textarea {
+  background-color: #0c1b2e;
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .top-campus-menu-trigger,
+html.dark .top-campus-menu-panel,
+html.dark .top-profile-menu-panel,
+html.dark .portal-install-dialog {
+  background-color: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .top-campus-menu-name,
+html.dark .top-campus-menu-head-name,
+html.dark .portal-install-dialog h2 {
+  color: var(--portal-ink);
+}
+
+html.dark .nav-group-toggle-active {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--portal-sky);
+}
+
+html.dark .nav-group-toggle:hover {
+  background: var(--portal-surface-2);
+  color: var(--portal-ink);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+html.dark .card,
+html.dark .btn-secondary,
+html.dark .input,
+html.dark .page-title,
+html.dark .sidebar,
+html.dark .sidebar-manager,
+html.dark .sidebar-brand,
+html.dark .sidebar-user,
+html.dark .sidebar-footer,
+html.dark .manager-topbar,
+html.dark .app-menu-btn,
+html.dark .top-profile-menu-trigger,
+html.dark .language-dropdown-menu,
+html.dark .language-dropdown-app .language-dropdown-trigger {
+  background-color: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .page-description,
+html.dark .label,
+html.dark .section-title {
+  color: var(--portal-muted);
+}
+
+html.dark .nav-item {
+  color: #c5d5e4;
+}
+
+html.dark .nav-item:hover {
+  background: var(--portal-surface-2);
+  color: var(--portal-ink);
+}
+
+html.dark .nav-item-active {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--portal-sky);
+  border-color: rgba(125, 211, 252, 0.28);
+}
+
+html.dark .portal-theme-toggle,
+html.dark .portal-install-btn {
+  background: rgba(14, 165, 233, 0.14);
+  color: var(--portal-sky);
+  border-color: var(--portal-line);
+}
+
+html.dark .student-portal-layout {
+  background: var(--portal-bg);
+}
+
+html.dark .student-navbar,
+html.dark .student-bottom-nav {
+  background: rgba(16, 32, 51, 0.94);
+  border-color: var(--portal-line);
+}
+
+html.dark .student-navbar-title,
+html.dark .student-navbar-kicker,
+html.dark .student-navlink,
+html.dark .student-bottom-nav-item.student-nav-tile-active {
+  color: var(--portal-sky);
+}
+
+html.dark .student-home-tile,
+html.dark .student-tile-sky,
+html.dark .student-tile-violet,
+html.dark .student-tile-green,
+html.dark .student-tile-gold,
+html.dark .student-tile-rose,
+html.dark .student-tile-indigo,
+html.dark .student-tile-cyan,
+html.dark .student-tile-teal,
+html.dark .student-tile-pink,
+html.dark .student-tile-orange {
+  background: var(--portal-surface);
+  border-color: var(--portal-line);
+  color: var(--portal-ink);
+}
+
+html.dark .student-card,
+html.dark .student-section-title {
+  color: var(--portal-ink);
+}
+
+html.dark .dash-metric,
+html.dark .dash-panel,
+html.dark .dash-spotlight,
+html.dark .dash-spotlight-marks,
+html.dark .dash-spotlight-att,
+html.dark .dash-quick-action,
+html.dark .dash-setup-step,
+html.dark .dash-list-row.is-link:hover {
+  background: var(--portal-surface);
+  border-color: var(--portal-line);
+  color: var(--portal-ink);
+}
+
+html.dark .dash-metric:hover,
+html.dark .dash-panel:hover,
+html.dark .dash-quick-action:hover,
+html.dark .dash-spotlight:hover {
+  background: var(--portal-surface-2);
+  border-color: rgba(125, 211, 252, 0.4);
+}
+
+html.dark .dash-metric-value,
+html.dark .dash-panel-title,
+html.dark .dash-spotlight-value,
+html.dark .dash-section-label h2,
+html.dark .dash-quick-action-title,
+html.dark .dash-list-title,
+html.dark .dash-brand {
+  color: #f0f9ff;
+}
+
+html.dark .dash-metric-label,
+html.dark .dash-metric-sub,
+html.dark .dash-panel-desc,
+html.dark .dash-spotlight-label,
+html.dark .dash-spotlight-meta,
+html.dark .dash-quick-action-desc,
+html.dark .dash-section-label p,
+html.dark .dash-list-meta {
+  color: var(--portal-muted);
+}
+
+html.dark .dash-metric-icon,
+html.dark .dash-quick-action-icon,
+html.dark .dash-quick-link-icon {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--portal-sky);
+}
+
+html.dark .dash-list-row,
+html.dark .dash-list-avatar {
+  border-color: var(--portal-line);
+}
+
+html.dark .dashboard-chart-tooltip {
+  background: #102033;
+  border-color: var(--portal-line);
+  color: var(--portal-ink);
+}
+
+html.dark .login-page {
+  --login-ink: #e8f4fc;
+  --login-stone: #94a8bc;
+  background: #071422;
+}
+
+html.dark .login-panel {
+  background:
+    radial-gradient(ellipse 70% 40% at 100% 0%, rgba(14, 165, 233, 0.16), transparent 55%),
+    linear-gradient(180deg, #0b1c30 0%, #071422 100%);
+}
+
+html.dark .login-input,
+html.dark .login-back-link {
+  background: #102033;
+  color: #e8f4fc;
+  border-color: rgba(125, 211, 252, 0.22);
+}
+
+html.dark .login-input::placeholder {
+  color: #64748b;
+}
+
+html.dark table {
+  color: inherit;
+}
+
+html.dark thead,
+html.dark th {
+  background: #0c1b2e;
+  color: #d7e7f4;
+}
+
+html.dark td,
+html.dark th {
+  border-color: var(--portal-line);
+}
+
+html.dark tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html.dark .campuses-page {
+  background: var(--portal-bg);
+  color: var(--portal-ink);
+}
+
+html.dark .campuses-topbar,
+html.dark .campuses-stat,
+html.dark .campuses-search,
+html.dark .campuses-guide,
+html.dark .campus-card-v2,
+html.dark .campus-metric,
+html.dark .classes-stat,
+html.dark .classes-card,
+html.dark .classes-chart-card,
+html.dark .classes-search,
+html.dark .comm-list-panel,
+html.dark .comm-thread-panel,
+html.dark .profile-section,
+html.dark .users-tab,
+html.dark .stat-card,
+html.dark .manager-welcome,
+html.dark .form-mode-panel {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .campuses-hero,
+html.dark .classes-hero,
+html.dark .comm-panel-head,
+html.dark .form-mode-panel-header {
+  background: linear-gradient(145deg, #0b2840 0%, #0c4a6e 70%, #0369a1 100%);
+  border-color: rgba(125, 211, 252, 0.28);
+  color: #f0f9ff;
+}
+
+html.dark .campuses-kicker,
+html.dark .classes-hero-kicker,
+html.dark .campuses-hero-text,
+html.dark .classes-hero-text,
+html.dark .campuses-stat-label,
+html.dark .campus-card-v2-meta,
+html.dark .campus-metric-label,
+html.dark .campus-card-v2-contact,
+html.dark .classes-stat-label,
+html.dark .classes-card-meta,
+html.dark .profile-section-header p,
+html.dark .users-tab {
+  color: var(--portal-muted);
+}
+
+html.dark .campuses-hero-title,
+html.dark .classes-hero-title,
+html.dark .campuses-stat-value,
+html.dark .campus-card-v2-title,
+html.dark .campus-metric-value,
+html.dark .classes-stat-value,
+html.dark .classes-card-title,
+html.dark .profile-section-header h2,
+html.dark .comm-thread-head h3,
+html.dark .comm-list-title {
+  color: #f0f9ff;
+}
+
+html.dark .campuses-hero .campuses-kicker,
+html.dark .campuses-hero .campuses-hero-text,
+html.dark .classes-hero .classes-hero-kicker,
+html.dark .classes-hero .classes-hero-text,
+html.dark .comm-panel-head,
+html.dark .form-mode-panel-header {
+  color: rgba(224, 242, 254, 0.86);
+}
+
+html.dark .campus-card-v2.is-inactive,
+html.dark .users-tab:hover,
+html.dark .comm-list-item:hover,
+html.dark .comm-list-item.is-active {
+  background: var(--portal-surface-2);
+}
+
+html.dark .users-tab-active,
+html.dark .users-tab-staff.users-tab-active,
+html.dark .classes-segment-btn.is-active {
+  background: rgba(14, 165, 233, 0.18);
+  color: var(--portal-sky);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+html.dark .users-search-input,
+html.dark .campuses-search input,
+html.dark .classes-search input {
+  background: transparent;
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .campus-card-v2-icon,
+html.dark .campus-card-v2-year,
+html.dark .classes-stat-icon {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--portal-sky);
+  border-color: var(--portal-line);
+}
+
+html.dark .campus-metrics,
+html.dark .campuses-steps li {
+  background: var(--portal-surface-2);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .campuses-guide-title,
+html.dark .campuses-stat-value,
+html.dark .campus-card-v2-title,
+html.dark .campus-metric-value {
+  color: #f0f9ff;
+}
+
+html.dark .campuses-guide-note,
+html.dark .campuses-steps li {
+  color: var(--portal-muted);
+}
+
+html.dark .campuses-steps li::before {
+  background: #0284c7;
+  color: #f0f9ff;
+}
+
+html.dark .campuses-create {
+  background: #f0f9ff;
+  color: #0b2840;
+}
+
+html.dark .profile-page {
+  color: var(--portal-ink);
+}
+
+.portal-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.85rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.portal-theme-toggle:hover {
+  border-color: #7dd3fc;
+  color: #0369a1;
+  transform: translateY(-1px);
+}
+
+html.dark .profile-shell,
+html.dark .student-sidebar,
+html.dark .student-portal-layout {
+  background: var(--portal-bg);
+  color: var(--portal-ink);
+}
+
+html.dark .bulletin-preview-wrap {
+  background: #0c1b2e;
+  border-color: var(--portal-line);
+}
+
+html.dark .ask-racine-suggestions button,
+html.dark .ask-racine-actions a,
+html.dark .ask-racine-msg.is-assistant {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .ask-racine-head h1,
+html.dark .ask-racine-msg.is-assistant,
+html.dark .ask-racine-steps {
+  color: #f0f9ff;
+}
+
+html.dark .ask-racine-head p,
+html.dark .ask-racine-empty p,
+html.dark .ask-racine-thinking,
+html.dark .ask-racine-actions p,
+html.dark .ask-racine-msg-label {
+  color: var(--portal-muted);
+}
+
+html.dark .ask-racine-mark {
+  background: rgba(14, 165, 233, 0.18);
+  color: var(--portal-sky);
+}
+
+html.dark .ask-racine-suggestions button,
+html.dark .ask-racine-actions a {
+  color: var(--portal-sky);
+}
+
+html.dark .ask-racine-suggestions button:hover,
+html.dark .ask-racine-actions a:hover {
+  background: rgba(14, 165, 233, 0.22);
+  color: #f0f9ff;
+}
+
+html.dark .ask-racine-form input::placeholder {
+  color: #7f93a8;
+}
+
+html.dark .domain-block,
+html.dark .domain-block-header,
+html.dark .period-report-actions,
+html.dark .filter-panel,
+html.dark .campus-card,
+html.dark .classes-toolbar,
+html.dark .period-context,
+html.dark .period-report-empty,
+html.dark .timetable-legend,
+html.dark .timetable-page .timetable-legend,
+html.dark .timetable-summary-bar,
+html.dark .timetable-grid-wrap,
+html.dark .timetable-empty,
+html.dark .ask-racine-suggestions,
+html.dark .ask-racine-msg.is-assistant,
+html.dark .ask-racine-form,
+html.dark .ask-racine-form input,
+html.dark .reports-catalog,
+html.dark .reports-catalog-head,
+html.dark .reports-filters,
+html.dark .reports-preview,
+html.dark .reports-action-btn,
+html.dark .reports-table-foot,
+html.dark .comm-btn,
+html.dark .comm-icon-btn,
+html.dark .comm-tabs,
+html.dark .comm-search,
+html.dark .comm-search-input,
+html.dark .comm-bubble.is-theirs,
+html.dark .comm-composer,
+html.dark .comm-composer-input,
+html.dark .comm-sms-option,
+html.dark .comm-delivery-card,
+html.dark .pm-setup,
+html.dark .pm-session,
+html.dark .pm-stat,
+html.dark .pm-grid-toolbar,
+html.dark .pm-search,
+html.dark .pm-table,
+html.dark .pm-score-input,
+html.dark .pm-notes-input,
+html.dark .pm-dock,
+html.dark .pm-term-btn,
+html.dark .period-segment,
+html.dark .period-segment-btn,
+html.dark .period-mini-stat,
+html.dark .period-panel,
+html.dark .period-btn,
+html.dark .period-report,
+html.dark .period-report-head,
+html.dark .period-search,
+html.dark .period-report-table,
+html.dark .timetable-grid,
+html.dark .timetable-time-cell,
+html.dark .timetable-slot-btn,
+html.dark .timetable-cell-default,
+html.dark .timetable-cell-free,
+html.dark .timetable-stat-chip,
+html.dark .users-toolbar,
+html.dark .users-panel,
+html.dark .users-table,
+html.dark .users-table th,
+html.dark .users-table td,
+html.dark .modal-panel,
+html.dark .form-section,
+html.dark .form-section-header,
+html.dark .form-mode-context,
+html.dark .form-mode-footer,
+html.dark .profile-shell-header,
+html.dark .profile-tab,
+html.dark .profile-linked-block,
+html.dark .marks-context-card,
+html.dark .bulletin-layout-panel,
+html.dark .bulletin-preset-card,
+html.dark .bulletin-preview-bar,
+html.dark .bulletin-custom-editor,
+html.dark .bulletin-step,
+html.dark .bulletin-context-bar,
+html.dark .classes-chart-tooltip,
+html.dark .classes-metrics,
+html.dark .classes-transfer-bar,
+html.dark .classes-detail-search,
+html.dark .classes-detail-table,
+html.dark .nc-term-btn,
+html.dark .nc-search,
+html.dark .nc-grid-card,
+html.dark .nc-grid-table,
+html.dark .online-class-card,
+html.dark .student-card,
+html.dark .student-profile-card,
+html.dark .student-profile-menu-panel,
+html.dark .student-hw-card,
+html.dark .student-material-card,
+html.dark .student-question-card,
+html.dark .student-empty-card,
+html.dark .hub-stat,
+html.dark .table-report,
+html.dark .language-dropdown-menu,
+html.dark .top-profile-menu-item,
+html.dark .top-campus-menu-link,
+html.dark .student-select-panel,
+html.dark .in-app-viewer-panel {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .pm-term-btn.is-active,
+html.dark .period-segment-btn.is-active,
+html.dark .period-btn.is-selected,
+html.dark .profile-tab.is-active,
+html.dark .nc-term-btn.is-active,
+html.dark .comm-tabs button.is-active,
+html.dark .reports-action-btn:hover,
+html.dark .comm-btn:hover {
+  background: rgba(14, 165, 233, 0.18);
+  color: var(--portal-sky);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+html.dark .student-sidebar-brand,
+html.dark .student-header,
+html.dark .language-panel-app {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .nc-term-segment,
+html.dark .nc-grid-hint,
+html.dark .nc-term-btn.is-active,
+html.dark .api-loader-scrim,
+html.dark .api-loader-card {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .api-loader-scrim {
+  background: rgba(7, 20, 34, 0.55);
+}
+
+html.dark table td,
+html.dark table th,
+html.dark table tr {
+  background-color: transparent;
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .reports-table thead tr,
+html.dark .reports-table tbody tr:nth-child(even) td,
+html.dark .reports-catalog-item.is-active {
+  background: rgba(14, 165, 233, 0.12);
+  color: #e0f2fe;
+}
+
+html.dark .bulletin-scolaire-sheet,
+html.dark .bulletin-scolaire-sheet td,
+html.dark .bulletin-scolaire-sheet th,
+html.dark .nursery-bulletin-inner,
+html.dark .nursery-bulletin-table,
+html.dark .nursery-bulletin-table td,
+html.dark .nursery-bulletin-table th,
+html.dark .id-card,
+html.dark .id-card td,
+html.dark .id-card th {
+  background-color: #fff;
+  color: #0b2840;
+  border-color: #dbe7f0;
+}
+
+html.dark .from-white,
+html.dark .via-white,
+html.dark .to-white,
+html.dark .from-brand-50,
+html.dark .from-sky-50,
+html.dark .from-slate-50,
+html.dark .from-amber-50,
+html.dark .from-rose-50,
+html.dark .from-emerald-50,
+html.dark .from-gray-50 {
+  --tw-gradient-from: #16304a var(--tw-gradient-from-position);
+  --tw-gradient-to: #102033 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html.dark .users-tab,
+html.dark .users-tab:hover,
+html.dark .users-tab-staff.users-tab-active,
+html.dark .users-tab-students.users-tab-active,
+html.dark .users-tab-parents.users-tab-active,
+html.dark .users-toolbar,
+html.dark .users-toolbar-staff,
+html.dark .users-toolbar-students,
+html.dark .users-toolbar-parents,
+html.dark .users-panel,
+html.dark .users-search-input,
+html.dark .users-table th,
+html.dark .users-table td,
+html.dark .users-table tbody tr:hover td,
+html.dark .users-role-staff,
+html.dark .users-code,
+html.dark .users-avatar-staff,
+html.dark .users-avatar-student,
+html.dark .users-avatar-parent {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .users-tab-staff.users-tab-active,
+html.dark .users-tab-students.users-tab-active,
+html.dark .users-tab-parents.users-tab-active {
+  background: rgba(14, 165, 233, 0.18);
+  color: var(--portal-sky);
+}
+
+html.dark .users-tab-count,
+html.dark .users-tab-active .users-tab-count {
+  background: rgba(125, 211, 252, 0.16);
+  color: var(--portal-sky);
+}
+
+html.dark .pm-setup,
+html.dark .pm-term-segment,
+html.dark .pm-term-btn,
+html.dark .pm-term-btn.is-active,
+html.dark .pm-tests-toggle,
+html.dark .pm-tests-toggle:hover,
+html.dark .pm-session,
+html.dark .pm-stat,
+html.dark .pm-grid,
+html.dark .pm-table thead th,
+html.dark .pm-table tbody tr,
+html.dark .pm-table tbody tr.is-empty,
+html.dark .pm-table tbody tr.is-filled,
+html.dark .pm-table tbody tr.is-over,
+html.dark .pm-table tbody tr:hover,
+html.dark .pm-score-input,
+html.dark .pm-score-input.has-value,
+html.dark .pm-notes-input,
+html.dark .pm-dock,
+html.dark .pm-legacy-bar,
+html.dark .pm-help-summary,
+html.dark .pm-message.is-ok {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .pm-term-btn.is-active,
+html.dark .pm-score-input.has-value {
+  background: rgba(14, 165, 233, 0.16);
+  color: #e0f2fe;
+}
+
+html.dark .pm-setup-title,
+html.dark .pm-session-title,
+html.dark .pm-grid-title,
+html.dark .pm-stat-value {
+  color: #f0f9ff;
+}
+
+html.dark .online-class-card,
+html.dark .online-class-card-live,
+html.dark .online-class-card-starting_soon,
+html.dark .online-class-card-upcoming,
+html.dark .online-class-card-ended {
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+  border-color: var(--portal-line);
+}
+
+html.dark .online-class-title {
+  color: #f0f9ff;
+}
+
+html.dark .online-class-desc,
+html.dark .online-class-meta,
+html.dark .online-class-provider {
+  color: var(--portal-muted);
+}
+
+html.dark .online-class-status-upcoming,
+html.dark .online-class-status-ended {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--portal-sky);
+}
+
+html.dark .online-class-join-btn,
+html.dark .online-class-join-btn-live {
+  background: #0284c7;
+  color: #fff;
+}
+
+.app-frame {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+.portal-edu-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.portal-edu-icon {
+  position: absolute;
+  top: 0;
+  display: flex;
+  color: rgba(3, 105, 161, 0.16);
+  animation: portal-edu-drift var(--edu-dur, 30s) linear infinite;
+  animation-delay: var(--edu-delay, 0s);
+}
+
+.portal-edu-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+html.dark .portal-edu-icon {
+  color: rgba(125, 211, 252, 0.22);
+}
+
+@keyframes portal-edu-drift {
+  0% { transform: translate3d(0, 108vh, 0) rotate(0deg); }
+  100% { transform: translate3d(var(--edu-dx, 24px), -18vh, 0) rotate(var(--edu-rot, 16deg)); }
+}
+
+html.portal-canvas .campuses-page,
+html.portal-canvas .profile-shell,
+html.portal-canvas .login-page,
+html.dark.portal-canvas .campuses-page,
+html.dark.portal-canvas .login-page {
+  background: transparent;
+}
+
+html.portal-canvas .login-panel {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html.dark.portal-canvas .login-panel {
+  background: rgba(7, 20, 34, 0.78);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-edu-icon {
+    animation: none;
+    top: 18%;
+  }
+
+  .portal-edu-icon:nth-child(3n) { top: 48%; }
+  .portal-edu-icon:nth-child(3n + 1) { top: 74%; }
+}
+
+@media print {
+  .portal-edu-field {
+    display: none !important;
+  }
+
+  html.dark,
+  html.dark body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  html.dark .bg-white,
+  html.dark .card,
+  html.dark .dash-panel,
+  html.dark .dash-metric {
+    background: #fff !important;
+    color: #111 !important;
+  }
+}

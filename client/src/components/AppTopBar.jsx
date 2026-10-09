@@ -4,6 +4,7 @@ import { useTranslation } from '../context/LanguageContext';
 import TopCampusMenu from './TopCampusMenu';
 import TopProfileMenu from './TopProfileMenu';
 import LanguageSwitcher from './LanguageSwitcher';
+import PortalThemeToggle from './PortalThemeToggle';
 
 export default function AppTopBar({ portalLabel, onOpenMenu }) {
   const { campusId } = useCampus();
@@ -23,6 +24,7 @@ export default function AppTopBar({ portalLabel, onOpenMenu }) {
       )}
       <TopCampusMenu portalLabel={portalLabel} />
       <div className="manager-topbar-actions">
+        <PortalThemeToggle />
         <LanguageSwitcher tone="app" />
         <TopProfileMenu campusId={campusId} />
       </div>

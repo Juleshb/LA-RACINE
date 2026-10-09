@@ -109,7 +109,7 @@ export function buildRegistrationBreakdown(students) {
     if (statuses[key] != null) statuses[key] += 1;
   }
   return [
-    { name: 'Approved', value: statuses.APPROVED, color: '#65a30d' },
+    { name: 'Approved', value: statuses.APPROVED, color: '#0284c7' },
     { name: 'Pending', value: statuses.PENDING, color: '#f59e0b' },
     { name: 'Rejected', value: statuses.REJECTED, color: '#ef4444' },
   ].filter((item) => item.value > 0);

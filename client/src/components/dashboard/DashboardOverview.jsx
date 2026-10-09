@@ -24,7 +24,7 @@ import {
 import { useTranslation } from '../../context/LanguageContext';
 import { studentFullName } from '../../lib/studentName';
 
-export default function DashboardOverview({ campusId, data, shellProps }) {
+export default function DashboardOverview({ campusId, data, shellProps, lead }) {
   const { t, language } = useTranslation();
   const { stats, students, classes, teachers, fees, marksStats } = data;
   const studentsByClass = buildStudentsByClass(students, classes);
@@ -97,6 +97,8 @@ export default function DashboardOverview({ campusId, data, shellProps }) {
           accent="gold"
         />
       </div>
+
+      {lead}
 
       <div className="dash-bento">
         <div className="dash-bento-main">

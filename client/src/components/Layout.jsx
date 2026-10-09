@@ -130,7 +130,7 @@ export default function Layout() {
   };
 
   return (
-    <div className={`min-h-screen flex ${isStudent ? 'student-portal-layout bg-gradient-to-b from-violet-50/80 to-sky-50/50' : 'bg-gray-50'}`}>
+    <div className={`portal-shell min-h-screen flex ${isStudent ? 'student-portal-layout' : ''}`}>
       {isStudent ? (
         <StudentSidebar
           campusId={campusId}

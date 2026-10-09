@@ -16,7 +16,7 @@ export function buildAccountantRegistrationBreakdown(students) {
     if (statuses[key] != null) statuses[key] += 1;
   }
   return [
-    { name: 'Approved', value: statuses.APPROVED, color: '#65a30d' },
+    { name: 'Approved', value: statuses.APPROVED, color: '#0284c7' },
     { name: 'Awaiting confirmation', value: statuses.AWAITING_CONFIRMATION, color: '#3b82f6' },
     { name: 'Pending', value: statuses.PENDING, color: '#f59e0b' },
     { name: 'Rejected', value: statuses.REJECTED, color: '#ef4444' },

@@ -86,24 +86,25 @@ export default function ManagerDashboard() {
         </DashboardPanel>
       )}
 
-      <DashboardPanel
-        className="dash-manager-actions mb-6"
-        title={t('staffDash.manager.quickActions')}
-        description={t('staffDash.manager.managingCampus', { campus: campus.name })}
-      >
-        <div className="dash-quick-actions">
-          <QuickAction to={`${base}/students`} icon={UserPlus} label={t('staffDash.manager.addStudent')} description={t('staffDash.manager.addStudentDesc')} />
-          <QuickAction to={`${base}/teachers`} icon={GraduationCap} label={t('staffDash.manager.addTeacher')} description={t('staffDash.manager.addTeacherDesc')} />
-          <QuickAction to={`${base}/classes`} icon={BookOpen} label={t('staffDash.manager.manageClasses')} description={t('staffDash.manager.manageClassesDesc')} />
-          <QuickAction to={`${base}/users`} icon={Shield} label={t('staffDash.manager.userAccounts')} description={t('staffDash.manager.userAccountsDesc')} />
-          <QuickAction to={`${base}/academic-years`} icon={Calendar} label={t('staffDash.manager.academicYear')} description={t('staffDash.manager.academicYearDesc')} />
-          <QuickAction to={`${base}/school`} icon={School} label={t('staffDash.manager.schoolProfile')} description={t('staffDash.manager.schoolProfileDesc')} />
-        </div>
-      </DashboardPanel>
-
       <DashboardOverview
         campusId={campusId}
         data={data}
+        lead={(
+          <DashboardPanel
+            className="dash-manager-actions"
+            title={t('staffDash.manager.quickActions')}
+            description={t('staffDash.manager.managingCampus', { campus: campus.name })}
+          >
+            <div className="dash-quick-actions">
+              <QuickAction to={`${base}/students`} icon={UserPlus} label={t('staffDash.manager.addStudent')} description={t('staffDash.manager.addStudentDesc')} />
+              <QuickAction to={`${base}/teachers`} icon={GraduationCap} label={t('staffDash.manager.addTeacher')} description={t('staffDash.manager.addTeacherDesc')} />
+              <QuickAction to={`${base}/classes`} icon={BookOpen} label={t('staffDash.manager.manageClasses')} description={t('staffDash.manager.manageClassesDesc')} />
+              <QuickAction to={`${base}/users`} icon={Shield} label={t('staffDash.manager.userAccounts')} description={t('staffDash.manager.userAccountsDesc')} />
+              <QuickAction to={`${base}/academic-years`} icon={Calendar} label={t('staffDash.manager.academicYear')} description={t('staffDash.manager.academicYearDesc')} />
+              <QuickAction to={`${base}/school`} icon={School} label={t('staffDash.manager.schoolProfile')} description={t('staffDash.manager.schoolProfileDesc')} />
+            </div>
+          </DashboardPanel>
+        )}
         shellProps={{
           kicker: t('staffDash.manager.roleEyebrow'),
           title: t('staffDash.manager.welcomeBack', { name: user.firstName }),

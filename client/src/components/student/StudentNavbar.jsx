@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../../context/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
+import PortalThemeToggle from '../PortalThemeToggle';
 import StudentProfileMenu from './StudentProfileMenu';
 import TopCampusMenu from '../TopCampusMenu';
 import AppIcon from '../icons/AppIcon';
@@ -28,6 +29,7 @@ export default function StudentNavbar({ campus, campusId, user, academicYear }) 
         </div>
 
         <div className="student-navbar-actions lg:ml-0">
+          <PortalThemeToggle />
           <LanguageSwitcher />
           <StudentProfileMenu campusId={campusId} user={user} />
         </div>
