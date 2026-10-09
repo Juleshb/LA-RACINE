@@ -36,7 +36,9 @@
         "myHomework": "My homework",
         "myLearning": "My learning",
         "aiTutor": "Ask AI",
-        "ai": "AI"
+        "ai": "AI",
+        "scienceQuiz": "Science quiz",
+        "quiz": "Quiz"
       },
       "school": {
         "mySchool": "My School",
@@ -300,7 +302,54 @@
         "studentBadge": "La RACINE student",
         "elibraryHint": "Read fun books & resources",
         "aiHint": "Get help with your questions",
-        "profileHint": "Photo & password"
+        "profileHint": "Photo & password",
+        "quizHint": "Answer science questions by level"
+      },
+      "scienceQuiz": {
+        "title": "Science quiz",
+        "subtitle": "Answer one question at a time and see how many you get right.",
+        "questionCount": "{{count}} questions",
+        "progress": "Question {{current}} of {{total}}",
+        "correct": "Correct!",
+        "congrats": "Congratulations!",
+        "theAnswer": "The right answer is {{answer}}.",
+        "notQuite": "Not quite — look at the right answer.",
+        "next": "Next question",
+        "seeScore": "See my score",
+        "scoreTitle": "You got {{score}} out of {{total}}",
+        "playAgain": "Play again",
+        "chooseLevel": "Choose a level",
+        "timeEach": "Time for each question",
+        "timeOff": "No timer",
+        "timeSeconds": "{{count}} seconds",
+        "timeOne": "1 minute",
+        "timeMany": "{{count}} minutes",
+        "timeHint": "Choosing an answer moves you on. If time runs out, the next question starts.",
+        "timeLeft": "{{time}} left",
+        "voice": "Voice",
+        "voiceOn": "Voice is on. Tap to turn it off.",
+        "voiceOff": "Voice is off. Tap to hear questions.",
+        "timeUp": "Time is up",
+        "levels": {
+          "easy": "Easy",
+          "medium": "Medium",
+          "hard": "Hard",
+          "impossible": "Challenge",
+          "all": "Full quiz"
+        },
+        "hints": {
+          "easy": "Everyday science facts",
+          "medium": "A step further",
+          "hard": "Closer to class science",
+          "impossible": "Famous facts and a few tricky ones",
+          "all": "All levels, in order"
+        },
+        "results": {
+          "great": "Excellent — you know this science.",
+          "good": "Well done. A few more to lock in.",
+          "ok": "Good try. Play again and watch the notes.",
+          "keep": "Keep practising. The notes show the science."
+        }
       },
       "login": {
         "tagline": "Let's learn and have fun!",
@@ -365,7 +414,9 @@
         "myHomework": "Mes devoirs",
         "myLearning": "Mon apprentissage",
         "aiTutor": "Demander à l’IA",
-        "ai": "IA"
+        "ai": "IA",
+        "scienceQuiz": "Quiz de sciences",
+        "quiz": "Quiz"
       },
       "school": {
         "mySchool": "Mon école",
@@ -629,7 +680,54 @@
         "studentBadge": "Élève La RACINE",
         "elibraryHint": "Lis des livres et ressources",
         "aiHint": "Obtiens de l’aide pour tes questions",
-        "profileHint": "Photo et mot de passe"
+        "profileHint": "Photo et mot de passe",
+        "quizHint": "Réponds aux questions de sciences par niveau"
+      },
+      "scienceQuiz": {
+        "title": "Quiz de sciences",
+        "subtitle": "Réponds à une question à la fois et vois combien tu en trouves.",
+        "questionCount": "{{count}} questions",
+        "progress": "Question {{current}} sur {{total}}",
+        "correct": "Correct !",
+        "congrats": "Félicitations !",
+        "theAnswer": "La bonne réponse est {{answer}}.",
+        "notQuite": "Pas tout à fait — regarde la bonne réponse.",
+        "next": "Question suivante",
+        "seeScore": "Voir mon score",
+        "scoreTitle": "Tu as {{score}} sur {{total}}",
+        "playAgain": "Rejouer",
+        "chooseLevel": "Choisir un niveau",
+        "timeEach": "Temps pour chaque question",
+        "timeOff": "Sans minuteur",
+        "timeSeconds": "{{count}} secondes",
+        "timeOne": "1 minute",
+        "timeMany": "{{count}} minutes",
+        "timeHint": "Choisir une réponse fait passer à la suite. Si le temps finit, la question suivante commence.",
+        "timeLeft": "{{time}} restant",
+        "voice": "Voix",
+        "voiceOn": "La voix est activée. Appuie pour la couper.",
+        "voiceOff": "La voix est coupée. Appuie pour entendre les questions.",
+        "timeUp": "Le temps est écoulé",
+        "levels": {
+          "easy": "Facile",
+          "medium": "Moyen",
+          "hard": "Difficile",
+          "impossible": "Défi",
+          "all": "Quiz complet"
+        },
+        "hints": {
+          "easy": "Des faits de sciences du quotidien",
+          "medium": "Un cran au-dessus",
+          "hard": "Plus proche des sciences de classe",
+          "impossible": "Des faits connus et quelques pièges",
+          "all": "Tous les niveaux, dans l’ordre"
+        },
+        "results": {
+          "great": "Excellent — tu connais ces sciences.",
+          "good": "Bravo. Encore quelques-unes à fixer.",
+          "ok": "Bel essai. Rejoue et lis les notes.",
+          "keep": "Continue à t’entraîner. Les notes expliquent la science."
+        }
       },
       "login": {
         "tagline": "Apprenons et amusons-nous !",
@@ -694,7 +792,9 @@
         "myHomework": "Imirimo yanjye",
         "myLearning": "Kwiga kwanjye",
         "aiTutor": "Baza AI",
-        "ai": "AI"
+        "ai": "AI",
+        "scienceQuiz": "Ikibazo cya siyansi",
+        "quiz": "Ikibazo"
       },
       "school": {
         "mySchool": "Ishuri ryanjye",
@@ -958,7 +1058,54 @@
         "studentBadge": "Umunyeshuri wa La RACINE",
         "elibraryHint": "Soma ibitabo n’ibikoresho",
         "aiHint": "Bona ubufasha ku bibazo byawe",
-        "profileHint": "Ifoto n’ijambo banga"
+        "profileHint": "Ifoto n’ijambo banga",
+        "quizHint": "Subiza ibibazo bya siyansi ukurikije urwego"
+      },
+      "scienceQuiz": {
+        "title": "Ikibazo cya siyansi",
+        "subtitle": "Subiza ikibazo kimwe icyo ari cyo cyose, urebe uko watsinze.",
+        "questionCount": "Ibibazo {{count}}",
+        "progress": "Ikibazo {{current}} cya {{total}}",
+        "correct": "Byagenze neza!",
+        "congrats": "Wagize neza!",
+        "theAnswer": "Igisubizo nyacyo ni {{answer}}.",
+        "notQuite": "Ntabwo ari cyo — reba igisubizo nyacyo.",
+        "next": "Ikibazo gikurikira",
+        "seeScore": "Reba amanota yanjye",
+        "scoreTitle": "Watsinze {{score}} muri {{total}}",
+        "playAgain": "Ongera ukine",
+        "chooseLevel": "Hitamo urwego",
+        "timeEach": "Igihe ku kibazo",
+        "timeOff": "Nta munota",
+        "timeSeconds": "Amasegonda {{count}}",
+        "timeOne": "Umunota 1",
+        "timeMany": "Iminota {{count}}",
+        "timeHint": "Uhitamo igisubizo, ukomeza. Igihe kirangiye, ikibazo gikurikira gitangira.",
+        "timeLeft": "Hasigaye {{time}}",
+        "voice": "Ijwi",
+        "voiceOn": "Ijwi rirafunguye. Kanda urifunge.",
+        "voiceOff": "Ijwi rirafunze. Kanda wumve ibibazo.",
+        "timeUp": "Igihe cyarangiye",
+        "levels": {
+          "easy": "Byoroshye",
+          "medium": "Hagati",
+          "hard": "Bigoye",
+          "impossible": "Urugamba",
+          "all": "Ikibazo cyose"
+        },
+        "hints": {
+          "easy": "Amakuru ya siyansi yo buri munsi",
+          "medium": "Intambwe ikurikira",
+          "hard": "Siyansi yo mu ishuri",
+          "impossible": "Amakuru azwi n’ibibazo bike bigoye",
+          "all": "Inzego zose, uko zikurikirana"
+        },
+        "results": {
+          "great": "Byiza cyane — uzi iyi siyansi.",
+          "good": "Wakora neza. Hasigaye bike gusa.",
+          "ok": "Wagerageje. Ongera ukine urebe inyandiko.",
+          "keep": "Komeza kwiga. Inyandiko zirerekana siyansi."
+        }
       },
       "login": {
         "tagline": "Twige kandi twishimire!",
@@ -1023,7 +1170,9 @@
         "myHomework": "Kazi yangu",
         "myLearning": "Kujifunza kwangu",
         "aiTutor": "Uliza AI",
-        "ai": "AI"
+        "ai": "AI",
+        "scienceQuiz": "Maswali ya sayansi",
+        "quiz": "Maswali"
       },
       "school": {
         "mySchool": "Shule yangu",
@@ -1287,7 +1436,54 @@
         "studentBadge": "Mwanafunzi wa La RACINE",
         "elibraryHint": "Soma vitabu na rasilimali",
         "aiHint": "Pata msaada kwa maswali yako",
-        "profileHint": "Picha na nenosiri"
+        "profileHint": "Picha na nenosiri",
+        "quizHint": "Jibu maswali ya sayansi kwa kiwango"
+      },
+      "scienceQuiz": {
+        "title": "Maswali ya sayansi",
+        "subtitle": "Jibu swali moja kwa wakati uone umepatwa mangapi.",
+        "questionCount": "Maswali {{count}}",
+        "progress": "Swali {{current}} kati ya {{total}}",
+        "correct": "Sahihi!",
+        "congrats": "Hongera!",
+        "theAnswer": "Jibu sahihi ni {{answer}}.",
+        "notQuite": "Sio sahihi — angalia jibu sahihi.",
+        "next": "Swali linalofuata",
+        "seeScore": "Ona alama zangu",
+        "scoreTitle": "Umepatwa {{score}} kati ya {{total}}",
+        "playAgain": "Cheza tena",
+        "chooseLevel": "Chagua kiwango",
+        "timeEach": "Muda kwa kila swali",
+        "timeOff": "Hakuna kipima",
+        "timeSeconds": "Sekunde {{count}}",
+        "timeOne": "Dakika 1",
+        "timeMany": "Dakika {{count}}",
+        "timeHint": "Ukichagua jibu, unaendelea. Muda ukiisha, swali linalofuata linaanza.",
+        "timeLeft": "Zimesalia {{time}}",
+        "voice": "Sauti",
+        "voiceOn": "Sauti imewashwa. Gusa kuizima.",
+        "voiceOff": "Sauti imezimwa. Gusa usikie maswali.",
+        "timeUp": "Muda umeisha",
+        "levels": {
+          "easy": "Rahisi",
+          "medium": "Wastani",
+          "hard": "Ngumu",
+          "impossible": "Changamoto",
+          "all": "Maswali yote"
+        },
+        "hints": {
+          "easy": "Ukweli wa sayansi wa kila siku",
+          "medium": "Hatua inayofuata",
+          "hard": "Sayansi ya darasani",
+          "impossible": "Ukweli maarufu na maswali machache magumu",
+          "all": "Viwango vyote, kwa mpangilio"
+        },
+        "results": {
+          "great": "Vizuri sana — unaijua sayansi hii.",
+          "good": "Hongera. Yamebaki machache.",
+          "ok": "Umejaribu. Cheza tena usome maelezo.",
+          "keep": "Endelea kufanya mazoezi. Maelezo yanaonyesha sayansi."
+        }
       },
       "login": {
         "tagline": "Tujifunze na tufurahie!",

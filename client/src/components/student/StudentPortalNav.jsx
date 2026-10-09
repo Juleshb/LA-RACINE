@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, ClipboardCheck, Award, BookOpen,
-  Clock, Sparkles, Bus, Library, GraduationCap, Video, Bot,
+  Clock, Sparkles, Bus, Library, GraduationCap, Video, Bot, FlaskConical,
 } from 'lucide-react';
 import { STUDENT_NAV_ITEMS } from '../../config/permissions';
 import { translateStudentNavItem, useTranslation } from '../../context/LanguageContext';
@@ -19,6 +19,7 @@ const iconMap = {
   GraduationCap,
   Video,
   Bot,
+  FlaskConical,
 };
 
 const TILE_STYLES = {
@@ -34,6 +35,7 @@ const TILE_STYLES = {
   GraduationCap: { bg: 'bg-violet-100', text: 'text-violet-700', ring: 'ring-violet-200' },
   Video: { bg: 'bg-cyan-100', text: 'text-cyan-700', ring: 'ring-cyan-200' },
   Bot: { bg: 'bg-teal-100', text: 'text-teal-700', ring: 'ring-teal-200' },
+  FlaskConical: { bg: 'bg-amber-100', text: 'text-amber-700', ring: 'ring-amber-200' },
 };
 
 function NavTile({ to, icon, label, badge, end, variant = 'sidebar', isLive = false }) {

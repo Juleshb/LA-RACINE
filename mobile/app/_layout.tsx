@@ -38,6 +38,7 @@ function RootNavigator() {
         <Stack.Screen name="e-library/[id]" options={{ title: 'Book' }} />
         <Stack.Screen name="e-learning/[id]" options={{ title: 'Course' }} />
         <Stack.Screen name="ai-tutor" options={{ title: 'Ask AI' }} />
+        <Stack.Screen name="science-quiz" options={{ title: 'Science quiz' }} />
         <Stack.Screen name="profile" options={{ title: 'Profile' }} />
         <Stack.Screen
           name="meeting"

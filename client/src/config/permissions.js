@@ -198,6 +198,7 @@ export const NAV_ITEMS = [
   { to: 'library', permission: PERMISSIONS.LIBRARY, icon: 'Library', label: 'Library' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning' },
+  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Science quiz' },
   { to: 'timetable', permission: PERMISSIONS.TIMETABLE, icon: 'Clock', label: 'Timetable' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'FileText', label: 'Homework' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Online classes' },
@@ -268,6 +269,7 @@ export const STUDENT_NAV_ITEMS = [
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes', shortLabel: 'Live' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library', shortLabel: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning', shortLabel: 'Learning' },
+  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Science quiz', shortLabel: 'Quiz' },
 ];
 
 export const STUDENT_NAV_GROUPS = [

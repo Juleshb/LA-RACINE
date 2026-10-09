@@ -14,6 +14,7 @@ const TILE_COLORS = {
   GraduationCap: 'student-tile-violet',
   Video: 'student-tile-cyan',
   Bot: 'student-tile-teal',
+  FlaskConical: 'student-tile-orange',
 };
 
 const TILE_ICONS = {
@@ -23,6 +24,7 @@ const TILE_ICONS = {
   GraduationCap: 'learning',
   Video: 'video',
   Bot: 'ai',
+  FlaskConical: 'flask',
 };
 
 export default function StudentDashboard({ campusId, data, userName }) {

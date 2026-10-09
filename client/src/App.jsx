@@ -44,6 +44,7 @@ import SetNewPassword from './pages/SetNewPassword';
 import StudentRegistration from './pages/StudentRegistration';
 import StudentDetail from './pages/StudentDetail';
 import StudentAiTutor from './pages/StudentAiTutor';
+import ScienceQuiz from './pages/ScienceQuiz';
 import StaffAskAi from './pages/StaffAskAi';
 import IdCards from './pages/IdCards';
 import VerifyBulletin from './pages/VerifyBulletin';
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="e-learning" element={<RequirePermission permission={PERMISSIONS.E_LEARNING}><ELearning /></RequirePermission>} />
             <Route path="e-learning/:courseId" element={<RequirePermission permission={PERMISSIONS.E_LEARNING}><ELearningCourse /></RequirePermission>} />
             <Route path="ai-tutor" element={<RequirePermission permission={PERMISSIONS.AI_TUTOR}><StudentAiTutor /></RequirePermission>} />
+            <Route path="science-quiz" element={<RequirePermission permission={PERMISSIONS.E_LEARNING}><ScienceQuiz /></RequirePermission>} />
             <Route path="ask-ai" element={<RequirePermission permission={PERMISSIONS.STAFF_GUIDE}><StaffAskAi /></RequirePermission>} />
             <Route path="timetable" element={<RequirePermission permission={PERMISSIONS.TIMETABLE}><Timetable /></RequirePermission>} />
             <Route path="homework" element={<RequirePermission permission={PERMISSIONS.HOMEWORK}><Homework /></RequirePermission>} />

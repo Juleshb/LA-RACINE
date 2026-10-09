@@ -49,6 +49,7 @@ export const ICONS = {
   image: 'image',
   pdf: 'file-pdf-box',
   clipboard: 'clipboard-text',
+  flask: 'flask',
 } as const satisfies Record<string, MCIName>;
 
 export type AppIconName = keyof typeof ICONS;

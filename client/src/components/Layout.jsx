@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, School, Users, GraduationCap, BookOpen, BookMarked, Award,
   ClipboardCheck, Wallet, Shield, LogOut, ChevronRight,
-  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3,   Globe, CreditCard, Bot,
+  Library, Clock, FileText, Sparkles, Bus, MessageSquare, ClipboardList, Video, Calendar, BarChart3,   Globe, CreditCard, Bot, FlaskConical,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
@@ -46,6 +46,7 @@ const iconMap = {
   Globe,
   CreditCard,
   Bot,
+  FlaskConical,
 };
 
 function NavItem({ to, icon, label, campusId, end, badge, onNavigate }) {

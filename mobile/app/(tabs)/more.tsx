@@ -24,6 +24,14 @@ export default function MoreScreen() {
     colorKey: 'purple' | 'teal' | 'yellow';
   }[] = [
     {
+      href: '/science-quiz',
+      label: t('nav.scienceQuiz'),
+      hint: t('more.quizHint'),
+      icon: 'flask',
+      softKey: 'yellowSoft',
+      colorKey: 'yellow',
+    },
+    {
       href: '/e-library',
       label: t('nav.elibrary'),
       hint: t('more.elibraryHint'),
