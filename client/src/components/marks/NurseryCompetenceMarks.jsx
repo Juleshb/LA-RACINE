@@ -4,17 +4,14 @@ import {
   Loader2,
   CheckCircle2,
   Cloud,
-  Calendar,
-  GraduationCap,
-  Users,
   Search,
   ChevronDown,
   ChevronRight,
   X,
+  Users,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Modal from '../form/Modal';
 import { api } from '../../lib/api';
-import PageHeader from '../PageHeader';
 import { studentFullName } from '../../lib/studentName';
 
 const AUTO_SAVE_DELAY_MS = 1200;
@@ -63,15 +60,18 @@ function LetterPicker({ value, letters, labels, onChange, compact }) {
   );
 }
 
+/**
+ * Nursery competence recorder — modal UI aligned with Marks create/resume flow.
+ */
 export default function NurseryCompetenceMarks({
-  campusId,
-  classes,
+  open,
+  onClose,
+  onSaved,
   classId,
-  onClassChange,
+  className,
+  term,
   t,
-  isTeacher,
 }) {
-  const [term, setTerm] = useState('Trimestre 1');
   const [data, setData] = useState(null);
   const [records, setRecords] = useState({});
   const [loading, setLoading] = useState(false);
@@ -93,7 +93,7 @@ export default function NurseryCompetenceMarks({
   const gradeLabels = data?.gradeLabels || DEFAULT_LABELS;
 
   const load = useCallback(async () => {
-    if (!classId) {
+    if (!open || !classId || !term) {
       setData(null);
       setRecords({});
       return;
@@ -118,13 +118,15 @@ export default function NurseryCompetenceMarks({
       hydratedRef.current = true;
       setAutoSaveStatus('idle');
       setCollapsedDomains({});
+      setStudentFilter('');
+      setStudentSearch('');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || t('pages.marks.noCompetencesTitle'));
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [classId, term]);
+  }, [open, classId, term, t]);
 
   useEffect(() => {
     hydratedRef.current = false;
@@ -211,7 +213,7 @@ export default function NurseryCompetenceMarks({
   }, [skillItems, allStudents, studentFilter, records]);
 
   const persist = useCallback(async (nextRecords, { silent = false } = {}) => {
-    if (!classId || !data) return;
+    if (!classId || !data || !term) return;
     const payload = [];
     for (const domain of data.domains || []) {
       for (const sub of domain.subdomains || []) {
@@ -240,7 +242,8 @@ export default function NurseryCompetenceMarks({
       await api.saveCompetenceMarks({ classId, term, records: payload });
       lastSavedRef.current = JSON.stringify(nextRecords);
       setAutoSaveStatus('saved');
-      if (!silent) setMessage('Notes de compétence enregistrées');
+      if (!silent) setMessage(t('pages.marks.competenceSaved'));
+      onSaved?.();
     } catch (err) {
       setAutoSaveStatus('error');
       setError(err.message);
@@ -248,10 +251,10 @@ export default function NurseryCompetenceMarks({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [classId, data, term]);
+  }, [classId, data, term, t, onSaved]);
 
   useEffect(() => {
-    if (!hydratedRef.current || !classId) return undefined;
+    if (!open || !hydratedRef.current || !classId) return undefined;
     const serialized = JSON.stringify(records);
     if (serialized === lastSavedRef.current) return undefined;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -262,7 +265,7 @@ export default function NurseryCompetenceMarks({
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [records, classId, persist]);
+  }, [records, classId, open, persist]);
 
   const setLetter = (subjectId, studentId, letter) => {
     setRecords((prev) => {
@@ -286,7 +289,7 @@ export default function NurseryCompetenceMarks({
       return next;
     });
     setAutoSaveStatus('idle');
-    setMessage(`Colonne remplie avec ${letter} pour cet élève`);
+    setMessage(t('pages.marks.competenceFillColumn', { letter }));
   };
 
   const toggleDomain = (category) => {
@@ -304,101 +307,48 @@ export default function NurseryCompetenceMarks({
     : autoSaveStatus === 'saved' ? CheckCircle2
       : Cloud;
 
-  const selectedClass = classes.find((c) => c.id === classId);
+  const titleClass = className || data?.className || '—';
 
   return (
-    <div className="nc-page">
-      <PageHeader
-        title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
-        description="Notes de compétence maternelle (A / B / C / D) — saisie rapide pour le bulletin"
-        action={(
-          <div className="flex gap-2 flex-wrap items-center">
+    <Modal open={open} onClose={onClose} size="2xl">
+      <div className="pm-competence-modal">
+        <div className="pm-competence-modal-header">
+          <div>
+            <p className="pm-kicker">{t('pages.marks.nurseryCompetence')}</p>
+            <h2 className="pm-view-title">{titleClass}</h2>
+            <p className="pm-view-meta">{term} · A / B / C / D</p>
+          </div>
+          <div className="flex items-center gap-2">
             {autoSaveLabel && (
               <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
                 <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
                 {autoSaveLabel}
               </span>
             )}
-            {!isTeacher && (
-              <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary">
-                Bulletin
-              </Link>
-            )}
-            <button
-              type="button"
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              disabled={saving || !classId}
-              onClick={() => persist(records)}
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {t('ui.save')}
+            <button type="button" className="pm-create-close" onClick={onClose} aria-label={t('ui.close')}>
+              <X className="w-5 h-5" />
             </button>
-          </div>
-        )}
-      />
-
-      <section className="nc-toolbar card">
-        <div className="nc-toolbar-grid">
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-brand-600" /> {t('ui.class')}
-            </label>
-            <select className="input" value={classId} onChange={(e) => onClassChange(e.target.value)}>
-              <option value="">Choisir une classe nursery…</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.grade})</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-brand-600" /> Période
-            </label>
-            <div className="nc-term-segment" role="tablist">
-              {(data?.terms || ['Trimestre 1', 'Trimestre 2', 'Trimestre 3', 'Annuel']).map((tr) => (
-                <button
-                  key={tr}
-                  type="button"
-                  role="tab"
-                  aria-selected={term === tr}
-                  className={`nc-term-btn ${term === tr ? 'is-active' : ''}`}
-                  onClick={() => setTerm(tr)}
-                >
-                  {tr === 'Annuel' ? 'Annuel' : tr.replace('Trimestre ', 'T')}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-brand-600" /> Élève
-            </label>
-            <select
-              className="input"
-              value={studentFilter}
-              onChange={(e) => {
-                setStudentFilter(e.target.value);
-                setStudentSearch('');
-              }}
-            >
-              <option value="">Tous les élèves</option>
-              {allStudents.map((s) => (
-                <option key={s.id} value={s.id}>{studentFullName(s)}</option>
-              ))}
-            </select>
           </div>
         </div>
 
-        <div className="nc-toolbar-secondary">
-          <div className="nc-search">
-            <Search className="w-4 h-4" />
-            <input
-              type="search"
-              placeholder="Filtrer les colonnes élèves…"
-              value={studentSearch}
-              disabled={Boolean(studentFilter)}
-              onChange={(e) => setStudentSearch(e.target.value)}
-            />
+        <div className="pm-competence-modal-toolbar">
+          <div className="pm-view-stats !px-0 !py-0">
+            <div className="pm-view-stat">
+              <span className="pm-view-stat-value">{progress.filled}/{progress.total}</span>
+              <span className="pm-view-stat-label">{t('pages.marks.enteredShort')}</span>
+            </div>
+            <div className="pm-view-stat">
+              <span className="pm-view-stat-value">{progress.pct}%</span>
+              <span className="pm-view-stat-label">{t('pages.marks.completion')}</span>
+            </div>
+            <div className="pm-view-stat">
+              <span className="pm-view-stat-value">{skillItems.length}</span>
+              <span className="pm-view-stat-label">{t('pages.marks.competences')}</span>
+            </div>
+            <div className="pm-view-stat">
+              <span className="pm-view-stat-value">{allStudents.length}</span>
+              <span className="pm-view-stat-label">{t('pages.marks.statStudents')}</span>
+            </div>
           </div>
 
           <div className="nc-legend">
@@ -409,154 +359,181 @@ export default function NurseryCompetenceMarks({
               </div>
             ))}
           </div>
-        </div>
 
-        {classId && skillItems.length > 0 && (
-          <div className="nc-progress">
-            <div className="nc-progress-meta">
-              <span>
-                Progression · {selectedClass?.name || 'Classe'} · {term}
+          <div className="pm-competence-filters">
+            <label className="pm-create-field">
+              <span className="pm-create-label flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" /> {t('ui.student')}
               </span>
-              <strong>{progress.filled}/{progress.total} ({progress.pct}%)</strong>
-            </div>
-            <div className="nc-progress-track" aria-hidden="true">
-              <div className="nc-progress-fill" style={{ width: `${progress.pct}%` }} />
-            </div>
+              <select
+                className="pm-create-input"
+                value={studentFilter}
+                onChange={(e) => {
+                  setStudentFilter(e.target.value);
+                  setStudentSearch('');
+                }}
+              >
+                <option value="">{t('pages.marks.allStudents')}</option>
+                {allStudents.map((s) => (
+                  <option key={s.id} value={s.id}>{studentFullName(s)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="pm-create-field">
+              <span className="pm-create-label">{t('ui.search')}</span>
+              <div className="nc-search">
+                <Search className="w-4 h-4" />
+                <input
+                  type="search"
+                  placeholder={t('pages.marks.filterStudents')}
+                  value={studentSearch}
+                  disabled={Boolean(studentFilter)}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                />
+              </div>
+            </label>
           </div>
-        )}
-      </section>
+        </div>
 
-      {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">{error}</div>
-      )}
-      {message && !error && (
-        <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">{message}</div>
-      )}
+        <div className="pm-competence-modal-body">
+          {error && (
+            <div className="mb-3 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">{error}</div>
+          )}
+          {message && !error && (
+            <div className="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">{message}</div>
+          )}
 
-      {!classId ? (
-        <div className="nc-empty card">
-          <GraduationCap className="w-10 h-10 text-gray-300" />
-          <p>Choisissez une classe nursery pour saisir les compétences.</p>
+          {loading ? (
+            <div className="pm-empty">
+              <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+              <p>{t('pages.marks.loadingCompetence')}</p>
+            </div>
+          ) : !data?.domains?.length ? (
+            <div className="pm-empty">
+              <p className="font-medium text-gray-700">{t('pages.marks.noCompetencesTitle')}</p>
+              <p className="text-sm text-gray-500 max-w-md">{t('pages.marks.noCompetencesBody')}</p>
+            </div>
+          ) : students.length === 0 ? (
+            <div className="pm-empty">
+              <p>{t('ui.noSearchResults')}</p>
+              <button
+                type="button"
+                className="btn-secondary text-sm mt-2"
+                onClick={() => { setStudentFilter(''); setStudentSearch(''); }}
+              >
+                {t('pages.marks.showAllStudents')}
+              </button>
+            </div>
+          ) : (
+            <div className="nc-grid-card !shadow-none !border-0">
+              <div className="nc-grid-hint">{t('pages.marks.competenceGridHint')}</div>
+              <div className="nc-grid-scroll">
+                <table className="nc-grid-table">
+                  <thead>
+                    <tr>
+                      <th className="nc-skill-col">{t('pages.marks.competenceCol')}</th>
+                      {students.map((s) => (
+                        <th
+                          key={s.id}
+                          className={`nc-student-col ${focusStudentId === s.id ? 'is-focus' : ''}`}
+                        >
+                          <div className="nc-student-head">
+                            <span className="nc-student-name" title={studentFullName(s)}>
+                              {studentFullName(s)}
+                            </span>
+                            <div className="nc-fill-row" title={t('pages.marks.fillColumn')}>
+                              {letters.map((letter) => (
+                                <button
+                                  key={letter}
+                                  type="button"
+                                  className={`nc-fill-btn letter-${letter.toLowerCase()}`}
+                                  onClick={() => fillStudentColumn(s.id, letter)}
+                                >
+                                  {letter}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {flatItems.map((row) => {
+                      if (row.type === 'domain') {
+                        return (
+                          <tr key={row.key} className="nc-domain-row">
+                            <td colSpan={1 + students.length}>
+                              <button
+                                type="button"
+                                className="nc-domain-toggle"
+                                onClick={() => toggleDomain(row.key)}
+                              >
+                                {row.collapsed
+                                  ? <ChevronRight className="w-4 h-4" />
+                                  : <ChevronDown className="w-4 h-4" />}
+                                <span>{row.title}</span>
+                                <em>{row.itemCount}</em>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      if (row.type === 'subdomain') {
+                        return (
+                          <tr key={row.key} className="nc-subdomain-row">
+                            <td colSpan={1 + students.length}>{row.title}</td>
+                          </tr>
+                        );
+                      }
+                      const item = row.item;
+                      return (
+                        <tr key={item.id} className="nc-item-row">
+                          <td className="nc-skill-col">
+                            <span className="nc-skill-name">{item.name}</span>
+                          </td>
+                          {students.map((s) => {
+                            const value = records[keyOf(item.id, s.id)] || '';
+                            return (
+                              <td
+                                key={s.id}
+                                className={`nc-grade-cell ${focusStudentId === s.id ? 'is-focus' : ''} ${value ? `has-${value.toLowerCase()}` : ''}`}
+                              >
+                                <LetterPicker
+                                  value={value}
+                                  letters={letters}
+                                  labels={gradeLabels}
+                                  onChange={(letter) => setLetter(item.id, s.id, letter)}
+                                  compact
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-      ) : loading ? (
-        <div className="nc-empty card">
-          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-          <p>Chargement de la grille de compétences…</p>
-        </div>
-      ) : !data?.domains?.length ? (
-        <div className="nc-empty card">
-          <p className="font-medium text-gray-700">Aucune compétence chargée pour cette classe.</p>
-          <p className="text-sm text-gray-500 max-w-md">
-            Les compétences viennent des modèles Excel nursery. Actualisez la page, ou ouvrez Cours → Charger les cours du bulletin.
-          </p>
-        </div>
-      ) : students.length === 0 ? (
-        <div className="nc-empty card">
-          <p>Aucun élève ne correspond au filtre.</p>
+
+        <div className="pm-create-footer pm-create-footer-responsive">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            {t('ui.close')}
+          </button>
           <button
             type="button"
-            className="btn-secondary text-sm mt-1"
-            onClick={() => { setStudentFilter(''); setStudentSearch(''); }}
+            className="btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={saving || loading || !data?.domains?.length}
+            onClick={() => persist(records)}
           >
-            Réinitialiser le filtre
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {t('ui.save')}
           </button>
         </div>
-      ) : (
-        <div className="nc-grid-card">
-          <div className="nc-grid-hint">
-            Cliquez <strong>A / B / C / D</strong> pour noter. Cliquez à nouveau pour désélectionner.
-            Sur l’en-tête élève, utilisez « Remplir » pour appliquer une lettre à toutes les compétences.
-          </div>
-          <div className="nc-grid-scroll">
-            <table className="nc-grid-table">
-              <thead>
-                <tr>
-                  <th className="nc-skill-col">Compétence / élément</th>
-                  {students.map((s) => (
-                    <th
-                      key={s.id}
-                      className={`nc-student-col ${focusStudentId === s.id ? 'is-focus' : ''}`}
-                    >
-                      <div className="nc-student-head">
-                        <span className="nc-student-name" title={studentFullName(s)}>
-                          {studentFullName(s)}
-                        </span>
-                        <div className="nc-fill-row" title="Remplir toute la colonne">
-                          {letters.map((letter) => (
-                            <button
-                              key={letter}
-                              type="button"
-                              className={`nc-fill-btn letter-${letter.toLowerCase()}`}
-                              onClick={() => fillStudentColumn(s.id, letter)}
-                            >
-                              {letter}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {flatItems.map((row) => {
-                  if (row.type === 'domain') {
-                    return (
-                      <tr key={row.key} className="nc-domain-row">
-                        <td colSpan={1 + students.length}>
-                          <button
-                            type="button"
-                            className="nc-domain-toggle"
-                            onClick={() => toggleDomain(row.key)}
-                          >
-                            {row.collapsed
-                              ? <ChevronRight className="w-4 h-4" />
-                              : <ChevronDown className="w-4 h-4" />}
-                            <span>{row.title}</span>
-                            <em>{row.itemCount} compétence{row.itemCount > 1 ? 's' : ''}</em>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  }
-                  if (row.type === 'subdomain') {
-                    return (
-                      <tr key={row.key} className="nc-subdomain-row">
-                        <td colSpan={1 + students.length}>{row.title}</td>
-                      </tr>
-                    );
-                  }
-                  const item = row.item;
-                  return (
-                    <tr key={item.id} className="nc-item-row">
-                      <td className="nc-skill-col">
-                        <span className="nc-skill-name">{item.name}</span>
-                      </td>
-                      {students.map((s) => {
-                        const value = records[keyOf(item.id, s.id)] || '';
-                        return (
-                          <td
-                            key={s.id}
-                            className={`nc-grade-cell ${focusStudentId === s.id ? 'is-focus' : ''} ${value ? `has-${value.toLowerCase()}` : ''}`}
-                          >
-                            <LetterPicker
-                              value={value}
-                              letters={letters}
-                              labels={gradeLabels}
-                              onChange={(letter) => setLetter(item.id, s.id, letter)}
-                              compact
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </Modal>
   );
 }

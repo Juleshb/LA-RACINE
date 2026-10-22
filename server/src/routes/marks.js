@@ -1,7 +1,14 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
-import { assertTeacherCourseAccess, resolveTeacherId } from '../lib/teacherAccess.js';
+import {
+  assertTeacherCourseAccess,
+  assertTeacherMarksClassAccess,
+  assertTeacherCompetenceAccess,
+  resolveTeacherId,
+  marksCourseWhere,
+  getTeacherMarksClassIdsForReq,
+} from '../lib/teacherAccess.js';
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
@@ -143,7 +150,7 @@ router.get('/report', async (req, res) => {
     await resolveClassIdFilter(req, classId);
 
     const scope = await classScopeWhere(req);
-    const cls = await prisma.class.findFirst({ where: { id: classId, ...scope } });
+    const cls = await prisma.class.findFirst({ where: { ...scope, id: classId } });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
 
     if (req.user.role === 'TEACHER') {
@@ -200,8 +207,11 @@ function parseCatNumber(value) {
 }
 
 function formatAssessmentLabel(assessment, catNumber) {
-  if (assessment === 'CAT' && catNumber > 0) return `CAT ${catNumber}`;
-  if (assessment === 'TEST' && catNumber > 0) return `Test ${catNumber}`;
+  if (assessment === 'CAT' && catNumber > 0) return `Quiz ${catNumber}`;
+  if (assessment === 'TEST' && catNumber > 0) return `Period ${catNumber}`;
+  if (assessment === 'TEST1') return 'Period 1';
+  if (assessment === 'TEST2') return 'Period 2';
+  if (assessment === 'EX') return 'Exam';
   return assessment;
 }
 
@@ -339,6 +349,414 @@ router.put('/subject-tests', async (req, res) => {
   }
 });
 
+/** Classes + assigned subjects the current user can record marks for. */
+router.get('/classes', async (req, res) => {
+  try {
+    const [classScope, courseWhere] = await Promise.all([
+      classScopeWhere(req),
+      marksCourseWhere(req),
+    ]);
+    let allowedClassIds = null;
+    if (req.user.role === 'TEACHER') {
+      allowedClassIds = await getTeacherMarksClassIdsForReq(req);
+      if (!allowedClassIds.length) return res.json([]);
+    }
+
+    const classes = await prisma.class.findMany({
+      where: {
+        ...classScope,
+        ...(allowedClassIds ? { id: { in: allowedClassIds } } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        grade: true,
+        section: true,
+        teacherId: true,
+        subjects: {
+          where: courseWhere,
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            category: true,
+          },
+          orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+        },
+      },
+      orderBy: [{ grade: 'asc' }, { section: 'asc' }, { name: 'asc' }],
+    });
+
+    // Never list a class on Marks when it has no assigned subjects
+    const visible = classes.filter((cls) => cls.subjects.length > 0);
+
+    res.json(visible.map((cls) => {
+      const isNursery = usesCompetenceBulletin(cls.grade);
+      return {
+        id: cls.id,
+        name: cls.name,
+        grade: cls.grade,
+        section: cls.section,
+        subjects: cls.subjects,
+        subjectCount: cls.subjects.length,
+        competence: isNursery,
+        // Competence create only when teacher has assigned subjects in that nursery class
+        competenceAccess: isNursery && cls.subjects.length > 0,
+      };
+    }));
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.get('/recorded', async (req, res) => {
+  try {
+    const { classId, term, subjectId } = req.query;
+
+    if (classId) {
+      await resolveClassIdFilter(req, classId);
+      const classAccessError = await assertTeacherMarksClassAccess(req, classId);
+      if (classAccessError) return res.status(403).json({ error: classAccessError });
+    }
+
+    const [scope, classScope, courseWhere] = await Promise.all([
+      studentScopeWhere(req),
+      classScopeWhere(req),
+      marksCourseWhere(req),
+    ]);
+
+    let allowedClassIds = null;
+    if (req.user.role === 'TEACHER') {
+      allowedClassIds = await getTeacherMarksClassIdsForReq(req);
+      if (!allowedClassIds.length) {
+        return res.json({
+          studentCount: 0,
+          summary: {
+            sessions: 0,
+            enteredMarks: 0,
+            incompleteSessions: 0,
+            avgCompletionPct: 0,
+            avgScorePct: null,
+          },
+          sessions: [],
+        });
+      }
+    }
+
+    const classWhere = {
+      ...classScope,
+      ...(classId ? { id: classId } : {}),
+      ...(allowedClassIds ? { id: { in: allowedClassIds } } : {}),
+    };
+    // When both classId and teacher filter apply, prefer explicit classId if allowed
+    if (classId && allowedClassIds) {
+      if (!allowedClassIds.includes(classId)) {
+        return res.status(403).json({ error: 'You do not have access to this class' });
+      }
+      classWhere.id = classId;
+    }
+
+    const classes = await prisma.class.findMany({
+      where: classWhere,
+      select: { id: true, name: true },
+      orderBy: [{ grade: 'asc' }, { section: 'asc' }],
+    });
+    const classIds = classes.map((c) => c.id);
+    const classMap = new Map(classes.map((c) => [c.id, c]));
+
+    if (!classIds.length) {
+      return res.json({
+        studentCount: 0,
+        summary: {
+          sessions: 0,
+          enteredMarks: 0,
+          incompleteSessions: 0,
+          avgCompletionPct: 0,
+          avgScorePct: null,
+        },
+        sessions: [],
+      });
+    }
+
+    const [students, subjects] = await Promise.all([
+      prisma.student.findMany({
+        where: { ...scope, classId: { in: classIds } },
+        select: { id: true, classId: true },
+      }),
+      prisma.subject.findMany({
+        where: {
+          classId: { in: classIds },
+          campusId: req.campusId,
+          class: { academicYearId: req.academicYearId },
+          ...courseWhere,
+          ...(subjectId ? { id: subjectId } : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          category: true,
+          classId: true,
+        },
+        orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+    ]);
+
+    const studentCountByClass = new Map();
+    for (const student of students) {
+      studentCountByClass.set(
+        student.classId,
+        (studentCountByClass.get(student.classId) || 0) + 1,
+      );
+    }
+
+    const subjectIds = subjects.map((s) => s.id);
+    const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+    const studentCount = students.length;
+
+    if (!subjectIds.length) {
+      return res.json({
+        studentCount,
+        summary: {
+          sessions: 0,
+          enteredMarks: 0,
+          incompleteSessions: 0,
+          avgCompletionPct: 0,
+          avgScorePct: null,
+        },
+        sessions: [],
+      });
+    }
+
+    const marks = await prisma.mark.findMany({
+      where: {
+        subjectId: { in: subjectIds },
+        studentId: { in: students.map((s) => s.id) },
+        ...(term ? { term } : {}),
+        NOT: { assessment: NURSERY_ASSESSMENT },
+      },
+      select: {
+        subjectId: true,
+        term: true,
+        assessment: true,
+        catNumber: true,
+        score: true,
+        maxScore: true,
+        assessedOn: true,
+        updatedAt: true,
+        studentId: true,
+      },
+    });
+
+    const groups = new Map();
+    for (const mark of marks) {
+      const key = `${mark.subjectId}|${mark.term}|${mark.assessment}|${mark.catNumber}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          subjectId: mark.subjectId,
+          term: mark.term,
+          assessment: mark.assessment,
+          catNumber: mark.catNumber,
+          scores: [],
+          maxScores: [],
+          assessedOn: null,
+          updatedAt: null,
+        };
+        groups.set(key, group);
+      }
+      group.scores.push(Number(mark.score));
+      if (mark.maxScore != null && Number(mark.maxScore) > 0) {
+        group.maxScores.push(Number(mark.maxScore));
+      }
+      if (mark.assessedOn && (!group.assessedOn || mark.assessedOn > group.assessedOn)) {
+        group.assessedOn = mark.assessedOn;
+      }
+      if (!group.updatedAt || mark.updatedAt > group.updatedAt) {
+        group.updatedAt = mark.updatedAt;
+      }
+    }
+
+    const sessions = [...groups.values()].map((group) => {
+        const subject = subjectMap.get(group.subjectId);
+        const classInfo = classMap.get(subject?.classId);
+        const classStudentCount = studentCountByClass.get(subject?.classId) || 0;
+        const entered = group.scores.length;
+        const missing = Math.max(0, classStudentCount - entered);
+        const maxScore = group.maxScores.length
+          ? group.maxScores[group.maxScores.length - 1]
+          : null;
+        const pctValues = group.scores.map((score, i) => {
+          const max = group.maxScores[i] || maxScore || 100;
+          return max > 0 ? (score / max) * 100 : null;
+        }).filter((v) => v != null);
+        const avgScore = entered
+          ? group.scores.reduce((sum, n) => sum + n, 0) / entered
+          : null;
+        const avgPct = pctValues.length
+          ? pctValues.reduce((sum, n) => sum + n, 0) / pctValues.length
+          : null;
+        const completionPct = classStudentCount
+          ? Math.round((entered / classStudentCount) * 100)
+          : 0;
+        const complete = missing === 0 && classStudentCount > 0;
+
+        return {
+          id: `${group.subjectId}|${group.term}|${group.assessment}|${group.catNumber}`,
+          kind: 'score',
+          classId: subject?.classId || null,
+          className: classInfo?.name || '—',
+          subjectId: group.subjectId,
+          subjectName: subject?.name || '—',
+          subjectCode: subject?.code || '',
+          category: subject?.category || '',
+          term: group.term,
+          assessment: group.assessment,
+          catNumber: group.catNumber,
+          label: formatAssessmentLabel(group.assessment, group.catNumber),
+          maxScore,
+          assessedOn: group.assessedOn ? group.assessedOn.toISOString().slice(0, 10) : null,
+          updatedAt: group.updatedAt ? group.updatedAt.toISOString() : null,
+          studentCount: classStudentCount,
+          entered,
+          missing,
+          completionPct,
+          complete,
+          avgScore: avgScore == null ? null : Math.round(avgScore * 10) / 10,
+          avgPct: avgPct == null ? null : Math.round(avgPct),
+        };
+      });
+
+    // Nursery competence sessions — only subjects assigned to this teacher (courseWhere)
+    const competenceClasses = await prisma.class.findMany({
+      where: { id: { in: classIds } },
+      select: { id: true, name: true, grade: true },
+    });
+    const nurseryClassRows = competenceClasses.filter((c) => usesCompetenceBulletin(c.grade));
+    if (nurseryClassRows.length) {
+      const nurseryClassIds = nurseryClassRows.map((c) => c.id);
+      const nurserySubjects = await prisma.subject.findMany({
+        where: {
+          classId: { in: nurseryClassIds },
+          campusId: req.campusId,
+          class: { academicYearId: req.academicYearId },
+          ...courseWhere,
+        },
+        select: { id: true, classId: true, name: true, code: true },
+      });
+      const nurserySubjectIds = nurserySubjects.map((s) => s.id);
+      const nurserySubjectMap = new Map(nurserySubjects.map((s) => [s.id, s]));
+
+      if (nurserySubjectIds.length) {
+        const competenceMarks = await prisma.mark.findMany({
+          where: {
+            subjectId: { in: nurserySubjectIds },
+            assessment: NURSERY_ASSESSMENT,
+            studentId: { in: students.map((s) => s.id) },
+            ...(term ? { term } : {}),
+          },
+          select: {
+            subjectId: true,
+            term: true,
+            studentId: true,
+            updatedAt: true,
+          },
+        });
+
+        // One recorded session per assigned competence subject + term (not whole class)
+        const bySubjectTerm = new Map();
+        for (const mark of competenceMarks) {
+          const subject = nurserySubjectMap.get(mark.subjectId);
+          if (!subject) continue;
+          const key = `${mark.subjectId}|${mark.term}`;
+          let group = bySubjectTerm.get(key);
+          if (!group) {
+            group = {
+              subjectId: mark.subjectId,
+              classId: subject.classId,
+              term: mark.term,
+              entered: 0,
+              updatedAt: null,
+            };
+            bySubjectTerm.set(key, group);
+          }
+          group.entered += 1;
+          if (!group.updatedAt || mark.updatedAt > group.updatedAt) {
+            group.updatedAt = mark.updatedAt;
+          }
+        }
+
+        for (const group of bySubjectTerm.values()) {
+          const subject = nurserySubjectMap.get(group.subjectId);
+          const cls = nurseryClassRows.find((c) => c.id === group.classId);
+          const classStudentCount = studentCountByClass.get(group.classId) || 0;
+          const missing = Math.max(0, classStudentCount - group.entered);
+          const completionPct = classStudentCount
+            ? Math.round((group.entered / classStudentCount) * 100)
+            : 0;
+          sessions.push({
+            id: `competence|${group.subjectId}|${group.term}`,
+            kind: 'competence',
+            classId: group.classId,
+            className: cls?.name || '—',
+            subjectId: group.subjectId,
+            subjectName: subject?.name || 'Competence',
+            subjectCode: subject?.code || 'COMP',
+            category: 'Nursery',
+            term: group.term,
+            assessment: NURSERY_ASSESSMENT,
+            catNumber: 0,
+            label: 'Competence A–D',
+            maxScore: null,
+            assessedOn: null,
+            updatedAt: group.updatedAt ? group.updatedAt.toISOString() : null,
+            studentCount: classStudentCount,
+            skillCount: 1,
+            entered: group.entered,
+            missing,
+            completionPct,
+            complete: missing === 0 && classStudentCount > 0,
+            avgScore: null,
+            avgPct: null,
+          });
+        }
+      }
+    }
+
+    sessions.sort((a, b) => {
+      const byUpdated = String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+      if (byUpdated) return byUpdated;
+      return `${a.className}${a.subjectName}${a.label}`.localeCompare(`${b.className}${b.subjectName}${b.label}`);
+    });
+
+    const enteredMarks = sessions.reduce((sum, s) => sum + s.entered, 0);
+    const incompleteSessions = sessions.filter((s) => !s.complete).length;
+    const avgCompletionPct = sessions.length
+      ? Math.round(sessions.reduce((sum, s) => sum + s.completionPct, 0) / sessions.length)
+      : 0;
+    const pctSessions = sessions.filter((s) => s.avgPct != null);
+    const avgScorePct = pctSessions.length
+      ? Math.round(pctSessions.reduce((sum, s) => sum + s.avgPct, 0) / pctSessions.length)
+      : null;
+
+    res.json({
+      classId: classId || null,
+      term: term || null,
+      studentCount,
+      summary: {
+        sessions: sessions.length,
+        enteredMarks,
+        incompleteSessions,
+        avgCompletionPct,
+        avgScorePct,
+      },
+      sessions,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 router.get('/assessments', async (req, res) => {
   try {
     const { subjectId, term } = req.query;
@@ -399,12 +817,15 @@ router.get('/competence', async (req, res) => {
     }
 
     await resolveClassIdFilter(req, classId);
+    const competenceAccessError = await assertTeacherCompetenceAccess(req, classId);
+    if (competenceAccessError) {
+      return res.status(403).json({ error: competenceAccessError });
+    }
+
     const scope = await classScopeWhere(req);
     const cls = await prisma.class.findFirst({
-      where: { id: classId, ...scope },
-      include: {
-        subjects: { orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] },
-      },
+      where: { ...scope, id: classId },
+      select: { id: true, name: true, grade: true },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
     if (!usesCompetenceBulletin(cls.grade)) {
@@ -415,13 +836,28 @@ router.get('/competence', async (req, res) => {
       await ensureNurseryCurriculum(prisma, req.campusId, classId, cls.grade);
     }
 
-    const refreshed = await prisma.class.findFirst({
-      where: { id: classId, ...scope },
-      include: {
-        subjects: { orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] },
+    const courseWhere = await marksCourseWhere(req);
+    // Only competence items that have a teacher (teachers: only their own)
+    const competenceSubjects = await prisma.subject.findMany({
+      where: {
+        classId,
+        campusId: req.campusId,
+        class: { academicYearId: req.academicYearId },
+        ...courseWhere,
+        ...(req.query.subjectId ? { id: String(req.query.subjectId) } : {}),
       },
+      orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     });
-    if (!refreshed) return res.status(404).json({ error: 'Class not found' });
+    if (req.user.role === 'TEACHER' && !competenceSubjects.length) {
+      return res.status(403).json({
+        error: 'You are not assigned to any subjects in this nursery class',
+      });
+    }
+    if (!competenceSubjects.length) {
+      return res.status(400).json({
+        error: 'No assigned competence subjects in this class. Assign teachers on the Courses page first.',
+      });
+    }
 
     const termValue = NURSERY_TERMS.includes(term) ? term : 'Trimestre 1';
     const studentScope = await studentScopeWhere(req);
@@ -431,7 +867,7 @@ router.get('/competence', async (req, res) => {
       select: { id: true, studentId: true, firstName: true, lastName: true, postName: true },
     });
 
-    const subjectIds = refreshed.subjects.map((s) => s.id);
+    const subjectIds = competenceSubjects.map((s) => s.id);
     const marks = subjectIds.length
       ? await prisma.mark.findMany({
         where: {
@@ -448,35 +884,37 @@ router.get('/competence', async (req, res) => {
       letterByKey.set(`${m.subjectId}:${m.studentId}`, scoreToLetter(m.score));
     }
 
-    const domains = groupCompetenceSubjects(refreshed.subjects).map((domain) => ({
-      category: domain.category,
-      categoryOrder: domain.categoryOrder,
-      subdomains: domain.subdomains.map((sub) => ({
-        name: sub.name,
-        items: sub.items.map((subject) => ({
-          id: subject.id,
-          code: subject.code,
-          name: subject.name,
-          subcategory: subject.subcategory || sub.name || '',
-          grades: Object.fromEntries(
-            students.map((st) => [st.id, letterByKey.get(`${subject.id}:${st.id}`) || null]),
-          ),
+    const domains = groupCompetenceSubjects(competenceSubjects)
+      .map((domain) => ({
+        category: domain.category,
+        categoryOrder: domain.categoryOrder,
+        subdomains: domain.subdomains.map((sub) => ({
+          name: sub.name,
+          items: sub.items.map((subject) => ({
+            id: subject.id,
+            code: subject.code,
+            name: subject.name,
+            subcategory: subject.subcategory || sub.name || '',
+            grades: Object.fromEntries(
+              students.map((st) => [st.id, letterByKey.get(`${subject.id}:${st.id}`) || null]),
+            ),
+          })),
         })),
-      })),
-    }));
+      }))
+      .filter((domain) => domain.subdomains.some((sub) => sub.items.length > 0));
 
     res.json({
       mode: 'COMPETENCE',
       classId,
-      grade: refreshed.grade,
-      className: refreshed.name,
+      grade: cls.grade,
+      className: cls.name,
       term: termValue,
       terms: NURSERY_TERMS,
       letters: NURSERY_LETTER_GRADES,
       gradeLabels: NURSERY_GRADE_LABELS,
       students,
       domains,
-      skillCount: refreshed.subjects.length,
+      skillCount: competenceSubjects.length,
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -497,32 +935,40 @@ router.put('/competence/bulk', async (req, res) => {
     }
 
     await resolveClassIdFilter(req, classId);
+    const competenceAccessError = await assertTeacherCompetenceAccess(req, classId);
+    if (competenceAccessError) return res.status(403).json({ error: competenceAccessError });
+
     const scope = await classScopeWhere(req);
     const cls = await prisma.class.findFirst({
-      where: { id: classId, ...scope },
-      include: { subjects: { select: { id: true, teacherId: true } } },
+      where: { ...scope, id: classId },
+      select: { id: true, grade: true },
     });
     if (!cls) return res.status(404).json({ error: 'Class not found' });
     if (!usesCompetenceBulletin(cls.grade)) {
       return res.status(400).json({ error: 'This class does not use competence grading' });
     }
 
-    if (req.user.role === 'TEACHER') {
-      const teacherId = await resolveTeacherId(req);
-      const allowed = cls.subjects.some((s) => s.teacherId === teacherId);
-      if (!allowed && cls.teacherId !== teacherId) {
-        // Allow if teacher is class teacher or teaches any subject in class
-        const teaches = await prisma.subject.findFirst({
-          where: { classId, campusId: req.campusId, teacherId },
-          select: { id: true },
-        });
-        if (!teaches) {
-          return res.status(403).json({ error: 'You are not assigned to this class' });
-        }
-      }
+    const courseWhere = await marksCourseWhere(req);
+    const competenceSubjects = await prisma.subject.findMany({
+      where: {
+        classId,
+        campusId: req.campusId,
+        class: { academicYearId: req.academicYearId },
+        ...courseWhere,
+      },
+      select: { id: true },
+    });
+    if (req.user.role === 'TEACHER' && !competenceSubjects.length) {
+      return res.status(403).json({
+        error: 'You are not assigned to any subjects in this nursery class',
+      });
     }
-
-    const subjectIds = new Set(cls.subjects.map((s) => s.id));
+    if (!competenceSubjects.length) {
+      return res.status(400).json({
+        error: 'No assigned competence subjects in this class. Assign teachers on the Courses page first.',
+      });
+    }
+    const subjectIds = new Set(competenceSubjects.map((s) => s.id));
     const studentIds = [...new Set(records.map((r) => r.studentId).filter(Boolean))];
     const validStudents = await prisma.student.findMany({
       where: {

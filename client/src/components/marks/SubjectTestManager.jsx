@@ -2,7 +2,7 @@ import { Plus, Trash2, Save } from 'lucide-react';
 
 function emptyTest(index) {
   return {
-    label: `Test ${index}`,
+    label: `Period ${index}`,
     maxScore: '',
     date: '',
     sortOrder: index,
@@ -34,7 +34,7 @@ export default function SubjectTestManager({
     if (tests.length <= 1) return;
     const next = tests
       .filter((_, i) => i !== index)
-      .map((t, i) => ({ ...t, sortOrder: i + 1, label: t.label || `Test ${i + 1}` }));
+      .map((t, i) => ({ ...t, sortOrder: i + 1, label: t.label || `Period ${i + 1}` }));
     onChange(next, testsMarkMax, examMax);
   };
 
@@ -84,7 +84,7 @@ export default function SubjectTestManager({
                 value={test.label}
                 disabled={!canEdit}
                 onChange={(e) => updateTest(index, 'label', e.target.value)}
-                placeholder={`Test ${index + 1}`}
+                placeholder={`Period ${index + 1}`}
               />
             </div>
             <div>

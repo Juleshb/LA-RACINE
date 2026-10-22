@@ -35,17 +35,26 @@ export async function ensureSubjectAssessments(db, subject) {
       });
     }
     for (const row of testsOnly) {
+      const patch = {};
+      const periodLabel = `Period ${row.sortOrder}`;
+      if (/^test\s*\d+$/i.test(String(row.label || '').trim()) && row.label !== periodLabel) {
+        patch.label = periodLabel;
+        row.label = periodLabel;
+      }
       const expected = row.sortOrder === 1
         ? subject.test1Max
         : row.sortOrder === 2
           ? subject.test2Max
           : null;
       if (expected != null && expected > 0 && row.maxScore !== expected) {
+        patch.maxScore = expected;
+        row.maxScore = expected;
+      }
+      if (Object.keys(patch).length) {
         await db.subjectAssessment.update({
           where: { id: row.id },
-          data: { maxScore: expected },
+          data: patch,
         });
-        row.maxScore = expected;
       }
     }
     return testsOnly;
@@ -53,10 +62,10 @@ export async function ensureSubjectAssessments(db, subject) {
 
   const tests = [];
   if (subject.test1Max != null && subject.test1Max > 0) {
-    tests.push({ label: 'Test 1', maxScore: subject.test1Max, sortOrder: 1, date: null });
+    tests.push({ label: 'Period 1', maxScore: subject.test1Max, sortOrder: 1, date: null });
   }
   if (subject.test2Max != null && subject.test2Max > 0) {
-    tests.push({ label: 'Test 2', maxScore: subject.test2Max, sortOrder: 2, date: null });
+    tests.push({ label: 'Period 2', maxScore: subject.test2Max, sortOrder: 2, date: null });
   }
   if (!tests.length) return [];
 
@@ -144,7 +153,8 @@ export function calculateScaledMark(rows, targetMax) {
     return { score: null, max, rawObtained: 0, rawMax: 0 };
   }
 
-  const scaled = Math.round((rawObtained / rawMax) * max * 100) / 100;
+  // One decimal on bulletin marks (9.78 → 9.7)
+  const scaled = Math.trunc(((rawObtained / rawMax) * max) * 10) / 10;
   return { score: scaled, max, rawObtained, rawMax };
 }
 
@@ -154,13 +164,19 @@ export function buildSubjectMarkSummary(subject, assessments, markMap) {
   const examMax = resolveExamMax(subject);
   const testsCombined = calculateScaledMark(testRows, testsMarkMax);
   const examMark = getExamMark(markMap, subject.id);
-  const exam = { score: examMark?.score ?? null, max: examMax };
+  const examScore = examMark?.score;
+  const exam = {
+    score: examScore == null || examScore === ''
+      ? null
+      : Math.trunc(Number(examScore) * 10) / 10,
+    max: examMax,
+  };
   const hasTests = testRows.some((t) => t.score != null);
   const hasExam = exam.score != null;
   const hasAny = hasTests || hasExam;
   const totalMax = resolveTotalMax(subject);
   const totalScore = hasAny
-    ? Math.round(((testsCombined.score ?? 0) + (exam.score ?? 0)) * 100) / 100
+    ? Math.trunc(((testsCombined.score ?? 0) + (exam.score ?? 0)) * 10) / 10
     : null;
 
   return {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   MessageSquare, Send, Megaphone, Plus, ArrowLeft, CheckCircle2,
-  Globe, Inbox, Mail, Phone, RefreshCw, Search, Sparkles, X,
+  Globe, Inbox, Mail, Phone, RefreshCw, Search, Sparkles, Trash2, X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { getSupportSocket } from '../lib/socket';
@@ -317,6 +317,7 @@ export default function Communication() {
       loadInbox();
     }
     setThread({
+      id: item.id,
       isAnnouncement: true,
       subject: item.title,
       category: item.category,
@@ -328,6 +329,18 @@ export default function Communication() {
         isMine: false,
       }],
     });
+  };
+
+  const handleDeleteAnnouncement = async () => {
+    if (!thread?.isAnnouncement || !thread?.id || !canCompose) return;
+    if (!window.confirm(t('pages.communication.deleteAnnouncementConfirm'))) return;
+    try {
+      await api.deleteCommunicationBroadcast(thread.id);
+      setThread(null);
+      loadInbox();
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleReply = async (e) => {
@@ -709,7 +722,7 @@ export default function Communication() {
                       </div>
                     )}
                   </div>
-                  {canCompose && thread.id && thread.status === 'OPEN' && (
+                  {canCompose && thread.id && thread.status === 'OPEN' && !thread.isAnnouncement && (
                     <button
                       type="button"
                       className="comm-btn comm-btn-sm"
@@ -721,6 +734,17 @@ export default function Communication() {
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       {t('pages.communication.resolve')}
+                    </button>
+                  )}
+                  {canCompose && thread.isAnnouncement && thread.id && (
+                    <button
+                      type="button"
+                      className="comm-btn comm-btn-sm text-red-600"
+                      onClick={handleDeleteAnnouncement}
+                      title={t('pages.communication.deleteAnnouncement')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {t('pages.communication.deleteAnnouncement')}
                     </button>
                   )}
                 </div>

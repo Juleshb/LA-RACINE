@@ -12,6 +12,8 @@ export function parseAssessmentStepId(stepId) {
     const catNumber = Number(stepId.split(':')[1]);
     return { assessment: 'TEST', catNumber: Number.isInteger(catNumber) && catNumber > 0 ? catNumber : 1 };
   }
+  if (stepId === 'TEST1') return { assessment: 'TEST1', catNumber: 1 };
+  if (stepId === 'TEST2') return { assessment: 'TEST2', catNumber: 2 };
   return { assessment: stepId, catNumber: 0 };
 }
 

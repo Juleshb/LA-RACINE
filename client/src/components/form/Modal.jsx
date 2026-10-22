@@ -24,6 +24,7 @@ export default function Modal({ open, onClose, children, size = 'lg' }) {
     md: 'modal-panel-md',
     lg: 'modal-panel-lg',
     xl: 'modal-panel-xl',
+    '2xl': 'modal-panel-2xl',
   }[size] || 'modal-panel-lg';
 
   return createPortal(

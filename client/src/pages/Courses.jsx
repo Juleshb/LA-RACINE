@@ -98,8 +98,8 @@ export default function Courses() {
   const [bulletinConfig, setBulletinConfig] = useState(null);
   const [bulletinPreset, setBulletinPreset] = useState('STANDARD');
   const [customAssessments, setCustomAssessments] = useState([
-    { key: 'TEST1', label: 'TEST 1', maxField: 'test1Max', fallbackMax: 10 },
-    { key: 'TEST2', label: 'TEST 2', maxField: 'test2Max', fallbackMax: 10 },
+    { key: 'TEST1', label: 'Period 1', maxField: 'test1Max', fallbackMax: 10 },
+    { key: 'TEST2', label: 'Period 2', maxField: 'test2Max', fallbackMax: 10 },
     { key: 'EX', label: 'EX', maxField: 'examMax', fallbackMax: 20 },
   ]);
   const [bulletinSaving, setBulletinSaving] = useState(false);

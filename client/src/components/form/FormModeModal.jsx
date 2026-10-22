@@ -14,6 +14,7 @@ export default function FormModeModal({
   submitLabel,
   cancelLabel,
   submitting = false,
+  submitDisabled = false,
   error,
   children,
   headerExtra,
@@ -41,11 +42,11 @@ export default function FormModeModal({
                 <span className={`form-mode-badge ${meta.badgeClass}`}>{meta.badge}</span>
                 {context && <span className="form-mode-context">{context}</span>}
               </div>
-              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">{title}</h2>
               {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="form-mode-header-tools">
             {headerExtra}
             <button
               type="button"
@@ -67,11 +68,11 @@ export default function FormModeModal({
 
         <div className="form-mode-footer">
           {footerExtra}
-          <div className="flex gap-3 ml-auto w-full sm:w-auto">
+          <div className="form-mode-footer-actions flex gap-3 ml-auto w-full sm:w-auto">
             <button type="button" onClick={onClose} className="btn-secondary flex-1 sm:flex-none" disabled={submitting}>
               {resolvedCancel}
             </button>
-            <button type="submit" form={formId} className="btn-primary flex-1 sm:flex-none disabled:opacity-50" disabled={submitting}>
+            <button type="submit" form={formId} className="btn-primary flex-1 sm:flex-none disabled:opacity-50" disabled={submitting || submitDisabled}>
               {submitting ? resolvedSubmitSaving : submitLabel}
             </button>
           </div>

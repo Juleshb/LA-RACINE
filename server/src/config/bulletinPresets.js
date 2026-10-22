@@ -1,20 +1,20 @@
 export const BULLETIN_PRESETS = {
   STANDARD: {
     preset: 'STANDARD',
-    label: 'Rwanda bulletin — TEST1 + TEST2 + EX',
-    labelFr: 'Bulletin standard — TEST1 + TEST2 + EX',
+    label: 'Rwanda bulletin — Period 1 + Period 2 + EX',
+    labelFr: 'Bulletin standard — Période 1 + Période 2 + EX',
     assessments: [
-      { key: 'TEST1', label: 'TEST 1', maxField: 'test1Max', fallbackMax: 10 },
-      { key: 'TEST2', label: 'TEST 2', maxField: 'test2Max', fallbackMax: 10 },
+      { key: 'TEST1', label: 'Period 1', maxField: 'test1Max', fallbackMax: 10 },
+      { key: 'TEST2', label: 'Period 2', maxField: 'test2Max', fallbackMax: 10 },
       { key: 'EX', label: 'EX', maxField: 'examMax', fallbackMax: 20 },
     ],
   },
   TESTS_EXAM: {
     preset: 'TESTS_EXAM',
-    label: 'Tests + Exam — TEST1 + EX',
-    labelFr: 'Interrogations + Examen',
+    label: 'Periods + Exam — Period 1 + EX',
+    labelFr: 'Périodes + Examen',
     assessments: [
-      { key: 'TEST1', label: 'TEST 1', maxField: 'test1Max', fallbackMax: 20 },
+      { key: 'TEST1', label: 'Period 1', maxField: 'test1Max', fallbackMax: 20 },
       { key: 'EX', label: 'EX', maxField: 'examMax', fallbackMax: 40 },
     ],
   },

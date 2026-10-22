@@ -462,7 +462,7 @@ router.get('/:type', async (req, res) => {
         subject: m.subject.name,
         term: m.term,
         assessment: m.assessment === 'TEST' && m.catNumber > 0
-          ? `Test ${m.catNumber}`
+          ? `Period ${m.catNumber}`
           : m.assessment,
         score: m.score,
         maxScore: m.maxScore,

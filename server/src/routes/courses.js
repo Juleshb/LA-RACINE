@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
-import { assertTeacherCourseAccess, teacherCourseWhere, denyTeacherWrite } from '../lib/teacherAccess.js';
+import { assertTeacherCourseAccess, teacherCourseWhere, marksCourseWhere, denyTeacherWrite } from '../lib/teacherAccess.js';
 import { campusYearWhere, resolveClassIdFilter } from '../lib/scope.js';
 import { applyCurriculumToClass, applyCurriculumToAllClasses } from '../lib/curriculum.js';
 import { listCurricula, getCurriculumDomains } from '../config/curriculum/index.js';
@@ -16,8 +16,10 @@ const courseInclude = {
 
 router.get('/', async (req, res) => {
   try {
-    const { classId } = req.query;
-    const teacherFilter = await teacherCourseWhere(req);
+    const { classId, forMarks } = req.query;
+    const teacherFilter = forMarks === '1' || forMarks === 'true'
+      ? await marksCourseWhere(req)
+      : await teacherCourseWhere(req);
     const safeClassId = classId ? await resolveClassIdFilter(req, classId) : undefined;
     const courses = await prisma.subject.findMany({
       where: {

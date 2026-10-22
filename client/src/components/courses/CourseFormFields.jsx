@@ -126,7 +126,7 @@ export default function CourseFormFields({
           />
         </div>
         <div>
-          <label className="label">TEST1 max</label>
+          <label className="label">Period 1 max</label>
           <input
             className="input"
             type="number"
@@ -137,7 +137,7 @@ export default function CourseFormFields({
           />
         </div>
         <div>
-          <label className="label">TEST2 max</label>
+          <label className="label">Period 2 max</label>
           <input
             className="input"
             type="number"

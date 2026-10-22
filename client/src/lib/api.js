@@ -292,7 +292,13 @@ export const api = {
   updateClass: (id, data) => request(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteClass: (id) => request(`/classes/${id}`, { method: 'DELETE' }),
 
-  getCourses: (classId) => request(classId ? `/courses?classId=${classId}` : '/courses'),
+  getCourses: (classId, { forMarks } = {}) => {
+    const params = new URLSearchParams();
+    if (classId) params.set('classId', classId);
+    if (forMarks) params.set('forMarks', '1');
+    const q = params.toString();
+    return request(q ? `/courses?${q}` : '/courses');
+  },
   getCourseCurricula: () => request('/courses/curricula/templates'),
   applyCourseCurriculum: (classId, grade) =>
     request('/courses/apply-curriculum', { method: 'POST', body: JSON.stringify({ classId, grade }) }),
@@ -304,10 +310,19 @@ export const api = {
   updateCourse: (id, data) => request(`/courses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCourse: (id) => request(`/courses/${id}`, { method: 'DELETE' }),
 
+  getMarksClasses: () => request('/marks/classes'),
   getMarkAssessments: (subjectId, term) => {
     const params = new URLSearchParams({ subjectId });
     if (term) params.set('term', term);
     return request(`/marks/assessments?${params}`);
+  },
+  getRecordedMarks: ({ classId, term, subjectId } = {}) => {
+    const params = new URLSearchParams();
+    if (classId) params.set('classId', classId);
+    if (term) params.set('term', term);
+    if (subjectId) params.set('subjectId', subjectId);
+    const q = params.toString();
+    return request(`/marks/recorded${q ? `?${q}` : ''}`);
   },
   getSubjectTests: (subjectId) => {
     const params = new URLSearchParams({ subjectId });
@@ -632,6 +647,7 @@ export const api = {
   getCommunicationChildren: () => request('/communication/children'),
   getCommunicationBroadcasts: () => request('/communication/broadcasts'),
   createCommunicationBroadcast: (data) => request('/communication/broadcasts', { method: 'POST', body: JSON.stringify(data) }),
+  deleteCommunicationBroadcast: (id) => request(`/communication/broadcasts/${id}`, { method: 'DELETE' }),
   markBroadcastRead: (id) => request(`/communication/broadcasts/${id}/read`, { method: 'POST' }),
   getCommunicationThreads: () => request('/communication/threads'),
   getCommunicationThread: (id) => request(`/communication/threads/${id}`),

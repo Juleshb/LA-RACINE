@@ -716,6 +716,25 @@ router.post('/broadcasts/:id/read', async (req, res) => {
   }
 });
 
+router.delete('/broadcasts/:id', async (req, res) => {
+  try {
+    if (!canSendSchoolMessages(req.user.role)) {
+      return res.status(403).json({ error: 'Only school staff can delete announcements' });
+    }
+
+    const broadcast = await prisma.communicationBroadcast.findFirst({
+      where: { id: req.params.id, ...campusYearWhere(req) },
+      select: { id: true },
+    });
+    if (!broadcast) return res.status(404).json({ error: 'Not found' });
+
+    await prisma.communicationBroadcast.delete({ where: { id: broadcast.id } });
+    res.json({ message: 'Announcement deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── Threads (two-way messages) ───────────────────────────────────────────────
 
 router.get('/threads', async (req, res) => {

@@ -2,13 +2,13 @@ import { Fragment } from 'react';
 import { User } from 'lucide-react';
 import BulletinQrCode from './BulletinQrCode';
 import BulletinDirectorStamp from './BulletinDirectorStamp';
-import { periodExamColumns } from '../../lib/bulletinMaxima';
+import { formatBulletinScore, periodExamColumns } from '../../lib/bulletinMaxima';
 import { reportSchoolTitle } from '../../lib/reportSchoolTitle';
 
 function fmtScore(col) {
   if (!col || col.max === 0) return '';
   if (col.score == null) return '';
-  return String(col.score);
+  return formatBulletinScore(col.score);
 }
 
 function fmtMax(col) {

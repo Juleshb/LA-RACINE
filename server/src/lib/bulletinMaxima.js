@@ -2,13 +2,27 @@ function round2(value) {
   return Math.round(Number(value) * 100) / 100;
 }
 
+/** Bulletin marks: keep one decimal digit (9.78 → 9.7). */
+export function round1(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  if (Number.isNaN(n)) return null;
+  return Math.trunc(n * 10) / 10;
+}
+
+export function formatBulletinScore(value) {
+  const n = round1(value);
+  if (n == null) return '';
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 function scaleScore(score, fromMax, toMax) {
   if (score == null || score === '') return null;
   const from = Number(fromMax) || 0;
   const to = Number(toMax) || 0;
   if (!(to > 0)) return null;
-  if (!(from > 0) || from === to) return round2(score);
-  return round2((Number(score) / from) * to);
+  if (!(from > 0) || from === to) return round1(score);
+  return round1((Number(score) / from) * to);
 }
 
 /**
@@ -50,9 +64,10 @@ export function periodExamColumns({
     continuousScoreMax || testsMax || periodSum,
     periodSum,
   );
-  const hasScore = continuousOnTests != null || examScore != null;
+  const examOnScale = examScore == null || examScore === '' ? null : round1(examScore);
+  const hasScore = continuousOnTests != null || examOnScale != null;
   const totalScore = hasScore
-    ? round2((continuousOnTests || 0) + (Number(examScore) || 0))
+    ? round1((continuousOnTests || 0) + (examOnScale || 0))
     : null;
 
   return {
@@ -60,7 +75,7 @@ export function periodExamColumns({
     cells: [
       { score: p1Score, max: p1 },
       { score: p2Score, max: p2 },
-      { score: examScore ?? null, max: exam },
+      { score: examOnScale, max: exam },
       { score: totalScore, max: totalMax },
     ],
   };

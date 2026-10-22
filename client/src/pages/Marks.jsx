@@ -1,24 +1,27 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
-  Plus, Save, ChevronDown, ChevronUp, Info, FileText, Users, BookOpen, Calendar,
-  CheckCircle2, Loader2, Cloud, Search, Settings2, ArrowRight, FileSpreadsheet, Download,
+  Save, Info, FileText, BookOpen,
+  CheckCircle2, Loader2, Cloud, FileSpreadsheet, Download,
+  Filter, PencilLine, Pencil, Eye, Play, BarChart3,
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
+import ListSearch, { matchesSearch } from '../components/ListSearch';
+import FormModeModal from '../components/form/FormModeModal';
+import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
-import BulletinSteps from '../components/bulletin/BulletinSteps';
-import SubjectTestManager from '../components/marks/SubjectTestManager';
+import CreateAssessmentModal from '../components/marks/CreateAssessmentModal';
+import ViewRecordedMarksModal from '../components/marks/ViewRecordedMarksModal';
 import NurseryCompetenceMarks from '../components/marks/NurseryCompetenceMarks';
 import MarksExcelImportModal from '../components/marks/MarksExcelImportModal';
 import { downloadMarksImportTemplate } from '../lib/marksExcelImport';
 import ScoreBadge from '../components/bulletin/ScoreBadge';
-import { formatGradingScale, groupCoursesByCategory } from '../lib/curriculum';
+import { groupCoursesByCategory } from '../lib/curriculum';
 import { usesCompetenceBulletin } from '../lib/grades';
 import {
-  getMaxForAssessment,
   courseUsesBulletinScale,
   getAssessmentsForCourse,
   parseAssessmentStepId,
@@ -27,8 +30,15 @@ import {
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 import { studentFullName } from '../lib/studentName';
 
+function sessionAssessmentKey(session) {
+  if (!session) return '';
+  if (session.assessment === 'TEST' && session.catNumber > 0) return `TEST:${session.catNumber}`;
+  return session.assessment;
+}
+
 const LEGACY_TERMS = ['Term 1', 'Term 2', 'Term 3'];
 const LEGACY_ASSESSMENTS = ['CAT', 'Mid-term', 'Final'];
+const NURSERY_TERMS = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3', 'Annuel'];
 const AUTO_SAVE_DELAY_MS = 1000;
 
 function serializeRecords(records) {
@@ -63,14 +73,32 @@ export default function Marks() {
   const [savedAssessments, setSavedAssessments] = useState([]);
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState({});
-  const [maxScore, setMaxScore] = useState(100);
+  const [maxScore, setMaxScore] = useState('');
   const [saving, setSaving] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [showGuide, setShowGuide] = useState(false);
-  const [showTestsSetup, setShowTestsSetup] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [recordingOpen, setRecordingOpen] = useState(false);
+  const [missingOnly, setMissingOnly] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [courseQuery, setCourseQuery] = useState('');
+  const [listFilterClassId, setListFilterClassId] = useState('');
+  const [listFilterTerm, setListFilterTerm] = useState('');
+  const [listSortBy, setListSortBy] = useState('recent');
+  const [competenceOpen, setCompetenceOpen] = useState(false);
+  const [competenceSession, setCompetenceSession] = useState(null);
+  const [recordedLoading, setRecordedLoading] = useState(false);
+  const [recordedSummary, setRecordedSummary] = useState(null);
+  const [recordedSessions, setRecordedSessions] = useState([]);
+  const [classStudentCount, setClassStudentCount] = useState(0);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewSession, setViewSession] = useState(null);
+  const [viewStudents, setViewStudents] = useState([]);
+  const [viewRecords, setViewRecords] = useState({});
+  const [viewLoading, setViewLoading] = useState(false);
   const [subjectTests, setSubjectTests] = useState([]);
   const [testsMarkMax, setTestsMarkMax] = useState('');
   const [examMax, setExamMax] = useState('');
@@ -83,6 +111,17 @@ export default function Marks() {
   const hydratedRef = useRef(false);
   const autoSaveTimerRef = useRef(null);
   const savingRef = useRef(false);
+  const [isCompactRecorder, setIsCompactRecorder] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setIsCompactRecorder(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const selectedCourse = useMemo(
     () => courses.find((c) => c.id === subjectId) || null,
@@ -134,42 +173,39 @@ export default function Marks() {
     [bulletinAssessments],
   );
 
+  const periodLabel = useCallback((raw, fallbackNumber) => {
+    const text = String(raw || '').trim();
+    const testMatch = text.match(/^(?:TEST|Test|Period|Période)\s*(\d+)$/i);
+    if (testMatch) return t('pages.marks.periodN', { count: Number(testMatch[1]) });
+    if (/^TEST1$/i.test(text)) return t('pages.marks.periodN', { count: 1 });
+    if (/^TEST2$/i.test(text)) return t('pages.marks.periodN', { count: 2 });
+    if (fallbackNumber) return t('pages.marks.periodN', { count: fallbackNumber });
+    return text;
+  }, [t]);
+
   useEffect(() => {
-    api.getClasses().then((data) => {
-      setClasses(data);
-      if (data.length > 0) setClassId(data[0].id);
-    }).catch(console.error);
+    api.getMarksClasses()
+      .then((data) => setClasses(Array.isArray(data) ? data : []))
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
     if (!classId) {
       setClassBulletinConfig(null);
-      return;
+      setCourses([]);
+      return undefined;
     }
     api.getClassBulletinConfig(classId)
       .then((data) => setClassBulletinConfig(data.config))
       .catch(console.error);
-  }, [classId]);
-
-  useEffect(() => {
-    if (!classId) {
-      setCourses([]);
-      setSubjectId('');
-      return undefined;
-    }
 
     let cancelled = false;
     setCoursesLoading(true);
-    setSubjectId('');
-    setStudents([]);
-    setRecords({});
-    setMessage('');
-
-    api.getCourses(classId)
+    api.getCourses(classId, { forMarks: true })
       .then((data) => {
         if (cancelled) return;
         setCourses(data);
-        setSubjectId(data[0]?.id || '');
+        setSubjectId((prev) => (prev && data.some((c) => c.id === prev) ? prev : (data[0]?.id || '')));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -183,6 +219,27 @@ export default function Marks() {
 
     return () => { cancelled = true; };
   }, [classId]);
+
+  const refreshRecorded = useCallback(async () => {
+    setRecordedLoading(true);
+    try {
+      const data = await api.getRecordedMarks();
+      setRecordedSessions(data.sessions || []);
+      setRecordedSummary(data.summary || null);
+      setClassStudentCount(data.studentCount || 0);
+    } catch (err) {
+      console.error(err);
+      setRecordedSessions([]);
+      setRecordedSummary(null);
+      setMessage(err.message);
+    } finally {
+      setRecordedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRecorded();
+  }, [refreshRecorded]);
 
   useEffect(() => {
     if (!subjectId || !subjectInClass) {
@@ -211,7 +268,14 @@ export default function Marks() {
           sortOrder: t.sortOrder,
         })));
         if ((data.tests || []).length > 0) {
-          setAssessment(`TEST:${data.tests[0].sortOrder}`);
+          setAssessment((prev) => {
+            if (typeof prev === 'string' && (prev.startsWith('TEST:') || prev === 'TEST1' || prev === 'TEST2' || prev === 'EX')) {
+              return prev;
+            }
+            const first = data.tests[0].sortOrder;
+            setCatNumber(first);
+            return `TEST:${first}`;
+          });
         }
       })
       .catch((err) => {
@@ -300,8 +364,6 @@ export default function Marks() {
       lastSavedRef.current = serializeRecords(initial);
       hydratedRef.current = true;
       setAutoSaveStatus('saved');
-      const firstWithMark = data.students.find((s) => s.mark);
-      if (firstWithMark?.mark?.maxScore) setMaxScore(firstWithMark.mark.maxScore);
       setMessage('');
     }).catch((err) => {
       if (!cancelled) setMessage(err.message);
@@ -316,20 +378,16 @@ export default function Marks() {
   useEffect(() => {
     if (!courseWithTests) return;
     if (isBulletinCourse && assessmentTypes.length > 0 && !assessmentTypes.includes(assessment)) {
-      setAssessment(assessmentTypes[0]);
+      const next = assessmentTypes[0];
+      setAssessment(next);
+      const parsed = parseAssessmentStepId(next);
+      if (parsed.catNumber > 0) setCatNumber(parsed.catNumber);
     }
     if (!isBulletinCourse && !LEGACY_ASSESSMENTS.includes(assessment)) {
       setAssessment('CAT');
+      setCatNumber(nextCatNumber || 1);
     }
-  }, [subjectId, isBulletinCourse, bulletinAssessmentKey, assessment, assessmentTypes]);
-
-  useEffect(() => {
-    if (!courseWithTests) return;
-    const def = bulletinAssessments.find((a) => a.key === assessment);
-    if (!def) return;
-    const nextMax = getMaxForAssessment(courseWithTests, def);
-    setMaxScore((prev) => (prev === nextMax ? prev : nextMax));
-  }, [assessment, courseWithTests, bulletinAssessmentKey, bulletinAssessments]);
+  }, [subjectId, isBulletinCourse, bulletinAssessmentKey, assessment, assessmentTypes, nextCatNumber, courseWithTests]);
 
   const refreshSavedAssessments = useCallback(async () => {
     if (!subjectId) return;
@@ -392,7 +450,7 @@ export default function Marks() {
         records: currentStudents.map((s) => ({
           studentId: s.id,
           score: currentRecords[s.id]?.score,
-          maxScore,
+          maxScore: Number(maxScore),
           notes: currentRecords[s.id]?.notes || null,
         })),
         assessedOn,
@@ -401,6 +459,7 @@ export default function Marks() {
       lastSavedRef.current = serializeRecords(currentRecords);
 
       const bulletinSaved = await refreshSavedAssessments();
+      refreshRecorded();
 
       if (auto) {
         setAutoSaveStatus('saved');
@@ -436,6 +495,7 @@ export default function Marks() {
     catNumber,
     maxScore,
     refreshSavedAssessments,
+    refreshRecorded,
     isBulletinCourse,
     bulletinAssessments,
   ]);
@@ -461,9 +521,14 @@ export default function Marks() {
   }, [records, subjectId, students.length, performSave]);
 
   const setScore = (studentId, value) => {
+    // Typing only — strip non-numeric (comma → decimal point)
+    let next = String(value ?? '').replace(',', '.');
+    next = next.replace(/[^\d.]/g, '');
+    const parts = next.split('.');
+    if (parts.length > 2) next = `${parts[0]}.${parts.slice(1).join('')}`;
     setRecords((prev) => ({
       ...prev,
-      [studentId]: { ...prev[studentId], score: value },
+      [studentId]: { ...prev[studentId], score: next },
     }));
   };
 
@@ -474,64 +539,6 @@ export default function Marks() {
     }));
   };
 
-  const handleAddCat = () => {
-    setCatNumber(nextCatNumber);
-    setStudents([]);
-    setRecords({});
-    setMessage('');
-    hydratedRef.current = false;
-    setAutoSaveStatus('idle');
-  };
-
-  const handleSaveTests = async () => {
-    if (!subjectId) return;
-    setTestsSaving(true);
-    setMessage('');
-    try {
-      const result = await api.saveSubjectTests({
-        subjectId,
-        testsMarkMax: Number(testsMarkMax) || undefined,
-        examMax: Number(examMax) || undefined,
-        tests: testsDraft.map((t, index) => ({
-          id: t.id,
-          label: t.label || `Test ${index + 1}`,
-          maxScore: Number(t.maxScore),
-          date: t.date || null,
-          sortOrder: index + 1,
-        })),
-      });
-      setSubjectTests(result.tests || []);
-      setTestsMarkMax(result.testsMarkMax ?? '');
-      setExamMax(result.examMax ?? '');
-      setTotalMax(result.totalMax ?? '');
-      setTestsDraft((result.tests || []).map((t) => ({
-        id: t.id,
-        label: t.label,
-        maxScore: t.maxScore,
-        date: t.date ? new Date(t.date).toISOString().slice(0, 10) : '',
-        sortOrder: t.sortOrder,
-      })));
-      setCourses((prev) => prev.map((c) => (
-        c.id === subjectId
-          ? {
-            ...c,
-            testsMarkMax: result.testsMarkMax,
-            examMax: result.examMax,
-            totalMax: result.totalMax,
-          }
-          : c
-      )));
-      if (!result.steps?.some((s) => s.key === assessment)) {
-        setAssessment(result.steps?.[0]?.key || `TEST:${result.tests?.[0]?.sortOrder || 1}`);
-      }
-      setMessage('Test and exam setup saved. Record each test, then the exam.');
-    } catch (err) {
-      setMessage(err.message);
-    } finally {
-      setTestsSaving(false);
-    }
-  };
-
   const handleSave = () => performSave({ auto: false });
 
   const filledCount = students.filter((s) => {
@@ -539,7 +546,21 @@ export default function Marks() {
     return score !== '' && score != null && !Number.isNaN(Number(score));
   }).length;
   const progressPct = students.length ? Math.round((filledCount / students.length) * 100) : 0;
-  const currentAssessmentLabel = bulletinAssessments.find((a) => a.key === assessment)?.label || assessment;
+  const currentAssessmentLabel = (() => {
+    const found = bulletinAssessments.find((a) => a.key === assessment);
+    if (assessment === 'EX' || found?.label === 'EX' || found?.label === 'Exam') {
+      return t('pages.marks.typeExam');
+    }
+    if (assessment === 'CAT') return t('pages.marks.periodN', { count: catNumber || 1 });
+    if (typeof assessment === 'string' && assessment.startsWith('TEST:')) {
+      return t('pages.marks.periodN', { count: activeAssessment.catNumber || catNumber || 1 });
+    }
+    if (assessment === 'TEST1' || assessment === 'TEST2') {
+      return t('pages.marks.periodN', { count: catNumber || activeAssessment.catNumber || (assessment === 'TEST2' ? 2 : 1) });
+    }
+    if (found) return periodLabel(found.label || found.key, found.catNumber || found.sortOrder || catNumber);
+    return periodLabel(assessment, catNumber);
+  })();
 
   const handleDownloadMarksTemplate = () => {
     if (!students.length) return;
@@ -607,14 +628,20 @@ export default function Marks() {
     }
   };
 
+  const studentHasScore = useCallback((studentId) => {
+    const score = records[studentId]?.score;
+    return score !== '' && score != null && !Number.isNaN(Number(score));
+  }, [records]);
+
   const visibleStudents = useMemo(() => {
-    const q = studentSearch.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter((s) => {
-      const hay = `${studentFullName(s)} ${s.studentId || ''}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [students, studentSearch]);
+    let list = students;
+    if (missingOnly) {
+      list = list.filter((s) => !studentHasScore(s.id));
+    }
+    const q = studentSearch.trim();
+    if (!q) return list;
+    return list.filter((s) => matchesSearch(q, studentFullName(s), s.studentId || ''));
+  }, [students, studentSearch, missingOnly, studentHasScore]);
 
   const getMarksSortValue = useCallback((row, key) => {
     switch (key) {
@@ -640,21 +667,29 @@ export default function Marks() {
     { initialKey: 'name' },
   );
 
-  const focusScoreInput = (index) => {
-    const el = document.querySelector(`[data-mark-score="${index}"]`);
+  const focusScoreInput = (studentId) => {
+    const el = document.querySelector(`[data-mark-student="${studentId}"]`);
     if (el) {
       el.focus();
       el.select?.();
     }
   };
 
-  const onScoreKeyDown = (e, index) => {
+  const preventScoreScroll = (e) => {
+    // Number inputs change value on mouse-wheel — scores must be typed only
+    e.preventDefault();
+  };
+
+  const onScoreKeyDown = (e, studentId) => {
+    const order = sortedStudents.map((s) => s.id);
+    const index = order.indexOf(studentId);
+    if (index < 0) return;
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault();
-      focusScoreInput(index + 1);
+      if (order[index + 1]) focusScoreInput(order[index + 1]);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      focusScoreInput(index - 1);
+      if (order[index - 1]) focusScoreInput(order[index - 1]);
     }
   };
 
@@ -672,504 +707,1008 @@ export default function Marks() {
 
   const AutoSaveIcon = autoSaveIcon;
 
-  useEffect(() => {
-    if (isBulletinCourse && selectedCourse && !testsLoading && testsDraft.length === 0) {
-      setShowTestsSetup(true);
+  const missingCount = students.filter((s) => !studentHasScore(s.id)).length;
+
+  const listFilterClasses = useMemo(() => {
+    const byId = new Map();
+    for (const cls of classes) {
+      byId.set(cls.id, { id: cls.id, name: cls.name, grade: cls.grade });
     }
-  }, [isBulletinCourse, selectedCourse, testsLoading, testsDraft.length]);
+    for (const session of recordedSessions) {
+      if (session.classId && !byId.has(session.classId)) {
+        byId.set(session.classId, {
+          id: session.classId,
+          name: session.className || session.classId,
+          grade: '',
+        });
+      }
+    }
+    return [...byId.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }, [classes, recordedSessions]);
+
+  const listFilterTerms = useMemo(() => {
+    const terms = new Set([
+      ...DEFAULT_TERMS,
+      ...NURSERY_TERMS,
+      ...LEGACY_TERMS,
+      ...recordedSessions.map((s) => s.term).filter(Boolean),
+    ]);
+    const preferred = [...DEFAULT_TERMS, ...NURSERY_TERMS, ...LEGACY_TERMS];
+    return [...terms].sort((a, b) => {
+      const ai = preferred.indexOf(a);
+      const bi = preferred.indexOf(b);
+      if (ai === -1 && bi === -1) return String(a).localeCompare(String(b));
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+  }, [recordedSessions]);
+
+  const filteredSessions = useMemo(() => {
+    const q = courseQuery.trim();
+    const filtered = recordedSessions.filter((session) => {
+      if (listFilterClassId && session.classId !== listFilterClassId) return false;
+      if (listFilterTerm && session.term !== listFilterTerm) return false;
+      if (!q) return true;
+      return matchesSearch(
+        q,
+        session.className,
+        session.subjectName,
+        session.subjectCode,
+        session.label,
+        session.term,
+        session.category,
+      );
+    });
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (listSortBy === 'class') {
+        const byClass = String(a.className || '').localeCompare(String(b.className || ''));
+        if (byClass) return byClass;
+        const byTerm = String(a.term || '').localeCompare(String(b.term || ''));
+        if (byTerm) return byTerm;
+        return String(a.subjectName || '').localeCompare(String(b.subjectName || ''));
+      }
+      if (listSortBy === 'term') {
+        const byTerm = String(a.term || '').localeCompare(String(b.term || ''));
+        if (byTerm) return byTerm;
+        const byClass = String(a.className || '').localeCompare(String(b.className || ''));
+        if (byClass) return byClass;
+        return String(a.subjectName || '').localeCompare(String(b.subjectName || ''));
+      }
+      if (listSortBy === 'subject') {
+        const bySubject = String(a.subjectName || '').localeCompare(String(b.subjectName || ''));
+        if (bySubject) return bySubject;
+        return String(a.className || '').localeCompare(String(b.className || ''));
+      }
+      const byUpdated = String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+      if (byUpdated) return byUpdated;
+      return String(a.className || '').localeCompare(String(b.className || ''));
+    });
+    return sorted;
+  }, [recordedSessions, courseQuery, listFilterClassId, listFilterTerm, listSortBy]);
+
+  const createClass = useMemo(
+    () => classes.find((c) => c.id === classId) || null,
+    [classes, classId],
+  );
+  // Only when this class has assigned competence subjects (never unassigned nursery items)
+  const createCompetenceMode = Boolean(createClass?.competenceAccess);
+  const createTerms = useMemo(() => {
+    if (createCompetenceMode) return NURSERY_TERMS;
+    return classBulletinConfig?.terms || DEFAULT_TERMS;
+  }, [createCompetenceMode, classBulletinConfig]);
+
+  const assessmentOptions = useMemo(() => {
+    if (isBulletinCourse && bulletinAssessments.length > 0) {
+      return bulletinAssessments.map((a) => ({
+        value: a.key,
+        label: a.key === 'EX' || a.label === 'EX' || a.label === 'Exam'
+          ? t('pages.marks.typeExam')
+          : periodLabel(a.label || a.key, a.catNumber || a.sortOrder),
+      }));
+    }
+    if (isBulletinCourse) {
+      return [
+        { value: 'TEST:1', label: t('pages.marks.typePeriod') },
+        { value: 'EX', label: t('pages.marks.typeExam') },
+      ];
+    }
+    return [
+      { value: 'CAT', label: t('pages.marks.typePeriod') },
+      { value: 'Mid-term', label: t('pages.marks.typeMidterm') },
+      { value: 'Final', label: t('pages.marks.typeExam') },
+    ];
+  }, [isBulletinCourse, bulletinAssessments, t, periodLabel]);
+
+  const showAssessmentNumber = Boolean(
+    assessment
+    && assessment !== 'EX'
+    && assessment !== 'Final'
+    && assessment !== 'Mid-term'
+    && assessment !== 'SCORE',
+  );
+
+  const openCreate = (courseId) => {
+    const starterClassId = classId || classes[0]?.id;
+    if (starterClassId && starterClassId !== classId) setClassId(starterClassId);
+    if (courseId) setSubjectId(courseId);
+    setMaxScore('');
+    setCreateError('');
+    setMessage('');
+    setCreateOpen(true);
+  };
+
+  const handleCreateClassChange = (nextClassId) => {
+    setClassId(nextClassId);
+    setSubjectId('');
+    setAssessment('');
+    setMaxScore('');
+    const nextClass = classes.find((c) => c.id === nextClassId);
+    if (nextClass && usesCompetenceBulletin(nextClass.grade)) {
+      setTerm((prev) => (NURSERY_TERMS.includes(prev) ? prev : 'Trimestre 1'));
+    }
+  };
+
+  const openCompetenceRecorder = (session) => {
+    if (!session?.classId) {
+      setMessage(t('pages.marks.competenceNeedClass'));
+      return;
+    }
+    setCompetenceSession({
+      kind: 'competence',
+      classId: session.classId,
+      className: session.className || '',
+      term: session.term || term || 'Trimestre 1',
+      label: session.label || t('pages.marks.nurseryCompetence'),
+    });
+    setClassId(session.classId);
+    if (session.term) setTerm(session.term);
+    setCreateOpen(false);
+    setViewOpen(false);
+    setRecordingOpen(false);
+    setCompetenceOpen(true);
+  };
+
+  const closeCompetenceRecorder = () => {
+    setCompetenceOpen(false);
+    setCompetenceSession(null);
+  };
+
+  const closeCreate = () => {
+    setCreateOpen(false);
+    setCreateError('');
+  };
+
+  const applySessionContext = (session) => {
+    if (session.classId) setClassId(session.classId);
+    if (session.term) setTerm(session.term);
+    setSubjectId(session.subjectId);
+    setAssessment(sessionAssessmentKey(session));
+    setCatNumber(
+      session.assessment === 'CAT' || session.assessment === 'TEST'
+        ? session.catNumber
+        : session.assessment === 'TEST2'
+          ? 2
+          : session.assessment === 'TEST1'
+            ? 1
+            : session.catNumber || 1,
+    );
+    if (session.maxScore) setMaxScore(session.maxScore);
+    if (session.assessedOn) setAssessedOn(session.assessedOn);
+  };
+
+  const openViewSession = async (session) => {
+    if (session.kind === 'competence') {
+      openCompetenceRecorder(session);
+      return;
+    }
+    setViewSession(session);
+    setViewOpen(true);
+    setViewLoading(true);
+    setViewStudents([]);
+    setViewRecords({});
+    try {
+      const data = await api.getMarks(
+        session.classId,
+        session.subjectId,
+        session.term,
+        session.assessment,
+        session.catNumber,
+      );
+      setViewStudents(data.students || []);
+      const initial = {};
+      (data.students || []).forEach((s) => {
+        initial[s.id] = {
+          score: s.mark?.score ?? '',
+          notes: s.mark?.notes ?? '',
+        };
+      });
+      setViewRecords(initial);
+      if (!session.maxScore) {
+        const firstMax = (data.students || []).find((s) => s.mark?.maxScore)?.mark?.maxScore;
+        if (firstMax) {
+          setViewSession((prev) => (prev ? { ...prev, maxScore: firstMax } : prev));
+        }
+      }
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeViewSession = () => {
+    setViewOpen(false);
+    setViewSession(null);
+    setViewStudents([]);
+    setViewRecords({});
+  };
+
+  const resumeSession = (session) => {
+    if (session.kind === 'competence') {
+      openCompetenceRecorder(session);
+      return;
+    }
+    if (!session.subjectId || !session.classId) {
+      setMessage(t('pages.marks.resumeNeedSubject'));
+      return;
+    }
+    applySessionContext(session);
+    closeViewSession();
+    closeCompetenceRecorder();
+    setCreateOpen(false);
+    setCreateError('');
+    setMessage('');
+    setMissingOnly(false);
+    setStudentSearch('');
+    setRecordingOpen(true);
+  };
+
+  const continueToRecord = () => {
+    if (!classId) {
+      setCreateError(t('pages.marks.createNeedClass'));
+      return;
+    }
+    if (createCompetenceMode) {
+      if (!term) {
+        setCreateError(t('pages.marks.createNeedPeriod'));
+        return;
+      }
+      setCreateError('');
+      openCompetenceRecorder({
+        kind: 'competence',
+        classId,
+        className: createClass?.name || '',
+        term,
+        label: t('pages.marks.nurseryCompetence'),
+      });
+      return;
+    }
+    if (!subjectId) {
+      setCreateError(t('pages.marks.createNeedSubject'));
+      return;
+    }
+    if (!assessment) {
+      setCreateError(t('pages.marks.createNeedType'));
+      return;
+    }
+    if (!assessedOn) {
+      setCreateError(t('pages.marks.createNeedDate'));
+      return;
+    }
+    if (!maxScore || Number(maxScore) <= 0) {
+      setCreateError(t('pages.marks.createNeedMax'));
+      return;
+    }
+    setCreateError('');
+    setCreateOpen(false);
+    setRecordingOpen(true);
+  };
+
+  const backToCreate = () => {
+    setRecordingOpen(false);
+    setCreateOpen(true);
+    setShowGuide(false);
+  };
+
+  const closeRecording = () => {
+    setRecordingOpen(false);
+    setShowGuide(false);
+  };
+
+  const handleCreateAssessmentChange = (value) => {
+    setAssessment(value);
+    if (value === 'CAT') {
+      setCatNumber(nextCatNumber || 1);
+      return;
+    }
+    if (value === 'TEST1') {
+      setCatNumber(1);
+      return;
+    }
+    if (value === 'TEST2') {
+      setCatNumber(2);
+      return;
+    }
+    if (typeof value === 'string' && value.startsWith('TEST:')) {
+      const n = Number(value.split(':')[1]);
+      if (Number.isInteger(n) && n > 0) setCatNumber(n);
+    }
+  };
+
+  const handleMaxScoreChange = (raw) => {
+    const cleaned = String(raw).replace(/[^\d.]/g, '');
+    if (cleaned === '' || cleaned === '.') {
+      setMaxScore('');
+      return;
+    }
+    const parts = cleaned.split('.');
+    const normalized = parts.length > 2
+      ? `${parts[0]}.${parts.slice(1).join('')}`
+      : cleaned;
+    setMaxScore(normalized);
+  };
+
+  const handleAssessmentNumberChange = (raw) => {
+    const digits = String(raw).replace(/[^\d]/g, '');
+    if (digits === '') {
+      setCatNumber('');
+      return;
+    }
+    const n = Math.max(1, Number(digits) || 1);
+    setCatNumber(n);
+    if (assessment === 'CAT') return;
+    if (assessment === 'TEST1' || assessment === 'TEST2' || (typeof assessment === 'string' && assessment.startsWith('TEST:'))) {
+      if (n === 1 && bulletinAssessments.some((a) => a.key === 'TEST1')) {
+        setAssessment('TEST1');
+      } else if (n === 2 && bulletinAssessments.some((a) => a.key === 'TEST2')) {
+        setAssessment('TEST2');
+      } else {
+        setAssessment(`TEST:${n}`);
+      }
+    }
+  };
+
+  const modalContext = [
+    selectedClass?.name,
+    selectedCourse?.name,
+    currentAssessmentLabel,
+    term,
+  ].filter(Boolean).join(' · ');
 
   if (user?.role === 'PARENT') {
     return <Navigate to={`/campus/${campusId}/bulletin-report`} replace />;
   }
 
-  if (usesCompetenceBulletin(selectedClass?.grade)) {
-    return (
-      <NurseryCompetenceMarks
-        campusId={campusId}
-        classes={classes.filter((c) => usesCompetenceBulletin(c.grade))}
-        classId={classId}
-        onClassChange={setClassId}
-        t={t}
-        isTeacher={isTeacher}
-      />
-    );
-  }
+  const overviewStats = [
+    {
+      key: 'sessions',
+      value: recordedSummary?.sessions ?? 0,
+      label: t('pages.marks.statSessions'),
+      icon: BarChart3,
+    },
+    {
+      key: 'entered',
+      value: recordedSummary?.enteredMarks ?? 0,
+      label: t('pages.marks.statEnteredMarks'),
+    },
+    {
+      key: 'completion',
+      value: `${recordedSummary?.avgCompletionPct ?? 0}%`,
+      label: t('pages.marks.statAvgCompletion'),
+    },
+    {
+      key: 'avg',
+      value: recordedSummary?.avgScorePct != null ? `${recordedSummary.avgScorePct}%` : '—',
+      label: t('pages.marks.statAvgScore'),
+    },
+    {
+      key: 'incomplete',
+      value: recordedSummary?.incompleteSessions ?? 0,
+      label: t('pages.marks.statIncomplete'),
+      tone: (recordedSummary?.incompleteSessions ?? 0) > 0 ? 'warn' : undefined,
+    },
+    {
+      key: 'students',
+      value: classStudentCount,
+      label: t('pages.marks.statStudents'),
+    },
+  ];
 
   return (
     <div className="pm-page">
       <PageHeader
         title={isTeacher ? t('pages.marks.titleTeacher') : t('pages.marks.title')}
         description={isTeacher
-          ? t('pages.marks.descriptionTeacher')
-          : t('pages.marks.description')}
+          ? t('pages.marks.descriptionTeacherView')
+          : t('pages.marks.descriptionView')}
         action={(
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="pm-header-actions">
             {!isTeacher && (
               <>
-                <Link to={`/campus/${campusId}/midterms`} className="btn-secondary flex items-center gap-2">
+                <Link
+                  to={`/campus/${campusId}/midterms`}
+                  className="btn-secondary pm-header-btn"
+                >
                   <FileText className="w-4 h-4" />
-                  Périodes
+                  <span className="pm-header-btn-label">Périodes</span>
                 </Link>
-                <Link to={`/campus/${campusId}/bulletin-report`} className="btn-secondary flex items-center gap-2">
+                <Link
+                  to={`/campus/${campusId}/bulletin-report`}
+                  className="btn-secondary pm-header-btn"
+                >
                   <FileText className="w-4 h-4" />
-                  {t('pages.bulletin.title')}
+                  <span className="pm-header-btn-label">{t('pages.bulletin.title')}</span>
                 </Link>
               </>
             )}
             <button
               type="button"
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
-              disabled={students.length === 0}
-              onClick={handleDownloadMarksTemplate}
-              title={t('pages.marks.downloadTemplate')}
+              className="btn-primary pm-header-btn pm-header-btn-primary disabled:opacity-50"
+              disabled={classes.length === 0}
+              onClick={() => openCreate()}
             >
-              <Download className="w-4 h-4" />
-              {t('pages.marks.template')}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
-              disabled={students.length === 0}
-              onClick={() => setImportOpen(true)}
-              title={t('pages.marks.importExcel')}
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              {t('pages.marks.import')}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !subjectId || students.length === 0 || !hasSavableMarks(records)}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              title={t('pages.marks.saveNowTitle')}
-            >
-              <Save className="w-4 h-4" />
-              {saving ? t('ui.saving') : t('ui.save')}
+              <PencilLine className="w-4 h-4" />
+              <span>{t('pages.marks.createAssessment')}</span>
             </button>
           </div>
         )}
       />
 
-      {/* Step 1 — Context */}
-      <section className="pm-setup card">
-        <div className="pm-setup-head">
-          <div>
-            <p className="pm-kicker">{t('pages.marks.stepSetup')}</p>
-            <h2 className="pm-setup-title">{t('pages.marks.selectWhatToRecord')}</h2>
-          </div>
-          {classBulletinConfig && (
-            <span className="pm-layout-chip">{classBulletinConfig.label}</span>
-          )}
-        </div>
-
-        <div className="pm-setup-grid">
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-gray-400" /> {t('ui.class')}
-            </label>
-            <select
-              className="input"
-              value={classId}
-              onChange={(e) => setClassId(e.target.value)}
-              disabled={classes.length === 0}
-            >
-              {classes.length === 0 ? (
-                <option value="">{t('pages.marks.noClasses')}</option>
-              ) : (
-                classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))
-              )}
-            </select>
-          </div>
-
-          <div className="pm-setup-subject">
-            <label className="label flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-gray-400" /> {t('pages.marks.subSubject')}
-            </label>
-            <select
-              className="input"
-              value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              disabled={coursesLoading || courses.length === 0}
-            >
-              {coursesLoading ? (
-                <option value="">{t('pages.marks.loadingCourses')}</option>
-              ) : courses.length === 0 ? (
-                <option value="">
-                  {isTeacher
-                    ? t('pages.marks.noCoursesTeacher')
-                    : t('pages.marks.noCoursesAdmin')}
-                </option>
-              ) : (
-                courseGroups.map((group) => (
-                  <optgroup key={group.category} label={group.category}>
-                    {group.courses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                    ))}
-                  </optgroup>
-                ))
-              )}
-            </select>
-            {!coursesLoading && courses.length > 0 && (
-              <p className="field-hint">{t('pages.marks.subSubjectsForClass', {
-                count: courses.length,
-                plural: courses.length !== 1 ? 's' : '',
-                className: selectedClass?.name || t('ui.thisCampus'),
-              })}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('pages.marks.trimestre')}
-            </label>
-            <div className="pm-term-segment" role="group" aria-label={t('pages.marks.trimestre')}>
-              {terms.map((termOption) => (
-                <button
-                  key={termOption}
-                  type="button"
-                  className={`pm-term-btn ${term === termOption ? 'is-active' : ''}`}
-                  onClick={() => setTerm(termOption)}
-                >
-                  {termOption.replace('Trimestre ', 'T')}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="label">{t('pages.marks.assessmentDate')}</label>
-            <input
-              type="date"
-              className="input"
-              value={assessedOn}
-              onChange={(e) => setAssessedOn(e.target.value)}
-            />
-            <p className="field-hint">{t('pages.marks.assessmentDateHint')}</p>
-          </div>
-
-          {!isBulletinCourse && (
-            <>
-              <div>
-                <label className="label">{t('pages.marks.assessment')}</label>
-                <select className="input" value={assessment} onChange={(e) => setAssessment(e.target.value)}>
-                  {assessmentTypes.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-              {assessment === 'CAT' ? (
-                <div>
-                  <label className="label">{t('pages.marks.catNumber')}</label>
-                  <div className="flex gap-2">
-                    <select className="input flex-1" value={catNumber} onChange={(e) => setCatNumber(Number(e.target.value))}>
-                      {catOptions.length === 0 ? (
-                        <option value={catNumber}>CAT {catNumber} (new)</option>
-                      ) : (
-                        catOptions.map((c) => (
-                          <option key={c.catNumber} value={c.catNumber}>{c.label}</option>
-                        ))
-                      )}
-                      {!catOptions.some((c) => c.catNumber === nextCatNumber) && (
-                        <option value={nextCatNumber}>CAT {nextCatNumber} (new)</option>
-                      )}
-                    </select>
-                    <button type="button" onClick={handleAddCat} className="btn-secondary px-3 shrink-0" title={`Create CAT ${nextCatNumber}`}>
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="label">{t('pages.marks.maxScore')}</label>
-                  <input
-                    className="input"
-                    type="number"
-                    min="1"
-                    value={maxScore}
-                    onChange={(e) => setMaxScore(Number(e.target.value) || 100)}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Tests setup — collapsible */}
-      {isBulletinCourse && selectedCourse && (
-        <section className="pm-tests-wrap card">
-          <button
-            type="button"
-            className="pm-tests-toggle"
-            onClick={() => setShowTestsSetup((v) => !v)}
-            aria-expanded={showTestsSetup}
-          >
-            <span className="pm-tests-toggle-left">
-              <Settings2 className="w-4 h-4" />
-              <span>
-                <strong>{t('pages.marks.testsSetup')}</strong>
-                <span className="pm-tests-toggle-meta">
-                  {testsDraft.length} test{testsDraft.length !== 1 ? 's' : ''}
-                  {testsMarkMax !== '' ? ` · TEST/${testsMarkMax}` : ''}
-                  {examMax !== '' ? ` · EX/${examMax}` : ''}
-                </span>
-              </span>
-            </span>
-            {showTestsSetup ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-          {showTestsSetup && (
-            <div className="pm-tests-body">
-              <SubjectTestManager
-                tests={testsDraft}
-                testsMarkMax={testsMarkMax}
-                examMax={examMax}
-                totalMax={totalMax}
-                onChange={(nextTests, nextTestsMarkMax, nextExamMax) => {
-                  setTestsDraft(nextTests);
-                  setTestsMarkMax(nextTestsMarkMax);
-                  setExamMax(nextExamMax);
-                }}
-                onSave={handleSaveTests}
-                saving={testsSaving}
-                canEdit
-                embedded
-              />
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Step 2 — Assessment + entry */}
-      {isBulletinCourse && selectedCourse && !testsLoading && (
-        <section className="pm-session card">
-          <div className="pm-session-head">
-            <div>
-              <p className="pm-kicker">{t('pages.marks.stepRecord')}</p>
-              <h2 className="pm-session-title">
-                {currentAssessmentLabel}
-                <ArrowRight className="pm-session-arrow" aria-hidden />
-                <span className="pm-session-subject">{selectedCourse.name}</span>
-              </h2>
-              <p className="pm-session-meta">
-                {selectedClass?.name} · {formatGradingScale(selectedCourse)} · {term}
-              </p>
-            </div>
-            <div className="pm-session-stats">
-              <div className="pm-stat">
-                <span className="pm-stat-value">{maxScore}</span>
-                <span className="pm-stat-label">{t('pages.marks.maxScore')}</span>
-              </div>
-              <div className="pm-stat">
-                <span className="pm-stat-value">{filledCount}/{students.length}</span>
-                <span className="pm-stat-label">{t('pages.marks.enteredShort')}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pm-progress">
-            <div className="pm-progress-meta">
-              <span>{t('pages.marks.classProgress')}</span>
-              <strong>{progressPct}%</strong>
-            </div>
-            <div className="pm-progress-track">
-              <div className="pm-progress-fill" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-
-          <BulletinSteps
-            assessments={bulletinAssessments}
-            savedAssessments={savedAssessments}
-            current={assessment}
-            onSelect={setAssessment}
-            course={courseWithTests}
-          />
-        </section>
-      )}
-
-      {selectedCourse && !isBulletinCourse && (
-        <div className="pm-legacy-bar">
-          <span className="text-sm text-gray-500">{t('pages.marks.recording')}</span>
-          <span className="pm-layout-chip">{term}</span>
-          <span className="pm-layout-chip">{assessment === 'CAT' ? `CAT ${catNumber}` : assessment}</span>
-          <span className="pm-layout-chip">Max {maxScore}</span>
-        </div>
-      )}
-
-      <div className="pm-help card">
-        <button
-          type="button"
-          className="pm-help-summary"
-          onClick={() => setShowGuide((v) => !v)}
-          aria-expanded={showGuide}
-        >
-          <span className="flex items-center gap-2">
-            <Info className="w-4 h-4" />
-            {t('pages.marks.howToRecord')}
-          </span>
-          {showGuide ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-        </button>
-        {showGuide && (
-          <div className="pm-help-body">
-            <p>{t('pages.marks.autoSaveHint')}</p>
-            {isBulletinCourse && <p>{t('pages.marks.bulletinRecordHint')}</p>}
-            <p>{t('pages.marks.keyboardHint')}</p>
-            <p>{t('pages.marks.excelHint')}</p>
-            {isTeacher && (
-              <p className="pm-help-teacher">{t('pages.marks.teachersOnlyHint')}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {message && (
-        <div className={`pm-message ${message.toLowerCase().includes('saved') || message.includes('Next:') || message.includes('setup') ? 'is-ok' : 'is-error'}`}>
+      {message && !recordingOpen && !viewOpen && !competenceOpen && (
+        <div className={`pm-message ${message.toLowerCase().includes('saved') || message.includes('Next:') || message.includes('setup') || message.includes('Imported') ? 'is-ok' : 'is-error'}`}>
           {message}
         </div>
       )}
 
-      {isTeacher && !coursesLoading && classId && courses.length === 0 && (
-        <div className="card mb-6 empty-state">
+      {isTeacher && classes.length === 0 && !recordedLoading && (
+        <div className="card empty-state pm-empty-assigned">
           <div className="empty-state-icon"><BookOpen className="w-6 h-6" /></div>
-          <p className="text-gray-600 font-medium">{t('pages.marks.emptyNoCoursesTitle', { className: selectedClass?.name || t('ui.thisCampus') })}</p>
-          <p className="text-sm text-gray-400 mt-1">{t('pages.marks.emptyNoCoursesBody')}</p>
+          <p className="text-gray-600 font-medium">{t('pages.marks.noAssignedSubjectsTitle')}</p>
+          <p className="text-sm text-gray-400 mt-1 max-w-md mx-auto">{t('pages.marks.noAssignedSubjectsBody')}</p>
         </div>
       )}
 
-      {/* Score grid */}
-      <section className="pm-grid card">
-        <div className="pm-grid-toolbar">
-          <div className="pm-grid-title-wrap">
-            <h3 className="pm-grid-title">
-              {students.length === 0
-                ? t('pages.marks.selectClassAndSubject')
-                : t('pages.marks.enterScores', { assessment: currentAssessmentLabel, max: maxScore })}
-            </h3>
-            {students.length > 0 && (
-              <p className="pm-grid-hint">{t('pages.marks.enterScoresHint')}</p>
-            )}
-          </div>
-          {students.length > 0 && (
-            <div className="pm-search">
-              <Search className="w-4 h-4" aria-hidden />
-              <input
-                type="search"
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                placeholder={t('ui.searchStudent')}
-                aria-label={t('ui.searchStudent')}
-              />
+      <section className="pm-overview-stats" aria-label={t('pages.marks.recordedTitle')}>
+        {overviewStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.key} className={`pm-overview-stat card ${stat.tone ? `is-${stat.tone}` : ''}`}>
+              {Icon ? <Icon className="pm-overview-stat-icon" aria-hidden /> : null}
+              <div className="pm-overview-stat-copy">
+                <p className="pm-overview-stat-value">{stat.value}</p>
+                <p className="pm-overview-stat-label">{stat.label}</p>
+              </div>
             </div>
-          )}
-          {autoSaveLabel && students.length > 0 && (
-            <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
-              <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
-              {autoSaveLabel}
-            </span>
+          );
+        })}
+      </section>
+
+      <section className="card pm-sessions-wrap">
+        <div className="pm-sessions-toolbar">
+          <div className="pm-sessions-toolbar-copy">
+            <h2 className="pm-sessions-title">{t('pages.marks.recordedTitle')}</h2>
+            <p className="pm-sessions-hint">{t('pages.marks.recordedHintAll')}</p>
+          </div>
+          <ListSearch
+            value={courseQuery}
+            onChange={setCourseQuery}
+            placeholder={t('pages.marks.searchRecorded')}
+            className="pm-list-search pm-sessions-search"
+          />
+        </div>
+        <div className="pm-sessions-filters">
+          <label className="pm-sessions-filter">
+            <span className="pm-sessions-filter-label">{t('ui.class')}</span>
+            <select
+              className="pm-sessions-filter-select"
+              value={listFilterClassId}
+              onChange={(e) => setListFilterClassId(e.target.value)}
+            >
+              <option value="">{t('ui.allClasses')}</option>
+              {listFilterClasses.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}{cls.grade ? ` (${cls.grade})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="pm-sessions-filter">
+            <span className="pm-sessions-filter-label">{t('pages.marks.trimestre')}</span>
+            <select
+              className="pm-sessions-filter-select"
+              value={listFilterTerm}
+              onChange={(e) => setListFilterTerm(e.target.value)}
+            >
+              <option value="">{t('pages.reports.allTerms')}</option>
+              {listFilterTerms.map((termOption) => (
+                <option key={termOption} value={termOption}>{termOption}</option>
+              ))}
+            </select>
+          </label>
+          <label className="pm-sessions-filter">
+            <span className="pm-sessions-filter-label">{t('pages.marks.sortBy')}</span>
+            <select
+              className="pm-sessions-filter-select"
+              value={listSortBy}
+              onChange={(e) => setListSortBy(e.target.value)}
+            >
+              <option value="recent">{t('pages.marks.sortRecent')}</option>
+              <option value="class">{t('pages.marks.sortClass')}</option>
+              <option value="term">{t('pages.marks.sortTerm')}</option>
+              <option value="subject">{t('pages.marks.sortSubject')}</option>
+            </select>
+          </label>
+          {(listFilterClassId || listFilterTerm || listSortBy !== 'recent' || courseQuery.trim()) && (
+            <button
+              type="button"
+              className="pm-sessions-filter-reset"
+              onClick={() => {
+                setListFilterClassId('');
+                setListFilterTerm('');
+                setListSortBy('recent');
+                setCourseQuery('');
+              }}
+            >
+              {t('pages.marks.clearFilters')}
+            </button>
           )}
         </div>
 
-        {students.length === 0 ? (
+        {recordedLoading ? (
           <div className="pm-empty">
-            <Users className="w-8 h-8 text-gray-300" />
-            <p>{!subjectId ? t('pages.marks.selectClassAndSubject') : t('pages.marks.noStudentsInClass')}</p>
+            <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+            <p>{t('pages.marks.loadingRecorded')}</p>
           </div>
-        ) : visibleStudents.length === 0 ? (
+        ) : filteredSessions.length === 0 ? (
           <div className="pm-empty">
-            <Search className="w-8 h-8 text-gray-300" />
-            <p>{t('ui.noSearchResults')}</p>
+            <BookOpen className="w-8 h-8 text-gray-300" />
+            <p>
+              {recordedSessions.length === 0
+                ? t('pages.marks.noRecordedYetAll')
+                : t('ui.noSearchResults')}
+            </p>
+            {recordedSessions.length === 0 && classes.length > 0 && (
+              <button
+                type="button"
+                className="btn-primary mt-3"
+                onClick={() => openCreate()}
+              >
+                {t('pages.marks.createAssessment')}
+              </button>
+            )}
           </div>
         ) : (
-          <div className="pm-grid-scroll">
-            <table className="pm-table">
-              <thead>
-                <tr>
-                  <th className="pm-col-idx">#</th>
-                  <SortableTh label={t('pages.marks.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-id" />
-                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-name" />
-                  <SortableTh label={`${currentAssessmentLabel} / ${maxScore}`} columnKey="score" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-score text-center" align="center" />
-                  <SortableTh label="%" columnKey="pct" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-pct text-center" align="center" />
-                  <th className="pm-col-notes">{t('ui.notes')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedStudents.map((s, idx) => {
-                  const score = records[s.id]?.score;
-                  const hasScore = score !== '' && score !== undefined && score != null && !Number.isNaN(Number(score));
-                  const pct = hasScore ? Math.round((Number(score) / maxScore) * 100) : null;
-                  const overMax = hasScore && Number(score) > Number(maxScore);
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`${hasScore ? 'is-filled' : 'is-empty'} ${overMax ? 'is-over' : ''}`}
-                    >
-                      <td className="pm-col-idx text-gray-400 tabular-nums">{idx + 1}</td>
-                      <td className="pm-col-id font-mono text-xs text-gray-500">{s.studentId}</td>
-                      <td className="pm-col-name font-medium text-gray-900">
-                        {studentFullName(s)}
-                      </td>
-                      <td className="pm-col-score text-center">
+          <div className="pm-sessions-list">
+            {filteredSessions.map((session) => (
+              <article
+                key={session.id}
+                className={`pm-session-card ${session.complete ? 'is-complete' : 'is-partial'}`}
+              >
+                <div
+                  className="pm-session-ring"
+                  style={{ '--pm-pct': `${session.completionPct}%` }}
+                  aria-hidden
+                >
+                  <span>{session.completionPct}%</span>
+                </div>
+                <div className="pm-session-main">
+                  <div className="pm-session-topline">
+                    <span className="pm-short-card-code">
+                      {session.kind === 'competence' ? 'COMP' : (session.subjectCode || '—')}
+                    </span>
+                    <span className="pm-session-class">{session.className}</span>
+                    {session.kind === 'competence' && (
+                      <span className="pm-session-badge is-competence">
+                        {t('pages.marks.nurseryCompetence')}
+                      </span>
+                    )}
+                    <span className={`pm-session-badge ${session.complete ? 'is-done' : 'is-open'}`}>
+                      {session.complete
+                        ? t('pages.marks.statusComplete')
+                        : t('pages.marks.statusPartial')}
+                    </span>
+                  </div>
+                  <h3 className="pm-session-name">
+                    {session.kind === 'competence'
+                      ? `${t('pages.marks.competenceSessionTitle')}${session.subjectName && session.subjectName !== 'Competence' ? ` · ${session.subjectName}` : ''}`
+                      : session.subjectName}
+                  </h3>
+                  <p className="pm-session-label">
+                    {[
+                      session.kind === 'competence' ? t('pages.marks.competenceGrades') : session.label,
+                      session.term,
+                      session.maxScore != null ? `/${session.maxScore}` : null,
+                      session.assessedOn,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                  <div className="pm-session-progress">
+                    <div className="pm-progress-track" aria-hidden>
+                      <div className="pm-progress-fill" style={{ width: `${session.completionPct}%` }} />
+                    </div>
+                    <span className="pm-session-progress-text">
+                      {t('pages.marks.enteredCount', { filled: session.entered, total: session.studentCount })}
+                      {session.avgPct != null ? ` · ${t('pages.marks.avgPct', { pct: session.avgPct })}` : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="pm-session-actions" role="group" aria-label={t('pages.marks.recordedTitle')}>
+                  <button
+                    type="button"
+                    className="pm-action-btn pm-action-view"
+                    onClick={() => openViewSession(session)}
+                  >
+                    <span className="pm-action-btn-icon" aria-hidden>
+                      <Eye className="w-4 h-4" />
+                    </span>
+                    <span className="pm-action-btn-copy">
+                      <span className="pm-action-btn-label">{t('pages.marks.viewMarks')}</span>
+                      <span className="pm-action-btn-hint">{t('pages.marks.viewMarksHint')}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`pm-action-btn pm-action-primary ${session.complete ? 'is-edit' : 'is-resume'}`}
+                    onClick={() => resumeSession(session)}
+                  >
+                    <span className="pm-action-btn-icon" aria-hidden>
+                      {session.complete
+                        ? <Pencil className="w-4 h-4" />
+                        : <Play className="w-4 h-4" />}
+                    </span>
+                    <span className="pm-action-btn-copy">
+                      <span className="pm-action-btn-label">
+                        {session.complete
+                          ? t('pages.marks.editMarks')
+                          : t('pages.marks.resumeRecording')}
+                      </span>
+                      <span className="pm-action-btn-hint">
+                        {session.complete
+                          ? t('pages.marks.editMarksHint')
+                          : t('pages.marks.resumeRecordingHint')}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <ViewRecordedMarksModal
+        open={viewOpen}
+        onClose={closeViewSession}
+        onResume={() => viewSession && resumeSession(viewSession)}
+        t={t}
+        session={viewSession}
+        students={viewStudents}
+        records={viewRecords}
+        loading={viewLoading}
+      />
+
+      <NurseryCompetenceMarks
+        open={competenceOpen && Boolean(competenceSession?.classId)}
+        onClose={closeCompetenceRecorder}
+        onSaved={refreshRecorded}
+        classId={competenceSession?.classId || ''}
+        className={competenceSession?.className || ''}
+        term={competenceSession?.term || 'Trimestre 1'}
+        t={t}
+      />
+
+      <CreateAssessmentModal
+        open={createOpen}
+        onClose={closeCreate}
+        onContinue={continueToRecord}
+        t={t}
+        classes={classes}
+        classId={classId}
+        onClassChange={handleCreateClassChange}
+        courses={courses}
+        courseGroups={courseGroups}
+        coursesLoading={coursesLoading}
+        subjectId={subjectId}
+        onSubjectChange={setSubjectId}
+        terms={createTerms}
+        term={term}
+        onTermChange={setTerm}
+        assessmentOptions={assessmentOptions}
+        assessment={assessment}
+        onAssessmentChange={handleCreateAssessmentChange}
+        showNumber={showAssessmentNumber}
+        assessmentNumber={catNumber}
+        onAssessmentNumberChange={handleAssessmentNumberChange}
+        assessedOn={assessedOn}
+        onAssessedOnChange={setAssessedOn}
+        maxScore={maxScore}
+        onMaxScoreChange={handleMaxScoreChange}
+        competenceMode={createCompetenceMode}
+        canContinue={createCompetenceMode
+          ? Boolean(classId && term)
+          : Boolean(
+            classId
+            && subjectId
+            && assessment
+            && assessedOn
+            && Number(maxScore) > 0
+            && (!showAssessmentNumber || Number(catNumber) > 0),
+          )}
+        error={createError}
+      />
+
+      <FormModeModal
+        open={recordingOpen}
+        mode="edit"
+        size="2xl"
+        title={t('pages.marks.recorderTitle')}
+        subtitle={t('pages.marks.recorderSubtitle')}
+        context={modalContext || undefined}
+        onClose={closeRecording}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave();
+        }}
+        formId="marks-recording-form"
+        submitLabel={saving ? t('ui.saving') : t('ui.save')}
+        submitting={saving}
+        submitDisabled={!subjectId || students.length === 0 || !hasSavableMarks(records)}
+        cancelLabel={t('ui.close')}
+        error={message && !message.toLowerCase().includes('saved') && !message.includes('Next:') && !message.includes('setup') && !message.includes('Imported') ? message : ''}
+        headerExtra={(
+          <div className="pm-record-toolbar">
+            {autoSaveLabel && (
+              <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
+                <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
+                <span className="pm-autosave-text">{autoSaveLabel}</span>
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn-secondary pm-record-tool-btn"
+              onClick={backToCreate}
+            >
+              <span className="pm-record-tool-label">{t('pages.marks.editAssessment')}</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary pm-record-tool-btn disabled:opacity-50"
+              disabled={students.length === 0}
+              onClick={handleDownloadMarksTemplate}
+              title={t('pages.marks.downloadTemplate')}
+            >
+              <Download className="w-4 h-4" />
+              <span className="pm-record-tool-label">{t('pages.marks.template')}</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary pm-record-tool-btn disabled:opacity-50"
+              disabled={students.length === 0}
+              onClick={() => setImportOpen(true)}
+              title={t('pages.marks.importExcel')}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span className="pm-record-tool-label">{t('pages.marks.import')}</span>
+            </button>
+          </div>
+        )}
+        footerExtra={(
+          <div className="pm-record-footer-progress">
+            {students.length > 0 && (
+              <>
+                <div className="pm-dock-progress">
+                  <div className="pm-progress-track" aria-hidden>
+                    <div className="pm-progress-fill" style={{ width: `${progressPct}%` }} />
+                  </div>
+                </div>
+                <span className="pm-dock-count">
+                  {t('pages.marks.enteredCount', { filled: filledCount, total: students.length })}
+                  {missingCount > 0 ? ` · ${t('pages.marks.missingCount', { count: missingCount })}` : ''}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+      >
+        {message && (message.toLowerCase().includes('saved') || message.includes('Next:') || message.includes('setup') || message.includes('Imported')) && (
+          <div className="pm-message is-ok !mx-0">{message}</div>
+        )}
+
+        <div className="pm-record-summary">
+          <div className="pm-record-summary-copy">
+            <p className="pm-kicker">{t('pages.marks.nowRecording')}</p>
+            <p className="pm-record-summary-title">
+              {currentAssessmentLabel}
+              <span className="pm-session-max">/ {maxScore}</span>
+            </p>
+            <p className="pm-record-summary-meta">
+              {[selectedClass?.name, selectedCourse?.name, term, assessedOn].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <div className="pm-stat pm-record-summary-stat">
+            <span className="pm-stat-value">{filledCount}/{students.length || 0}</span>
+            <span className="pm-stat-label">{t('pages.marks.enteredShort')}</span>
+          </div>
+        </div>
+
+        <FormSection
+          className="form-section-stack"
+          title={t('pages.marks.cardScores')}
+          description={t('pages.marks.enterScoresHint')}
+        >
+          <div className="pm-record-filters form-field-full">
+            {students.length > 0 && (
+              <>
+                <ListSearch
+                  value={studentSearch}
+                  onChange={setStudentSearch}
+                  placeholder={t('ui.searchStudent')}
+                  className="pm-list-search pm-record-search"
+                />
+                <button
+                  type="button"
+                  className={`pm-filter-btn ${missingOnly ? 'is-on' : ''}`}
+                  onClick={() => setMissingOnly((v) => !v)}
+                  aria-pressed={missingOnly}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>{t('pages.marks.missingCount', { count: missingCount })}</span>
+                </button>
+                <button
+                  type="button"
+                  className="pm-help-btn"
+                  onClick={() => setShowGuide((v) => !v)}
+                  aria-expanded={showGuide}
+                  title={t('pages.marks.howToRecord')}
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {showGuide && students.length > 0 && (
+            <div className="pm-help-inline form-field-full rounded-xl">
+              <p>{t('pages.marks.autoSaveHint')}</p>
+              <p>{t('pages.marks.keyboardHint')}</p>
+              <p>{t('pages.marks.excelHint')}</p>
+            </div>
+          )}
+
+          {students.length === 0 ? (
+            <div className="pm-empty form-field-full">
+              <BookOpen className="w-8 h-8 text-gray-300" />
+              <p>{!subjectId ? t('pages.marks.selectClassAndSubject') : t('pages.marks.noStudentsInClass')}</p>
+            </div>
+          ) : visibleStudents.length === 0 ? (
+            <div className="pm-empty form-field-full">
+              <Filter className="w-8 h-8 text-gray-300" />
+              <p>{missingOnly ? t('pages.marks.noMissingScores') : t('ui.noSearchResults')}</p>
+              {missingOnly && (
+                <button type="button" className="btn-secondary mt-2" onClick={() => setMissingOnly(false)}>
+                  {t('pages.marks.showAllStudents')}
+                </button>
+              )}
+            </div>
+          ) : isCompactRecorder ? (
+            <div className="pm-mobile-scores form-field-full">
+              {sortedStudents.map((s, idx) => {
+                const score = records[s.id]?.score;
+                const hasScore = studentHasScore(s.id);
+                const pct = hasScore ? Math.round((Number(score) / maxScore) * 100) : null;
+                const overMax = hasScore && Number(score) > Number(maxScore);
+                return (
+                  <article
+                    key={s.id}
+                    className={`pm-mobile-score-card ${hasScore ? 'is-filled' : 'is-empty'} ${overMax ? 'is-over' : ''}`}
+                  >
+                    <div className="pm-mobile-score-head">
+                      <span className="pm-mobile-score-idx">{idx + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="pm-mobile-score-name">{studentFullName(s)}</p>
+                        <p className="pm-mobile-score-id">{s.studentId}</p>
+                      </div>
+                      <ScoreBadge percent={pct} />
+                    </div>
+                    <div className="pm-mobile-score-fields">
+                      <label className="pm-mobile-score-field">
+                        <span>{currentAssessmentLabel} / {maxScore}</span>
                         <input
                           className={`pm-score-input ${hasScore ? 'has-value' : ''} ${overMax ? 'is-invalid' : ''}`}
-                          type="number"
-                          min="0"
-                          max={maxScore}
-                          step="0.5"
-                          data-mark-score={idx}
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          data-mark-student={s.id}
                           value={records[s.id]?.score ?? ''}
                           onChange={(e) => setScore(s.id, e.target.value)}
-                          onKeyDown={(e) => onScoreKeyDown(e, idx)}
+                          onKeyDown={(e) => onScoreKeyDown(e, s.id)}
+                          onWheel={preventScoreScroll}
                           placeholder="—"
                           aria-label={`${studentFullName(s)} score`}
                         />
-                      </td>
-                      <td className="pm-col-pct text-center">
-                        <ScoreBadge percent={pct} />
-                      </td>
-                      <td className="pm-col-notes">
+                      </label>
+                      <label className="pm-mobile-score-field pm-mobile-score-notes">
+                        <span>{t('ui.notes')}</span>
                         <input
                           className="pm-notes-input"
                           value={records[s.id]?.notes ?? ''}
                           onChange={(e) => setNotes(s.id, e.target.value)}
                           placeholder={t('pages.marks.optionalNote')}
                         />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {students.length > 0 && (
-        <div className="pm-dock">
-          <div className="pm-dock-progress">
-            <div className="pm-progress-track">
-              <div className="pm-progress-fill" style={{ width: `${progressPct}%` }} />
+                      </label>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-            <span className="pm-dock-count">
-              {t('pages.marks.enteredCount', { filled: filledCount, total: students.length })}
-            </span>
-          </div>
-          <div className="pm-dock-actions">
-            {autoSaveLabel && (
-              <span className={`autosave-status autosave-status-${autoSaveStatus}`}>
-                <AutoSaveIcon className={`w-3.5 h-3.5 ${autoSaveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                {autoSaveLabel}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !hasSavableMarks(records)}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? t('ui.saving') : t('ui.save')}
-            </button>
-          </div>
-        </div>
-      )}
+          ) : (
+            <div className="pm-grid-scroll form-field-full rounded-xl border border-gray-100">
+              <table className="pm-table">
+                <thead>
+                  <tr>
+                    <th className="pm-col-idx">#</th>
+                    <SortableTh label={t('pages.marks.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-id" />
+                    <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-name" />
+                    <SortableTh label={`${currentAssessmentLabel} / ${maxScore}`} columnKey="score" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-score text-center" align="center" />
+                    <SortableTh label="%" columnKey="pct" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pm-col-pct text-center" align="center" />
+                    <th className="pm-col-notes">{t('ui.notes')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedStudents.map((s, idx) => {
+                    const score = records[s.id]?.score;
+                    const hasScore = studentHasScore(s.id);
+                    const pct = hasScore ? Math.round((Number(score) / maxScore) * 100) : null;
+                    const overMax = hasScore && Number(score) > Number(maxScore);
+                    return (
+                      <tr
+                        key={s.id}
+                        className={`${hasScore ? 'is-filled' : 'is-empty'} ${overMax ? 'is-over' : ''}`}
+                      >
+                        <td className="pm-col-idx text-gray-400 tabular-nums">{idx + 1}</td>
+                        <td className="pm-col-id font-mono text-xs text-gray-500">{s.studentId}</td>
+                        <td className="pm-col-name font-medium text-gray-900">
+                          {studentFullName(s)}
+                        </td>
+                        <td className="pm-col-score text-center">
+                          <input
+                            className={`pm-score-input ${hasScore ? 'has-value' : ''} ${overMax ? 'is-invalid' : ''}`}
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
+                            data-mark-student={s.id}
+                            value={records[s.id]?.score ?? ''}
+                            onChange={(e) => setScore(s.id, e.target.value)}
+                            onKeyDown={(e) => onScoreKeyDown(e, s.id)}
+                            onWheel={preventScoreScroll}
+                            placeholder="—"
+                            aria-label={`${studentFullName(s)} score`}
+                          />
+                        </td>
+                        <td className="pm-col-pct text-center">
+                          <ScoreBadge percent={pct} />
+                        </td>
+                        <td className="pm-col-notes">
+                          <input
+                            className="pm-notes-input"
+                            value={records[s.id]?.notes ?? ''}
+                            onChange={(e) => setNotes(s.id, e.target.value)}
+                            placeholder={t('pages.marks.optionalNote')}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </FormSection>
+      </FormModeModal>
 
       <MarksExcelImportModal
         open={importOpen}

@@ -11,12 +11,12 @@ import { isPrimaryGrade } from '../config/grades.js';
 import { getCurriculum } from '../config/curriculum/index.js';
 import { getPublishedMidtermsForTerm } from './midterms.js';
 import { resolveDirectorName } from './schoolDirector.js';
-import { maximaIdentityHolds, periodExamColumns } from './bulletinMaxima.js';
+import { maximaIdentityHolds, periodExamColumns, round1 } from './bulletinMaxima.js';
 
 function assessmentValue(rows, key) {
   const row = rows.find((r) => r.key === key);
   return {
-    score: row?.score ?? null,
+    score: row?.score == null ? null : round1(row.score),
     max: row?.max ?? 0,
   };
 }
@@ -31,7 +31,13 @@ function buildLegacyAssessmentRows(subject, config, markMap) {
     const catNumber = a.key === 'CAT' ? 1 : 0;
     const mark = markMap.get(`${subject.id}:${a.key}:${catNumber}`);
     const max = getMaxForAssessment(subject, a);
-    return { key: a.key, label: a.label, score: mark?.score ?? null, max, maxScore: max };
+    return {
+      key: a.key,
+      label: a.label,
+      score: mark?.score == null ? null : round1(mark.score),
+      max,
+      maxScore: max,
+    };
   });
 }
 
@@ -92,7 +98,7 @@ function buildLegacySubject(subject, config, markMap) {
   const t1 = assessmentValue(assessmentRows, 'TEST1');
   const t2 = assessmentValue(assessmentRows, 'TEST2');
   const ex = assessmentValue(assessmentRows, 'EX');
-  const obtained = assessmentRows.reduce((s, r) => s + (r.score ?? 0), 0);
+  const obtained = round1(assessmentRows.reduce((s, r) => s + (r.score ?? 0), 0));
   const max = assessmentRows.reduce((s, r) => s + r.max, 0);
   const hasAny = assessmentRows.some((r) => r.score != null);
 
@@ -148,7 +154,7 @@ function grandTotalFromSubjects(subjectEntries) {
     }
   }
 
-  return { obtained: hasAny ? obtained : 0, max, hasAny };
+  return { obtained: hasAny ? round1(obtained) : 0, max, hasAny };
 }
 
 async function computeClassRank(db, { classId, studentId, term, subjects, config, assessmentsBySubject }) {
@@ -200,6 +206,14 @@ async function computeClassRank(db, { classId, studentId, term, subjects, config
   };
 }
 
+function scoreSum(values) {
+  return round1(values.reduce((s, n) => s + (n ?? 0), 0));
+}
+
+function scoreCol(score, max) {
+  return { score: score == null ? null : round1(score), max };
+}
+
 function buildDomainColumns(subjects) {
   const flexible = subjects.some((s) => s.flexible);
   if (flexible) {
@@ -215,6 +229,7 @@ function buildDomainColumns(subjects) {
       }
       return acc;
     }, { score: 0, max: 0 });
+    tests.score = round1(tests.score);
 
     const exam = subjects.reduce((acc, subject) => {
       if (subject.flexible) {
@@ -226,9 +241,10 @@ function buildDomainColumns(subjects) {
       }
       return acc;
     }, { score: 0, max: 0 });
+    exam.score = round1(exam.score);
 
     const total = {
-      score: tests.score + exam.score,
+      score: round1(tests.score + exam.score),
       max: tests.max + exam.max,
     };
 
@@ -238,30 +254,27 @@ function buildDomainColumns(subjects) {
       exam,
       total,
       test1: {
-        score: subjects.reduce((s, sub) => s + (sub.columns?.test1?.score ?? 0), 0),
+        score: scoreSum(subjects.map((sub) => sub.columns?.test1?.score)),
         max: subjects.reduce((s, sub) => s + (sub.columns?.test1?.max ?? 0), 0),
       },
       test2: {
-        score: subjects.reduce((s, sub) => s + (sub.columns?.test2?.score ?? 0), 0),
+        score: scoreSum(subjects.map((sub) => sub.columns?.test2?.score)),
         max: subjects.reduce((s, sub) => s + (sub.columns?.test2?.max ?? 0), 0),
       },
     };
   }
 
-  const domainScoreT1 = subjects.reduce((s, sub) => s + (sub.columns?.test1?.score ?? 0), 0);
-  const domainScoreT2 = subjects.reduce((s, sub) => s + (sub.columns?.test2?.score ?? 0), 0);
-  const domainScoreEx = subjects.reduce((s, sub) => s + (sub.columns?.exam?.score ?? 0), 0);
   const domainMaxT1 = subjects.reduce((s, sub) => s + (sub.columns?.test1?.max ?? 0), 0);
   const domainMaxT2 = subjects.reduce((s, sub) => s + (sub.columns?.test2?.max ?? 0), 0);
   const domainMaxEx = subjects.reduce((s, sub) => s + (sub.columns?.exam?.max ?? 0), 0);
-  const domainObtained = subjects.reduce((s, sub) => s + (sub.columns?.total?.score ?? 0), 0);
   const domainMax = subjects.reduce((s, sub) => s + (sub.columns?.total?.max ?? 0), 0);
+  const domainObtained = scoreSum(subjects.map((sub) => sub.columns?.total?.score));
 
   return {
     flexible: false,
-    test1: { score: domainScoreT1, max: domainMaxT1 },
-    test2: { score: domainScoreT2, max: domainMaxT2 },
-    exam: { score: domainScoreEx, max: domainMaxEx },
+    test1: { score: scoreSum(subjects.map((sub) => sub.columns?.test1?.score)), max: domainMaxT1 },
+    test2: { score: scoreSum(subjects.map((sub) => sub.columns?.test2?.score)), max: domainMaxT2 },
+    exam: { score: scoreSum(subjects.map((sub) => sub.columns?.exam?.score)), max: domainMaxEx },
     total: { score: domainMax ? domainObtained : null, max: domainMax },
   };
 }
@@ -270,38 +283,38 @@ function sumDomainColumns(domains, flexible) {
   if (flexible) {
     return {
       flexible: true,
-      tests: {
-        score: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.score ?? 0), 0),
-        max: domains.reduce((sum, d) => sum + (d.domainColumns.tests?.max ?? 0), 0),
-      },
-      exam: {
-        score: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.score ?? 0), 0),
-        max: domains.reduce((sum, d) => sum + (d.domainColumns.exam?.max ?? 0), 0),
-      },
-      total: {
-        score: domains.reduce((sum, d) => sum + (d.domainColumns.total?.score ?? 0), 0),
-        max: domains.reduce((sum, d) => sum + (d.domainColumns.total?.max ?? 0), 0),
-      },
+      tests: scoreCol(
+        domains.reduce((sum, d) => sum + (d.domainColumns.tests?.score ?? 0), 0),
+        domains.reduce((sum, d) => sum + (d.domainColumns.tests?.max ?? 0), 0),
+      ),
+      exam: scoreCol(
+        domains.reduce((sum, d) => sum + (d.domainColumns.exam?.score ?? 0), 0),
+        domains.reduce((sum, d) => sum + (d.domainColumns.exam?.max ?? 0), 0),
+      ),
+      total: scoreCol(
+        domains.reduce((sum, d) => sum + (d.domainColumns.total?.score ?? 0), 0),
+        domains.reduce((sum, d) => sum + (d.domainColumns.total?.max ?? 0), 0),
+      ),
     };
   }
   return {
     flexible: false,
-    test1: {
-      score: domains.reduce((s, d) => s + (d.domainColumns.test1?.score || 0), 0),
-      max: domains.reduce((s, d) => s + (d.domainColumns.test1?.max || 0), 0),
-    },
-    test2: {
-      score: domains.reduce((s, d) => s + (d.domainColumns.test2?.score || 0), 0),
-      max: domains.reduce((s, d) => s + (d.domainColumns.test2?.max || 0), 0),
-    },
-    exam: {
-      score: domains.reduce((s, d) => s + (d.domainColumns.exam?.score || 0), 0),
-      max: domains.reduce((s, d) => s + (d.domainColumns.exam?.max || 0), 0),
-    },
-    total: {
-      score: domains.reduce((s, d) => s + (d.domainColumns.total?.score || 0), 0),
-      max: domains.reduce((s, d) => s + (d.domainColumns.total?.max || 0), 0),
-    },
+    test1: scoreCol(
+      domains.reduce((s, d) => s + (d.domainColumns.test1?.score || 0), 0),
+      domains.reduce((s, d) => s + (d.domainColumns.test1?.max || 0), 0),
+    ),
+    test2: scoreCol(
+      domains.reduce((s, d) => s + (d.domainColumns.test2?.score || 0), 0),
+      domains.reduce((s, d) => s + (d.domainColumns.test2?.max || 0), 0),
+    ),
+    exam: scoreCol(
+      domains.reduce((s, d) => s + (d.domainColumns.exam?.score || 0), 0),
+      domains.reduce((s, d) => s + (d.domainColumns.exam?.max || 0), 0),
+    ),
+    total: scoreCol(
+      domains.reduce((s, d) => s + (d.domainColumns.total?.score || 0), 0),
+      domains.reduce((s, d) => s + (d.domainColumns.total?.max || 0), 0),
+    ),
   };
 }
 
@@ -328,7 +341,7 @@ function emptyCell() {
 function addScoreCells(a, b) {
   const max = (a?.max || 0) + (b?.max || 0);
   const hasScore = a?.score != null || b?.score != null;
-  const score = hasScore ? (a?.score || 0) + (b?.score || 0) : null;
+  const score = hasScore ? round1((a?.score || 0) + (b?.score || 0)) : null;
   return { score: max ? score : null, max };
 }
 
