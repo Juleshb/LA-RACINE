@@ -835,3 +835,315 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
     },
   };
 }
+
+export const PROCLAMATION_PASS_PERCENT = 50;
+
+export function proclamationTotals(subjectCells) {
+  let obtained = 0;
+  let max = 0;
+  let hasAny = false;
+  let failures = 0;
+
+  for (const cell of subjectCells) {
+    const score = cell?.score ?? null;
+    const cellMax = Number(cell?.max) || 0;
+    if (score != null) hasAny = true;
+    obtained += score || 0;
+    max += cellMax;
+    if (score != null && cellMax > 0 && (score / cellMax) * 100 < PROCLAMATION_PASS_PERCENT) {
+      failures += 1;
+    }
+  }
+
+  if (!hasAny || !(max > 0)) {
+    return { total: null, max: null, percentage: null, failures: null, passed: null };
+  }
+
+  const percentage = Math.round((obtained / max) * 1000) / 10;
+  return {
+    total: round1(obtained),
+    max,
+    percentage,
+    failures,
+    passed: percentage >= PROCLAMATION_PASS_PERCENT,
+  };
+}
+
+function subjectDisplayTotal(sub, midterms) {
+  if (!sub) return emptyCell();
+  if (midterms?.mt1 || midterms?.mt2) {
+    const maps = midtermMaps(midterms);
+    const m1 = maps.mt1.get(sub.id);
+    const m2 = maps.mt2.get(sub.id);
+    const exam = sub.columns?.exam || emptyCell();
+    const continuous = m2?.obtained != null ? m2 : (m1?.obtained != null ? m1 : null);
+    return periodExamColumns({
+      period1Max: sub.test1Max ?? sub.columns?.test1?.max,
+      period2Max: sub.test2Max ?? sub.columns?.test2?.max,
+      testsMax: sub.testsMarkMax,
+      examMax: exam.max,
+      examScore: exam.score,
+      period1Score: m1?.obtained ?? null,
+      period1ScoreMax: m1?.maxScore,
+      period2Score: m2?.obtained ?? null,
+      period2ScoreMax: m2?.maxScore,
+      continuousScore: continuous?.obtained ?? null,
+      continuousScoreMax: continuous?.maxScore,
+    }).cells[3];
+  }
+  return sub.columns?.total || emptyCell();
+}
+
+function combineDisplayCells(cells) {
+  const max = cells.reduce((sum, cell) => sum + (Number(cell?.max) || 0), 0);
+  const hasScore = cells.some((cell) => cell?.score != null);
+  const score = hasScore
+    ? round1(cells.reduce((sum, cell) => sum + (cell?.score || 0), 0))
+    : null;
+  return { score: max ? score : null, max };
+}
+
+async function midtermsByStudentForTerm(db, { campusId, academicYearId, term, studentIds }) {
+  const map = new Map();
+  if (!campusId || !academicYearId || !studentIds.length) return map;
+
+  const windows = await db.midtermWindow.findMany({
+    where: {
+      campusId,
+      academicYearId,
+      term,
+      status: 'PUBLISHED',
+      sequence: { in: [1, 2] },
+    },
+    orderBy: { sequence: 'asc' },
+  });
+  if (!windows.length) return map;
+
+  const results = await db.midtermResult.findMany({
+    where: {
+      windowId: { in: windows.map((window) => window.id) },
+      studentId: { in: studentIds },
+    },
+    select: {
+      windowId: true,
+      studentId: true,
+      subjectId: true,
+      obtained: true,
+      maxScore: true,
+    },
+  });
+
+  const grouped = new Map();
+  for (const row of results) {
+    const key = `${row.windowId}:${row.studentId}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({
+      subjectId: row.subjectId,
+      obtained: row.obtained,
+      maxScore: row.maxScore,
+    });
+  }
+
+  for (const studentId of studentIds) {
+    const midterms = { mt1: null, mt2: null };
+    for (const window of windows) {
+      const payload = { subjects: grouped.get(`${window.id}:${studentId}`) || [] };
+      if (window.sequence === 1) midterms.mt1 = payload;
+      if (window.sequence === 2) midterms.mt2 = payload;
+    }
+    map.set(studentId, midterms);
+  }
+  return map;
+}
+
+function assignProclamationPlaces(rows) {
+  const nameOf = (row) => [row.lastName, row.postName, row.firstName].filter(Boolean).join(' ');
+  const ordered = [...rows].sort((a, b) => {
+    const leftPct = a.percentage == null ? -1 : a.percentage;
+    const rightPct = b.percentage == null ? -1 : b.percentage;
+    if (rightPct !== leftPct) return rightPct - leftPct;
+    const leftTotal = a.total == null ? -1 : a.total;
+    const rightTotal = b.total == null ? -1 : b.total;
+    if (rightTotal !== leftTotal) return rightTotal - leftTotal;
+    return nameOf(a).localeCompare(nameOf(b), 'fr', { sensitivity: 'base' });
+  });
+  const totalStudents = ordered.length;
+  return ordered.map((row, index) => ({
+    ...row,
+    place: totalStudents ? index + 1 : null,
+    totalStudents,
+  }));
+}
+
+function genderLetter(gender) {
+  if (gender === 'MALE') return 'M';
+  if (gender === 'FEMALE') return 'F';
+  return '';
+}
+
+/**
+ * Class proclamation list: one row per student, using the same subject totals
+ * as the bulletin (general courses, published midterms when they exist).
+ */
+export async function buildClassProclamation(db, {
+  classId,
+  term,
+  campusId,
+  academicYearId,
+  studentWhere = {},
+}) {
+  const cls = await db.class.findUnique({
+    where: { id: classId },
+    include: {
+      subjects: { orderBy: [{ categoryOrder: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] },
+      teacher: { select: { name: true } },
+      academicYear: { select: { name: true } },
+    },
+  });
+  if (!cls) throw new Error('Class not found');
+
+  const students = await db.student.findMany({
+    where: { AND: [studentWhere, { classId }] },
+    select: {
+      id: true,
+      studentId: true,
+      firstName: true,
+      lastName: true,
+      postName: true,
+      gender: true,
+    },
+  });
+  students.sort((a, b) => [a.lastName, a.postName, a.firstName].map((part) => part || '').join(' ')
+    .localeCompare([b.lastName, b.postName, b.firstName].map((part) => part || '').join(' '), 'fr', { sensitivity: 'base' }));
+
+  const config = resolveBulletinConfig(cls.bulletinConfig, cls.grade);
+  const assessmentsBySubject = new Map();
+  for (const subject of cls.subjects) {
+    assessmentsBySubject.set(subject.id, await ensureSubjectAssessments(db, subject));
+  }
+
+  const curriculum = getCurriculum(cls.grade);
+  const domainMetaByName = new Map((curriculum?.domains || []).map((domain) => [domain.name, domain]));
+  const generalSubjects = cls.subjects.filter((subject) => {
+    const meta = domainMetaByName.get(subject.category) || {};
+    const excluded = Boolean(meta.excludeFromGeneral) || /autres langues/i.test(subject.category || '');
+    return !excluded;
+  });
+  const scoredSubjects = generalSubjects.length ? generalSubjects : cls.subjects;
+
+  const annual = isAnnualBulletinTerm(term);
+  const terms = annual ? PRIMARY_YEAR_TERMS : [term || 'Trimestre 1'];
+  const studentIds = students.map((student) => student.id);
+
+  const allMarks = studentIds.length && cls.subjects.length
+    ? await db.mark.findMany({
+      where: {
+        term: { in: terms },
+        subjectId: { in: cls.subjects.map((subject) => subject.id) },
+        studentId: { in: studentIds },
+      },
+    })
+    : [];
+
+  const marksByStudentTerm = new Map();
+  for (const mark of allMarks) {
+    const key = `${mark.studentId}:${mark.term}`;
+    if (!marksByStudentTerm.has(key)) marksByStudentTerm.set(key, new Map());
+    marksByStudentTerm.get(key).set(`${mark.subjectId}:${mark.assessment}:${mark.catNumber}`, mark);
+  }
+
+  const midtermsByTerm = new Map();
+  if (isPrimaryGrade(cls.grade) && campusId && academicYearId) {
+    for (const termName of terms) {
+      midtermsByTerm.set(termName, await midtermsByStudentForTerm(db, {
+        campusId,
+        academicYearId,
+        term: termName,
+        studentIds,
+      }));
+    }
+  }
+
+  const buildEntries = (markMap) => cls.subjects.map((subject) => {
+    const assessments = assessmentsBySubject.get(subject.id) || [];
+    if (assessments.length) return buildFlexibleSubject(subject, assessments, markMap);
+    return buildLegacySubject(subject, config, markMap);
+  });
+
+  const rows = students.map((student) => {
+    const entriesByTerm = new Map();
+    for (const termName of terms) {
+      const markMap = marksByStudentTerm.get(`${student.id}:${termName}`) || new Map();
+      entriesByTerm.set(
+        termName,
+        new Map(buildEntries(markMap).map((item) => [item.id, item])),
+      );
+    }
+    const subjectCells = scoredSubjects.map((subject) => {
+      const termCells = terms.map((termName) => {
+        const entry = entriesByTerm.get(termName).get(subject.id);
+        const midterms = midtermsByTerm.get(termName)?.get(student.id) || null;
+        return subjectDisplayTotal(entry, midterms);
+      });
+      return terms.length === 1 ? termCells[0] : combineDisplayCells(termCells);
+    });
+
+    const totals = proclamationTotals(subjectCells);
+    return {
+      id: student.id,
+      studentId: student.studentId,
+      lastName: student.lastName || '',
+      postName: student.postName || '',
+      firstName: student.firstName || '',
+      gender: genderLetter(student.gender),
+      total: totals.total,
+      max: totals.max,
+      percentage: totals.percentage,
+      failures: totals.failures,
+      passed: totals.passed,
+    };
+  });
+  const placedRows = assignProclamationPlaces(rows);
+
+  const scored = placedRows.filter((row) => row.percentage != null);
+  const average = scored.length
+    ? Math.round((scored.reduce((sum, row) => sum + row.percentage, 0) / scored.length) * 10) / 10
+    : null;
+
+  let meta = {
+    schoolName: 'École La RACINE',
+    city: '',
+    district: '',
+    country: 'RWANDA',
+    academicYear: cls.academicYear?.name || '',
+    classTeacher: cls.teacher?.name || '',
+  };
+  if (campusId) {
+    const [campus, school, year] = await Promise.all([
+      db.campus.findUnique({ where: { id: campusId } }),
+      db.schoolProfile.findFirst(),
+      academicYearId ? db.academicYear.findUnique({ where: { id: academicYearId } }) : null,
+    ]);
+    meta = {
+      schoolName: school?.name || meta.schoolName,
+      city: campus?.city || school?.city || '',
+      district: campus?.district || school?.district || '',
+      country: campus?.country || school?.country || 'RWANDA',
+      academicYear: year?.name || cls.academicYear?.name || '',
+      classTeacher: cls.teacher?.name || '',
+    };
+  }
+
+  return {
+    class: { id: cls.id, name: cls.name, grade: cls.grade, section: cls.section },
+    term: annual ? 'Annuel' : (term || 'Trimestre 1'),
+    meta,
+    rows: placedRows,
+    summary: {
+      average,
+      success: scored.length ? scored.filter((row) => row.passed).length : null,
+      failed: scored.length ? scored.filter((row) => !row.passed).length : null,
+      studentCount: rows.length,
+    },
+  };
+}

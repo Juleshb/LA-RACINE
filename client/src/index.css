@@ -1839,6 +1839,142 @@
     @apply bg-violet-100 text-violet-800;
   }
 
+  /* Side menu and top bar: deep root green with a warm gold light */
+  .sidebar,
+  .sidebar.sidebar-manager,
+  .sidebar.sidebar-staff,
+  .sidebar.sidebar-parent,
+  .sidebar.sidebar-teacher {
+    background:
+      radial-gradient(circle at 8% -8%, rgba(232, 184, 92, 0.34), transparent 34%),
+      radial-gradient(circle at 110% 108%, rgba(45, 196, 168, 0.22), transparent 40%),
+      linear-gradient(168deg, #12352c 0%, #0d3c49 54%, #1a3054 100%);
+    border-right-color: transparent;
+    color: #f6f1e6;
+    box-shadow: inset -1px 0 0 rgba(232, 184, 92, 0.18);
+  }
+
+  .sidebar .sidebar-brand,
+  .sidebar .sidebar-context,
+  .sidebar .sidebar-user,
+  .sidebar .sidebar-footer {
+    background: transparent;
+    border-color: rgba(246, 241, 230, 0.12);
+  }
+
+  .sidebar .sidebar-brand img {
+    background: rgba(255, 248, 236, 0.94);
+    border-radius: 0.75rem;
+    padding: 0.15rem;
+  }
+
+  .sidebar .sidebar-brand .text-gray-900 {
+    color: #f8f3e8;
+  }
+
+  .sidebar .sidebar-brand .text-gray-500 {
+    color: rgba(232, 196, 122, 0.88);
+  }
+
+  .sidebar .nav-group-title,
+  .sidebar.sidebar-teacher .nav-group-title,
+  .sidebar.sidebar-parent .nav-group-title,
+  .sidebar.sidebar-staff .nav-group-title,
+  .sidebar.sidebar-student .nav-group-title {
+    color: rgba(232, 196, 122, 0.82);
+  }
+
+  .sidebar .nav-group-toggle {
+    color: rgba(246, 241, 230, 0.72);
+  }
+
+  .sidebar .nav-group-toggle:hover,
+  .sidebar.sidebar-staff .nav-group-toggle-active,
+  .sidebar .nav-group-toggle-active {
+    background: rgba(255, 244, 214, 0.12);
+    color: #fff8ea;
+  }
+
+  .sidebar .nav-group-count,
+  .sidebar .nav-group-toggle-active .nav-group-count {
+    background: rgba(232, 196, 122, 0.18);
+    color: #f6e7c1;
+  }
+
+  .sidebar .nav-item {
+    color: rgba(246, 241, 230, 0.84);
+  }
+
+  .sidebar .nav-item:hover {
+    background: rgba(255, 244, 214, 0.1);
+    color: #fffaf0;
+  }
+
+  .sidebar .nav-item-active {
+    background: linear-gradient(90deg, #f3e2b4 0%, #fff6df 100%);
+    color: #12352c;
+    border-color: transparent;
+    box-shadow: 0 10px 18px -14px rgba(0, 0, 0, 0.7);
+  }
+
+  .sidebar .nav-item-active .nav-chevron {
+    color: #12352c;
+  }
+
+  .sidebar .sidebar-footer .nav-item {
+    color: #ffd0c4;
+  }
+
+  .sidebar .sidebar-footer .nav-item:hover {
+    background: rgba(255, 122, 96, 0.16);
+    color: #ffe8e1;
+  }
+
+  .sidebar .portal-install-btn {
+    background: rgba(255, 248, 236, 0.1);
+    color: #f6e7c1;
+    border-color: rgba(232, 196, 122, 0.28);
+  }
+
+  .sidebar .portal-install-btn:hover {
+    background: rgba(255, 248, 236, 0.18);
+  }
+
+  .manager-topbar {
+    background:
+      linear-gradient(100deg, #f6f0e4 0%, #e5f4ee 48%, #f8efe2 100%);
+    border-bottom: 2px solid #d7b56a;
+  }
+
+  .manager-topbar .app-menu-btn,
+  .manager-topbar .top-profile-menu-trigger,
+  .manager-topbar .top-campus-menu-trigger {
+    background: rgba(255, 252, 246, 0.72);
+    border-color: rgba(140, 106, 62, 0.22);
+  }
+
+  .manager-topbar .top-campus-menu-icon {
+    background: #12352c;
+    color: #f6e7c1;
+  }
+
+  .student-sidebar {
+    background:
+      linear-gradient(180deg, #e7f6ef 0%, #f7f1e6 58%, #efe6fb 100%);
+    border-right-color: rgba(18, 53, 44, 0.08);
+  }
+
+  .student-sidebar-brand,
+  .student-sidebar-school {
+    background: transparent;
+    border-color: rgba(18, 53, 44, 0.08);
+  }
+
+  .student-navbar {
+    background: linear-gradient(100deg, #f6f0e4 0%, #e5f4ee 48%, #f8efe2 100%);
+    border-bottom: 2px solid #d7b56a;
+  }
+
   /* ── Student portal (child-friendly UI) ── */
   .student-portal-layout {
     @apply text-gray-900;
@@ -8725,6 +8861,132 @@
 
   .bulletin-preview-wrap {
     @apply flex justify-center p-4 bg-gray-100 rounded-xl border border-gray-200;
+  }
+
+  .proclamation-preview {
+    @apply bg-gray-100 rounded-xl border border-gray-200 p-4;
+  }
+
+  .proclamation-sheet {
+    width: min(100%, 1100px);
+    margin: 0 auto;
+    background: #fff;
+    color: #111;
+    border: 2px solid #111;
+    font-family: "Times New Roman", Times, serif;
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+
+  .proclamation-head {
+    text-align: center;
+    border-bottom: 2px solid #111;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .proclamation-school,
+  .proclamation-country {
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+  }
+
+  .proclamation-place {
+    color: #0070c0;
+    font-style: italic;
+  }
+
+  .proclamation-head h2 {
+    margin: 0.85rem 0 0.65rem;
+    font-size: 1.45rem;
+    font-weight: 700;
+  }
+
+  .proclamation-head p:nth-last-child(-n + 3) {
+    text-align: left;
+    font-weight: 700;
+    padding-left: 1.5rem;
+  }
+
+  .proclamation-table-wrap {
+    overflow-x: auto;
+  }
+
+  .proclamation-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+
+  .proclamation-sheet th,
+  .proclamation-sheet td {
+    border: 1px solid #111;
+    padding: 0.35rem 0.45rem;
+    vertical-align: middle;
+  }
+
+  .proclamation-sheet th {
+    font-weight: 700;
+    text-align: center;
+    background: #f8fafc;
+  }
+
+  .proclamation-sheet td.num,
+  .proclamation-empty {
+    text-align: center;
+  }
+
+  .proclamation-foot {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    align-items: start;
+  }
+
+  .proclamation-sign {
+    margin-top: 1.25rem;
+    min-height: 4.5rem;
+    border: 2px solid #111;
+    padding: 0.75rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .proclamation-foot dl {
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .proclamation-foot dl div {
+    display: grid;
+    grid-template-columns: 1fr 4.5rem;
+    border: 2px solid #111;
+  }
+
+  .proclamation-foot dt,
+  .proclamation-foot dd {
+    margin: 0;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .proclamation-foot dt {
+    font-weight: 700;
+  }
+
+  .proclamation-foot dd {
+    text-align: center;
+    font-weight: 700;
+    border-left: 1px solid #111;
+  }
+
+  @media (max-width: 720px) {
+    .proclamation-foot {
+      grid-template-columns: 1fr;
+    }
   }
 
   .bulletin-scolaire-sheet {

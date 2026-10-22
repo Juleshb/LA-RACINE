@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import {
-  Download, Printer, ChevronLeft, ChevronRight, Users, Calendar, GraduationCap, Loader2,
+  Download, Printer, ChevronLeft, ChevronRight, Users, Calendar, GraduationCap, Loader2, FileSpreadsheet,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -11,7 +11,10 @@ import { useTranslation } from '../context/LanguageContext';
 import ParentChildFilter from '../components/parent/ParentChildFilter';
 import BulletinScolaireSheet from '../components/bulletin/BulletinScolaireSheet';
 import NurseryBulletinSheet from '../components/bulletin/NurseryBulletinSheet';
+import ProclamationSheet from '../components/bulletin/ProclamationSheet';
 import { downloadBulletinPdf, downloadBulletinJpeg } from '../lib/bulletinPdf';
+import { downloadClassBulletinsPdf } from '../lib/classBulletinPdf';
+import { downloadClassProclamation } from '../lib/proclamationExport';
 import { usesCompetenceBulletin } from '../lib/grades';
 import StudentSelect from '../components/StudentSelect';
 import { studentFullName } from '../lib/studentName';
@@ -43,7 +46,11 @@ export default function BulletinReport() {
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [jpegLoading, setJpegLoading] = useState(false);
+  const [proclamationLoading, setProclamationLoading] = useState(false);
+  const [classPdf, setClassPdf] = useState(null);
+  const [proclamation, setProclamation] = useState(null);
   const [error, setError] = useState('');
+  const proclamationRef = useRef(null);
 
   const studentIndex = useMemo(
     () => students.findIndex((s) => s.id === studentId),
@@ -93,7 +100,7 @@ export default function BulletinReport() {
     }).catch(console.error);
     api.getStudents({ classId }).then((data) => {
       setStudents(data);
-      setStudentId(data[0]?.id || '');
+      setStudentId((current) => (data.some((student) => student.id === current) ? current : ''));
     }).catch(console.error);
   }, [classId, isFamily]);
 
@@ -156,6 +163,67 @@ export default function BulletinReport() {
   };
 
   const handlePrint = () => window.print();
+
+  useEffect(() => {
+    setProclamation(null);
+  }, [classId, term]);
+
+  useEffect(() => {
+    if (!proclamation) return;
+    proclamationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [proclamation]);
+
+  const handleProclamation = async () => {
+    if (!classId || isCompetenceClass) return;
+    setProclamationLoading(true);
+    setError('');
+    try {
+      const data = await api.getClassProclamation(classId, term);
+      setProclamation(data);
+    } catch (err) {
+      setError(err.message || 'Failed to generate the proclamation');
+    } finally {
+      setProclamationLoading(false);
+    }
+  };
+
+  const handleClassBulletins = async () => {
+    if (!classId || !students.length || classPdf) return;
+    setClassPdf({ done: 0, total: students.length });
+    setError('');
+    const failures = [];
+    try {
+      const fetched = await Promise.all(students.map(async (student) => {
+        try {
+          return await api.getBulletinReport(classId, student.id, term);
+        } catch (err) {
+          failures.push(studentFullName(student));
+          return null;
+        }
+      }));
+      const ready = fetched.filter(Boolean);
+      if (!ready.length) throw new Error(failures[0] ? `Failed to generate bulletins` : 'No bulletins to download');
+      const safe = `${selectedClass?.name || 'classe'}-${term}`.replace(/\s+/g, '-');
+      await downloadClassBulletinsPdf(ready, `bulletins-${safe}.pdf`, setClassPdf);
+      if (failures.length) {
+        setError(`Some bulletins were skipped: ${failures.join(', ')}`);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to download class bulletins');
+    } finally {
+      setClassPdf(null);
+    }
+  };
+
+  const handleDownloadProclamation = async () => {
+    if (!proclamation) return;
+    setError('');
+    try {
+      await downloadClassProclamation(proclamation);
+    } catch (err) {
+      setError(err.message || 'Failed to download the proclamation');
+    }
+  };
 
   const handleDownloadPdf = async () => {
     if (!report || !sheetRef.current) return;
@@ -281,8 +349,9 @@ export default function BulletinReport() {
                   students={students}
                   value={studentId}
                   onChange={setStudentId}
-                  allowEmpty={students.length === 0}
-                  emptyLabel={t('pages.bulletin.noStudents')}
+                  allowEmpty
+                  placeholder={students.length ? t('pages.bulletin.selectStudent') : t('pages.bulletin.noStudents')}
+                  emptyLabel={students.length ? t('pages.bulletin.selectStudent') : t('pages.bulletin.noStudents')}
                   getLabel={(s) => `${studentFullName(s)} · ${s.studentId}`}
                 />
                 <button
@@ -317,6 +386,32 @@ export default function BulletinReport() {
             {t('pages.bulletin.bulletinFormatHint', { className: selectedClass.name })}
           </p>
         )}
+        {!isFamily && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleClassBulletins}
+              disabled={!classId || !students.length || classPdf || proclamationLoading}
+              title={t('pages.bulletin.classBulletinsHint')}
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+            >
+              {classPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {classPdf
+                ? `${classPdf.done} / ${classPdf.total}`
+                : t('pages.bulletin.classBulletins')}
+            </button>
+            <button
+              type="button"
+              onClick={handleProclamation}
+              disabled={!classId || proclamationLoading || classPdf || isCompetenceClass}
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+            >
+              {proclamationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              {proclamationLoading ? t('ui.loading') : t('pages.bulletin.proclamation')}
+            </button>
+            <p className="text-xs text-gray-400">{t('pages.bulletin.proclamationHint')}</p>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -327,6 +422,35 @@ export default function BulletinReport() {
         <div className="card empty-state print:hidden">
           <Loader2 className="w-8 h-8 text-brand-500 animate-spin mb-2" />
           <p className="text-gray-500">{t('pages.bulletin.loadingBulletin')}</p>
+        </div>
+      )}
+
+      {!loading && !report && !error && !isFamily && !studentId && !proclamation && (
+        <div className="card empty-state print:hidden">
+          <p className="text-gray-500">{t('pages.bulletin.selectToView')}</p>
+        </div>
+      )}
+
+      {proclamation && (
+        <div ref={proclamationRef} className="proclamation-preview mb-6">
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-3 print:hidden">
+            <button
+              type="button"
+              onClick={() => setProclamation(null)}
+              className="btn-secondary"
+            >
+              {t('ui.close')}
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadProclamation}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              {t('ui.download')} Excel
+            </button>
+          </div>
+          <ProclamationSheet report={proclamation} />
         </div>
       )}
 

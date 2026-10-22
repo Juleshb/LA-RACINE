@@ -10,7 +10,7 @@ import {
   getTeacherMarksClassIdsForReq,
 } from '../lib/teacherAccess.js';
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
-import { buildClassBulletinReport } from '../lib/bulletinReport.js';
+import { buildClassBulletinReport, buildClassProclamation } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
 import { usesCompetenceBulletin, usesNurseryCompetence } from '../config/grades.js';
 import {
@@ -133,6 +133,36 @@ router.get('/stats', async (req, res) => {
       weeklyRecording,
     });
   } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.get('/proclamation', async (req, res) => {
+  try {
+    const { classId, term } = req.query;
+    if (!classId) return res.status(400).json({ error: 'classId is required' });
+
+    await resolveClassIdFilter(req, classId);
+    const scope = await classScopeWhere(req);
+    const cls = await prisma.class.findFirst({ where: { ...scope, id: classId } });
+    if (!cls) return res.status(404).json({ error: 'Class not found' });
+    if (usesCompetenceBulletin(cls.grade)) {
+      return res.status(400).json({ error: 'Fiche de proclamation is for classes with mark bulletins' });
+    }
+
+    const studentWhere = await studentScopeWhere(req);
+    const report = await buildClassProclamation(prisma, {
+      classId,
+      term: term || 'Trimestre 1',
+      campusId: req.campusId,
+      academicYearId: req.academicYearId,
+      studentWhere,
+    });
+    res.json(report);
+  } catch (error) {
+    if (error.message === 'Class not found') {
+      return res.status(404).json({ error: error.message });
+    }
     res.status(error.status || 500).json({ error: error.message });
   }
 });

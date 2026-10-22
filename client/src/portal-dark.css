@@ -184,9 +184,38 @@ html.dark .nav-item:hover {
 }
 
 html.dark .nav-item-active {
-  background: rgba(14, 165, 233, 0.16);
-  color: var(--portal-sky);
-  border-color: rgba(125, 211, 252, 0.28);
+  background: linear-gradient(90deg, rgba(232, 196, 122, 0.92), rgba(255, 246, 223, 0.88));
+  color: #12352c;
+  border-color: transparent;
+}
+
+html.dark .sidebar,
+html.dark .sidebar-manager,
+html.dark .sidebar-brand,
+html.dark .sidebar-user,
+html.dark .sidebar-footer,
+html.dark .sidebar-context {
+  background:
+    radial-gradient(circle at 8% -8%, rgba(232, 184, 92, 0.2), transparent 34%),
+    linear-gradient(168deg, #071c22 0%, #0c3040 56%, #10243f 100%);
+  color: #f6f1e6;
+  border-color: rgba(232, 196, 122, 0.16);
+}
+
+html.dark .manager-topbar {
+  background: linear-gradient(100deg, #102033 0%, #123244 52%, #14281f 100%);
+  border-bottom: 2px solid rgba(215, 181, 106, 0.55);
+  color: var(--portal-ink);
+}
+
+html.dark .student-sidebar {
+  background: linear-gradient(180deg, #10281f 0%, #102033 100%);
+  border-color: rgba(232, 196, 122, 0.16);
+}
+
+html.dark .student-navbar {
+  background: linear-gradient(100deg, #102033 0%, #123244 52%, #14281f 100%);
+  border-bottom: 2px solid rgba(215, 181, 106, 0.55);
 }
 
 html.dark .portal-theme-toggle,
@@ -499,7 +528,8 @@ html.dark .student-portal-layout {
   color: var(--portal-ink);
 }
 
-html.dark .bulletin-preview-wrap {
+html.dark .bulletin-preview-wrap,
+html.dark .proclamation-preview {
   background: #0c1b2e;
   border-color: var(--portal-line);
 }
@@ -672,6 +702,19 @@ html.dark .language-panel-app {
   background: var(--portal-surface);
   color: var(--portal-ink);
   border-color: var(--portal-line);
+}
+
+html.dark .student-sidebar {
+  background:
+    radial-gradient(circle at 8% -8%, rgba(232, 184, 92, 0.18), transparent 34%),
+    linear-gradient(180deg, #10281f 0%, #102033 100%);
+  color: var(--portal-ink);
+  border-color: rgba(232, 196, 122, 0.16);
+}
+
+html.dark .student-sidebar-brand,
+html.dark .student-sidebar-school {
+  background: transparent;
 }
 
 html.dark .nc-term-segment,

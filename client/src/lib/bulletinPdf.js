@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-async function captureBulletinCanvas(element) {
+export async function captureBulletinCanvas(element) {
   if (!element) throw new Error('Bulletin element not found');
 
   element.classList.add('is-pdf-export');
@@ -58,6 +58,20 @@ function addCanvasOnSingleA4(pdf, canvas, { marginMm = 5 } = {}) {
   pdf.addImage(imgData, 'JPEG', x, y, width, height, undefined, 'SLOW');
 }
 
+export function createBulletinPdf(isAnnual) {
+  return new jsPDF({
+    orientation: isAnnual ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+}
+
+/** Add one captured bulletin. The first page is already created with the PDF. */
+export function addBulletinPage(pdf, canvas, { first = false, isAnnual = false } = {}) {
+  if (!first) pdf.addPage('a4', isAnnual ? 'landscape' : 'portrait');
+  addCanvasOnSingleA4(pdf, canvas, { marginMm: 5 });
+}
+
 /**
  * Capture a bulletin DOM node as one A4 page.
  * Tall bulletins are zoomed out so the full sheet stays on a single page.
@@ -65,13 +79,8 @@ function addCanvasOnSingleA4(pdf, canvas, { marginMm = 5 } = {}) {
 export async function downloadBulletinPdf(element, filename = 'bulletin-scolaire.pdf') {
   const isAnnual = Boolean(element.querySelector?.('.bulletin-is-annual') || element.classList?.contains('bulletin-is-annual'));
   const canvas = await captureBulletinCanvas(element);
-
-  const pdf = new jsPDF({
-    orientation: isAnnual ? 'landscape' : 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
-  addCanvasOnSingleA4(pdf, canvas, { marginMm: 5 });
+  const pdf = createBulletinPdf(isAnnual);
+  addBulletinPage(pdf, canvas, { first: true, isAnnual });
   pdf.save(filename);
 }
 

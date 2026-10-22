@@ -365,6 +365,11 @@ export const api = {
     if (term) params.set('term', term);
     return request(`/marks/report?${params}`);
   },
+  getClassProclamation: (classId, term) => {
+    const params = new URLSearchParams({ classId });
+    if (term) params.set('term', term);
+    return request(`/marks/proclamation?${params}`);
+  },
   deleteMark: (id) => request(`/marks/${id}`, { method: 'DELETE' }),
 
   getAttendance: (date, classId) => {
