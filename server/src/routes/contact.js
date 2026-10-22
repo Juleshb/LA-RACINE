@@ -1,29 +1,12 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
 import prisma from '../lib/prisma.js';
+import { getMailTransporter as getTransporter } from '../lib/mailer.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { emitInquiryCreated, emitInquiryUpdate } from '../lib/realtime.js';
 
 const router = Router();
-
-function getTransporter() {
-  const user = String(process.env.SMTP_USER || '').trim();
-  const pass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
-
-  if (!user || !pass) {
-    throw new Error('SMTP credentials are missing. Set SMTP_USER and SMTP_PASS in server/.env');
-  }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user,
-      pass,
-    },
-  });
-}
 
 function generateOtpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));

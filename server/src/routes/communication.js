@@ -648,7 +648,7 @@ router.post('/broadcasts', async (req, res) => {
     }
 
     let email = null;
-    // Default ON when Gmail SMTP is configured (unless staff explicitly unchecks sendEmail)
+    // Default ON when SMTP is configured (unless staff explicitly unchecks sendEmail)
     const wantEmail = sendEmail === true || (sendEmail !== false && isMailConfigured());
     if (wantEmail) {
       const emails = await getParentEmailsForTarget(req, {

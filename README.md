@@ -249,6 +249,8 @@ Vite proxies `/api` and `/socket.io` to the backend.
 | `JWT_SECRET` | JWT signing secret | `laracine-school-dev-secret` |
 | `JWT_EXPIRES_IN` | Token lifetime | `7d` |
 | `CLIENT_URL` | Frontend origin (CORS, verify links) | `http://localhost:3000` |
+| `SMTP_HOST` | SMTP server | `smtp.zoho.com` |
+| `SMTP_PORT` | SMTP port (587 = STARTTLS) | `587` |
 | `SMTP_USER` | SMTP account for email | — |
 | `SMTP_PASS` | SMTP password / app password | — |
 | `SMS_ENABLED` | Enable BulkSMS parent broadcasts | `false` |
@@ -417,7 +419,7 @@ There is no Docker/CI config in this repo by default. For deployment:
 
 1. Provision PostgreSQL and set a strong `DATABASE_URL` and `JWT_SECRET`.
 2. Set `CLIENT_URL` to the real frontend origin.
-3. Configure `SMTP_USER` / `SMTP_PASS` for contact OTP and password emails.
+3. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` (Zoho: `smtp.zoho.com` / `587` for this mailbox) for contact OTP and password emails.
 4. Run `cd server && npm start` (or your process manager).
 5. Build the client (`cd client && npm run build`) and serve `client/dist` behind the same origin as the API **or** configure CORS and a production API base URL.
 6. Ensure WebSocket/Socket.IO (`/socket.io`) reaches the Node server for live chat.

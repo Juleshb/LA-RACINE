@@ -1,15 +1,25 @@
 import nodemailer from 'nodemailer';
 
-export function getMailTransporter() {
+function getSmtpSettings() {
   const user = String(process.env.SMTP_USER || '').trim();
   const pass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
+  const host = String(process.env.SMTP_HOST || 'smtp.zoho.com').trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  return { user, pass, host, port: Number.isFinite(port) && port > 0 ? port : 587 };
+}
+
+export function getMailTransporter() {
+  const { user, pass, host, port } = getSmtpSettings();
 
   if (!user || !pass) {
     throw new Error('SMTP credentials are missing. Set SMTP_USER and SMTP_PASS in server/.env');
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    host,
+    port,
+    secure: port === 465,
+    requireTLS: port === 587,
     auth: { user, pass },
   });
 }
@@ -23,7 +33,7 @@ export function isMailConfigured() {
 
 export function getMailSkipReason() {
   if (!String(process.env.SMTP_USER || '').trim() || !String(process.env.SMTP_PASS || '').replace(/\s+/g, '')) {
-    return 'Gmail SMTP credentials missing (SMTP_USER / SMTP_PASS)';
+    return 'SMTP credentials missing (SMTP_USER / SMTP_PASS)';
   }
   return null;
 }
