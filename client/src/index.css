@@ -590,7 +590,7 @@
     height: 22rem;
     left: -4rem;
     top: -6rem;
-    background: radial-gradient(circle, rgba(14, 165, 233, 0.38), transparent 70%);
+    background: radial-gradient(circle, rgba(232, 184, 92, 0.5), transparent 70%);
   }
 
   .dash-mesh-b {
@@ -598,7 +598,7 @@
     height: 20rem;
     right: -2rem;
     top: -3rem;
-    background: radial-gradient(circle, rgba(11, 40, 64, 0.22), transparent 70%);
+    background: radial-gradient(circle, rgba(45, 196, 168, 0.42), transparent 70%);
     animation-delay: -5s;
   }
 
@@ -607,8 +607,8 @@
     inset: 0;
     opacity: 0.35;
     background-image:
-      linear-gradient(rgba(2, 132, 199, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(2, 132, 199, 0.06) 1px, transparent 1px);
+      linear-gradient(rgba(18, 53, 44, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(18, 53, 44, 0.07) 1px, transparent 1px);
     background-size: 28px 28px;
     mask-image: linear-gradient(180deg, #000 20%, transparent 90%);
     animation: dash-grid 22s linear infinite;
@@ -1711,6 +1711,8 @@
   @media (prefers-reduced-motion: reduce) {
     .dash-mesh-glow,
     .dash-mesh-grid,
+    .portal-workspace::before,
+    .portal-workspace::after,
     .dash-dayboard,
     .dash-dayboard::before,
     .dash-dayboard-main > *,
@@ -1973,6 +1975,71 @@
   .student-navbar {
     background: linear-gradient(100deg, #f6f0e4 0%, #e5f4ee 48%, #f8efe2 100%);
     border-bottom: 2px solid #d7b56a;
+  }
+
+  /* Whole workspace behind the dashboard: a slow gold and mint drift */
+  .portal-workspace {
+    position: relative;
+    isolation: isolate;
+    background: #eef3ee;
+  }
+
+  .portal-workspace::before,
+  .portal-workspace::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .portal-workspace::before {
+    background:
+      radial-gradient(circle at 12% 18%, rgba(232, 184, 92, 0.55), transparent 30%),
+      radial-gradient(circle at 88% 8%, rgba(45, 196, 168, 0.42), transparent 34%),
+      radial-gradient(circle at 72% 88%, rgba(18, 53, 44, 0.16), transparent 38%),
+      linear-gradient(165deg, #f7f1e4 0%, #e4f3ec 46%, #eef2f6 100%);
+    background-size: 170% 170%;
+    animation: portal-field 22s ease-in-out infinite;
+  }
+
+  .portal-workspace::after {
+    background:
+      radial-gradient(circle at 20% 80%, rgba(232, 184, 92, 0.28), transparent 26%),
+      radial-gradient(circle at 78% 42%, rgba(45, 196, 168, 0.22), transparent 28%);
+    background-size: 180% 180%;
+    animation: portal-field 28s ease-in-out infinite reverse;
+  }
+
+  .portal-workspace > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .portal-workspace > .portal-edu-field {
+    position: absolute;
+    z-index: 1;
+  }
+
+  .portal-workspace > *:not(.portal-edu-field) {
+    z-index: 2;
+  }
+
+  .portal-workspace .portal-edu-icon {
+    color: rgba(18, 53, 44, 0.45);
+  }
+
+  .portal-workspace .portal-edu-icon:nth-child(3n) {
+    color: rgba(146, 98, 18, 0.55);
+  }
+
+  .portal-workspace .portal-edu-icon:nth-child(3n + 1) {
+    color: rgba(13, 110, 102, 0.48);
+  }
+
+  @keyframes portal-field {
+    0%, 100% { background-position: 0% 40%; }
+    50% { background-position: 100% 60%; }
   }
 
   /* ── Student portal (child-friendly UI) ── */

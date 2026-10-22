@@ -18,6 +18,7 @@ import AcademicYearBanner from './AcademicYearBanner';
 import { StudentBottomNav } from './student/StudentPortalNav';
 import InstallPortalApp from './InstallPortalApp';
 import StudentNavbar from './student/StudentNavbar';
+import PortalEduField from './PortalEduField';
 import StudentSidebar from './student/StudentSidebar';
 import StudentLiveClassBanner from './student/StudentLiveClassBanner';
 import { useLiveOnlineClasses } from '../hooks/useLiveOnlineClasses';
@@ -202,10 +203,11 @@ export default function Layout() {
           />
         )}
         <div
-          className={`flex-1 overflow-auto ${
+          className={`portal-workspace flex-1 overflow-auto ${
             isStudent ? 'student-main-content p-3 sm:p-6 lg:p-8' : 'p-3 sm:p-6 lg:p-8'
           }${isAiTutor ? ' is-ai-tutor-shell' : ''}`}
         >
+          <PortalEduField />
           {!isStudent && <AcademicYearBanner />}
           <Outlet />
         </div>

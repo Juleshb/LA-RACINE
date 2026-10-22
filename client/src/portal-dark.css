@@ -218,6 +218,26 @@ html.dark .student-navbar {
   border-bottom: 2px solid rgba(215, 181, 106, 0.55);
 }
 
+html.dark .portal-workspace {
+  background: #071422;
+}
+
+html.dark .portal-workspace::before {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(232, 184, 92, 0.2), transparent 32%),
+    radial-gradient(circle at 86% 10%, rgba(45, 196, 168, 0.18), transparent 34%),
+    radial-gradient(circle at 68% 86%, rgba(16, 48, 64, 0.55), transparent 40%),
+    linear-gradient(165deg, #0c2433 0%, #10281f 50%, #0d1c2e 100%);
+  background-size: 170% 170%;
+}
+
+html.dark .portal-workspace::after {
+  background:
+    radial-gradient(circle at 18% 78%, rgba(232, 184, 92, 0.16), transparent 28%),
+    radial-gradient(circle at 80% 36%, rgba(45, 196, 168, 0.14), transparent 30%);
+  background-size: 180% 180%;
+}
+
 html.dark .portal-theme-toggle,
 html.dark .portal-install-btn {
   background: rgba(14, 165, 233, 0.14);
@@ -916,6 +936,18 @@ html.dark .online-class-join-btn-live {
 
 html.dark .portal-edu-icon {
   color: rgba(125, 211, 252, 0.22);
+}
+
+html.dark .portal-workspace .portal-edu-icon {
+  color: rgba(232, 196, 122, 0.5);
+}
+
+html.dark .portal-workspace .portal-edu-icon:nth-child(3n) {
+  color: rgba(125, 211, 252, 0.42);
+}
+
+html.dark .portal-workspace .portal-edu-icon:nth-child(3n + 1) {
+  color: rgba(94, 234, 212, 0.4);
 }
 
 @keyframes portal-edu-drift {
