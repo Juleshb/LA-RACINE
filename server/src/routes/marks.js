@@ -19,6 +19,7 @@ import {
   resolveTestsMarkMax,
   resolveExamMax,
   assessmentsToSteps,
+  formatPeriodTestLabel,
 } from '../lib/subjectAssessments.js';
 import {
   letterToScore,
@@ -238,9 +239,9 @@ function parseCatNumber(value) {
 
 function formatAssessmentLabel(assessment, catNumber) {
   if (assessment === 'CAT' && catNumber > 0) return `Quiz ${catNumber}`;
-  if (assessment === 'TEST' && catNumber > 0) return `Period ${catNumber}`;
-  if (assessment === 'TEST1') return 'Period 1';
-  if (assessment === 'TEST2') return 'Period 2';
+  if (assessment === 'TEST' && catNumber > 0) return formatPeriodTestLabel(catNumber);
+  if (assessment === 'TEST1') return catNumber > 1 ? `Period 1 · Test ${catNumber}` : 'Period 1';
+  if (assessment === 'TEST2') return catNumber > 1 ? `Period 2 · Test ${catNumber}` : 'Period 2';
   if (assessment === 'EX') return 'Exam';
   return assessment;
 }
@@ -248,6 +249,7 @@ function formatAssessmentLabel(assessment, catNumber) {
 function resolveCatNumber(assessmentValue, catNumber) {
   if (assessmentValue === 'CAT') return Math.max(1, parseCatNumber(catNumber));
   if (assessmentValue === 'TEST') return Math.max(1, parseCatNumber(catNumber));
+  if (assessmentValue === 'TEST1' || assessmentValue === 'TEST2') return parseCatNumber(catNumber);
   return 0;
 }
 

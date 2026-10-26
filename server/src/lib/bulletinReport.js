@@ -3,8 +3,8 @@ import { groupCoursesByCategory } from './curriculum.js';
 import { loadPhotoDataUrl } from './studentRegistration.js';
 import { createBulletinVerificationToken, buildVerifyUrl } from './bulletinVerification.js';
 import {
-  buildTestRows,
   buildSubjectMarkSummary,
+  calculateScaledMark,
   ensureSubjectAssessments,
 } from './subjectAssessments.js';
 import { isPrimaryGrade } from '../config/grades.js';
@@ -28,13 +28,28 @@ function buildLegacyAssessmentRows(subject, config, markMap) {
     : [{ key: 'SCORE', label: 'Note', maxField: 'totalMax', fallbackMax: 100 }];
 
   return assessmentsToUse.map((a) => {
-    const catNumber = a.key === 'CAT' ? 1 : 0;
-    const mark = markMap.get(`${subject.id}:${a.key}:${catNumber}`);
     const max = getMaxForAssessment(subject, a);
+    const prefix = `${subject.id}:${a.key}:`;
+    const marks = [];
+    markMap.forEach((mark, key) => {
+      if (String(key).startsWith(prefix)) marks.push(mark);
+    });
+    let score = null;
+    if (marks.length > 1) {
+      score = calculateScaledMark(
+        marks.map((mark) => ({
+          score: mark.score,
+          max: mark.maxScore > 0 ? mark.maxScore : max,
+        })),
+        max,
+      ).score;
+    } else if (marks.length === 1) {
+      score = marks[0].score == null ? null : round1(marks[0].score);
+    }
     return {
       key: a.key,
       label: a.label,
-      score: mark?.score == null ? null : round1(mark.score),
+      score,
       max,
       maxScore: max,
     };

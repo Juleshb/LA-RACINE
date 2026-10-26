@@ -25,6 +25,7 @@ export default function CreateAssessmentModal({
   assessment,
   onAssessmentChange,
   showNumber,
+  numberHint,
   assessmentNumber,
   onAssessmentNumberChange,
   assessedOn,
@@ -141,6 +142,7 @@ export default function CreateAssessmentModal({
                     value={assessmentNumber === '' || assessmentNumber == null ? '' : String(assessmentNumber)}
                     onChange={(e) => onAssessmentNumberChange(e.target.value)}
                   />
+                  {numberHint ? <span className="pm-create-hint block mt-1.5">{numberHint}</span> : null}
                 </label>
               )}
 

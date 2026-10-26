@@ -106,7 +106,64 @@ export function resolveTotalMax(subject) {
   return 0;
 }
 
+/** First test in a period keeps the period number. Extra tests use period * 100 + test index. */
+export function encodePeriodTestCatNumber(periodNumber, testIndex) {
+  const period = Math.max(1, Math.trunc(Number(periodNumber) || 1));
+  const test = Math.min(99, Math.max(1, Math.trunc(Number(testIndex) || 1)));
+  if (test <= 1) return period;
+  return period * 100 + test;
+}
+
+export function decodePeriodTestCatNumber(catNumber) {
+  const n = Number(catNumber) || 0;
+  if (n >= 100) {
+    const period = Math.floor(n / 100);
+    const test = n % 100;
+    if (period >= 1 && test >= 2) return { period, test };
+  }
+  if (n > 0) return { period: n, test: 1 };
+  return { period: 0, test: 0 };
+}
+
+export function formatPeriodTestLabel(catNumber) {
+  const { period, test } = decodePeriodTestCatNumber(catNumber);
+  if (!period) return 'Period';
+  if (test > 1) return `Period ${period} · Test ${test}`;
+  return `Period ${period}`;
+}
+
+export function collectPeriodMarks(markMap, subjectId, periodNumber) {
+  const rows = [];
+  if (!markMap || typeof markMap.forEach !== 'function') return rows;
+
+  markMap.forEach((mark, key) => {
+    const parts = String(key).split(':');
+    if (parts.length < 3) return;
+    const cat = parts.pop();
+    const assessment = parts.pop();
+    const id = parts.join(':');
+    if (id !== subjectId || assessment !== 'TEST') return;
+    if (decodePeriodTestCatNumber(cat).period === periodNumber) rows.push(mark);
+  });
+
+  const legacyKey = LEGACY_TEST_KEYS[periodNumber - 1];
+  const hasFirst = rows.some((mark) => decodePeriodTestCatNumber(mark.catNumber).test === 1);
+  if (legacyKey) {
+    markMap.forEach((mark, key) => {
+      const prefix = `${subjectId}:${legacyKey}:`;
+      if (!String(key).startsWith(prefix)) return;
+      const cat = Number(String(key).slice(prefix.length));
+      if (cat > 1) rows.push(mark);
+      else if (!hasFirst && (cat === 0 || cat === 1)) rows.push(mark);
+    });
+  }
+
+  return rows.sort((a, b) => (Number(a.catNumber) || 0) - (Number(b.catNumber) || 0));
+}
+
 export function getMarkForTest(markMap, subjectId, sortOrder) {
+  const marks = collectPeriodMarks(markMap, subjectId, sortOrder);
+  if (marks.length) return marks[0];
   const testMark = markMap.get(`${subjectId}:TEST:${sortOrder}`);
   if (testMark) return testMark;
   const legacyKey = LEGACY_TEST_KEYS[sortOrder - 1];
@@ -127,14 +184,21 @@ export function buildTestRows(subject, assessments, markMap) {
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((a) => {
-    const mark = getMarkForTest(markMap, subject.id, a.sortOrder);
+    const marks = collectPeriodMarks(markMap, subject.id, a.sortOrder);
+    const scaled = calculateScaledMark(
+      marks.map((mark) => ({
+        score: mark.score,
+        max: mark.maxScore > 0 ? mark.maxScore : a.maxScore,
+      })),
+      a.maxScore,
+    );
     return {
       id: a.id,
       sortOrder: a.sortOrder,
       label: a.label,
       maxScore: a.maxScore,
       date: a.date ?? null,
-      score: mark?.score ?? null,
+      score: scaled.score,
       max: a.maxScore,
     };
   });

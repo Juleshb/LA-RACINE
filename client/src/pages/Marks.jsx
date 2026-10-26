@@ -25,6 +25,8 @@ import {
   courseUsesBulletinScale,
   getAssessmentsForCourse,
   parseAssessmentStepId,
+  decodePeriodTestCatNumber,
+  selectionCatNumber,
   DEFAULT_TERMS,
 } from '../lib/bulletin';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
@@ -32,8 +34,36 @@ import { studentFullName } from '../lib/studentName';
 
 function sessionAssessmentKey(session) {
   if (!session) return '';
-  if (session.assessment === 'TEST' && session.catNumber > 0) return `TEST:${session.catNumber}`;
+  if (session.assessment === 'TEST' && session.catNumber > 0) {
+    const { period } = decodePeriodTestCatNumber(session.catNumber);
+    return `TEST:${period || 1}`;
+  }
   return session.assessment;
+}
+
+function sessionTestIndex(session) {
+  if (!session) return 1;
+  if (session.assessment === 'CAT') return session.catNumber || 1;
+  if (session.assessment === 'TEST') return decodePeriodTestCatNumber(session.catNumber).test || 1;
+  if ((session.assessment === 'TEST1' || session.assessment === 'TEST2') && session.catNumber > 1) {
+    return session.catNumber;
+  }
+  return 1;
+}
+
+function periodHasRecordedTest(others, assessmentDef) {
+  if (assessmentDef.assessment === 'EX' || assessmentDef.key === 'EX') {
+    return (others || []).some((row) => row.assessment === 'EX' || row.assessment === 'EXAM');
+  }
+  if (assessmentDef.assessment === 'TEST') {
+    return (others || []).some((row) => (
+      row.assessment === 'TEST'
+      && decodePeriodTestCatNumber(row.catNumber).period === assessmentDef.catNumber
+    ));
+  }
+  return (others || []).some((row) => (
+    row.assessment === assessmentDef.key || row.assessment === assessmentDef.assessment
+  ));
 }
 
 const LEGACY_TERMS = ['Term 1', 'Term 2', 'Term 3'];
@@ -272,9 +302,8 @@ export default function Marks() {
             if (typeof prev === 'string' && (prev.startsWith('TEST:') || prev === 'TEST1' || prev === 'TEST2' || prev === 'EX')) {
               return prev;
             }
-            const first = data.tests[0].sortOrder;
-            setCatNumber(first);
-            return `TEST:${first}`;
+            setCatNumber(1);
+            return `TEST:${data.tests[0].sortOrder}`;
           });
         }
       })
@@ -300,12 +329,7 @@ export default function Marks() {
       let nextSaved;
       if (usesFlexibleTests) {
         nextSaved = bulletinAssessments
-          .filter((a) => {
-            if (a.assessment === 'EX') {
-              return (data.others || []).some((o) => o.assessment === 'EX');
-            }
-            return (data.others || []).some((o) => o.assessment === 'TEST' && o.catNumber === a.catNumber);
-          })
+          .filter((a) => periodHasRecordedTest(data.others, a))
           .map((a) => a.key);
       } else {
         const keys = bulletinAssessments.map((a) => a.key);
@@ -343,11 +367,7 @@ export default function Marks() {
     let cancelled = false;
     hydratedRef.current = false;
     setAutoSaveStatus('idle');
-    const catNum = activeAssessment.assessment === 'CAT'
-      ? catNumber
-      : activeAssessment.assessment === 'TEST'
-        ? activeAssessment.catNumber
-        : 0;
+    const catNum = selectionCatNumber(assessment, catNumber);
 
     api.getMarks(classId, subjectId, term, activeAssessment.assessment, catNum).then((data) => {
       if (cancelled) return;
@@ -381,7 +401,11 @@ export default function Marks() {
       const next = assessmentTypes[0];
       setAssessment(next);
       const parsed = parseAssessmentStepId(next);
-      if (parsed.catNumber > 0) setCatNumber(parsed.catNumber);
+      if (parsed.assessment === 'TEST' || parsed.assessment === 'TEST1' || parsed.assessment === 'TEST2' || parsed.assessment === 'CAT') {
+        setCatNumber(1);
+      } else if (parsed.catNumber > 0) {
+        setCatNumber(parsed.catNumber);
+      }
     }
     if (!isBulletinCourse && !LEGACY_ASSESSMENTS.includes(assessment)) {
       setAssessment('CAT');
@@ -395,12 +419,7 @@ export default function Marks() {
     let nextSaved;
     if (usesFlexibleTests) {
       nextSaved = bulletinAssessments
-        .filter((a) => {
-          if (a.assessment === 'EX') {
-            return (data.others || []).some((o) => o.assessment === 'EX');
-          }
-          return (data.others || []).some((o) => o.assessment === 'TEST' && o.catNumber === a.catNumber);
-        })
+        .filter((a) => periodHasRecordedTest(data.others, a))
         .map((a) => a.key);
     } else {
       const keys = bulletinAssessments.map((a) => a.key);
@@ -442,11 +461,7 @@ export default function Marks() {
         subjectId,
         term,
         assessment: activeAssessment.assessment,
-        catNumber: activeAssessment.assessment === 'CAT'
-          ? catNumber
-          : activeAssessment.assessment === 'TEST'
-            ? activeAssessment.catNumber
-            : 0,
+        catNumber: selectionCatNumber(assessment, catNumber),
         records: currentStudents.map((s) => ({
           studentId: s.id,
           score: currentRecords[s.id]?.score,
@@ -548,18 +563,25 @@ export default function Marks() {
   const progressPct = students.length ? Math.round((filledCount / students.length) * 100) : 0;
   const currentAssessmentLabel = (() => {
     const found = bulletinAssessments.find((a) => a.key === assessment);
+    const testIndex = Math.max(1, Number(catNumber) || 1);
     if (assessment === 'EX' || found?.label === 'EX' || found?.label === 'Exam') {
       return t('pages.marks.typeExam');
     }
-    if (assessment === 'CAT') return t('pages.marks.periodN', { count: catNumber || 1 });
-    if (typeof assessment === 'string' && assessment.startsWith('TEST:')) {
-      return t('pages.marks.periodN', { count: activeAssessment.catNumber || catNumber || 1 });
+    if (assessment === 'CAT') return t('pages.marks.periodN', { count: testIndex });
+    const periodNumber = activeAssessment.assessment === 'TEST'
+      ? activeAssessment.catNumber
+      : assessment === 'TEST2'
+        ? 2
+        : assessment === 'TEST1'
+          ? 1
+          : 0;
+    if (periodNumber > 0) {
+      const periodName = t('pages.marks.periodN', { count: periodNumber });
+      if (testIndex > 1) return t('pages.marks.periodTest', { period: periodName, test: testIndex });
+      return periodName;
     }
-    if (assessment === 'TEST1' || assessment === 'TEST2') {
-      return t('pages.marks.periodN', { count: catNumber || activeAssessment.catNumber || (assessment === 'TEST2' ? 2 : 1) });
-    }
-    if (found) return periodLabel(found.label || found.key, found.catNumber || found.sortOrder || catNumber);
-    return periodLabel(assessment, catNumber);
+    if (found) return periodLabel(found.label || found.key, found.catNumber || found.sortOrder || testIndex);
+    return periodLabel(assessment, testIndex);
   })();
 
   const handleDownloadMarksTemplate = () => {
@@ -599,11 +621,7 @@ export default function Marks() {
         subjectId,
         term,
         assessment: activeAssessment.assessment,
-        catNumber: activeAssessment.assessment === 'CAT'
-          ? catNumber
-          : activeAssessment.assessment === 'TEST'
-            ? activeAssessment.catNumber
-            : 0,
+        catNumber: selectionCatNumber(assessment, catNumber),
         records: students.map((s) => ({
           studentId: s.id,
           score: next[s.id]?.score,
@@ -886,15 +904,7 @@ export default function Marks() {
     if (session.term) setTerm(session.term);
     setSubjectId(session.subjectId);
     setAssessment(sessionAssessmentKey(session));
-    setCatNumber(
-      session.assessment === 'CAT' || session.assessment === 'TEST'
-        ? session.catNumber
-        : session.assessment === 'TEST2'
-          ? 2
-          : session.assessment === 'TEST1'
-            ? 1
-            : session.catNumber || 1,
-    );
+    setCatNumber(sessionTestIndex(session));
     if (session.maxScore) setMaxScore(session.maxScore);
     if (session.assessedOn) setAssessedOn(session.assessedOn);
   };
@@ -1020,21 +1030,13 @@ export default function Marks() {
 
   const handleCreateAssessmentChange = (value) => {
     setAssessment(value);
-    if (value === 'CAT') {
+    const parsed = parseAssessmentStepId(value);
+    if (parsed.assessment === 'CAT') {
       setCatNumber(nextCatNumber || 1);
       return;
     }
-    if (value === 'TEST1') {
+    if (parsed.assessment === 'TEST' || parsed.assessment === 'TEST1' || parsed.assessment === 'TEST2') {
       setCatNumber(1);
-      return;
-    }
-    if (value === 'TEST2') {
-      setCatNumber(2);
-      return;
-    }
-    if (typeof value === 'string' && value.startsWith('TEST:')) {
-      const n = Number(value.split(':')[1]);
-      if (Number.isInteger(n) && n > 0) setCatNumber(n);
     }
   };
 
@@ -1057,18 +1059,8 @@ export default function Marks() {
       setCatNumber('');
       return;
     }
-    const n = Math.max(1, Number(digits) || 1);
+    const n = Math.max(1, Math.min(99, Number(digits) || 1));
     setCatNumber(n);
-    if (assessment === 'CAT') return;
-    if (assessment === 'TEST1' || assessment === 'TEST2' || (typeof assessment === 'string' && assessment.startsWith('TEST:'))) {
-      if (n === 1 && bulletinAssessments.some((a) => a.key === 'TEST1')) {
-        setAssessment('TEST1');
-      } else if (n === 2 && bulletinAssessments.some((a) => a.key === 'TEST2')) {
-        setAssessment('TEST2');
-      } else {
-        setAssessment(`TEST:${n}`);
-      }
-    }
   };
 
   const modalContext = [
@@ -1421,6 +1413,9 @@ export default function Marks() {
         assessment={assessment}
         onAssessmentChange={handleCreateAssessmentChange}
         showNumber={showAssessmentNumber}
+        numberHint={showAssessmentNumber && assessment !== 'CAT'
+          ? t('pages.marks.assessmentNumberHint')
+          : ''}
         assessmentNumber={catNumber}
         onAssessmentNumberChange={handleAssessmentNumberChange}
         assessedOn={assessedOn}

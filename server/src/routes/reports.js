@@ -3,6 +3,7 @@ import prisma from '../lib/prisma.js';
 import { authorizePermission, hasPermission, PERMISSIONS } from '../config/permissions.js';
 import { studentScopeWhere, classScopeWhere, campusYearWhere } from '../lib/scope.js';
 import { teacherCourseWhere } from '../lib/teacherAccess.js';
+import { formatPeriodTestLabel } from '../lib/subjectAssessments.js';
 
 const router = Router();
 
@@ -462,8 +463,12 @@ router.get('/:type', async (req, res) => {
         subject: m.subject.name,
         term: m.term,
         assessment: m.assessment === 'TEST' && m.catNumber > 0
-          ? `Period ${m.catNumber}`
-          : m.assessment,
+          ? formatPeriodTestLabel(m.catNumber)
+          : m.assessment === 'TEST1' && m.catNumber > 1
+            ? `Period 1 · Test ${m.catNumber}`
+            : m.assessment === 'TEST2' && m.catNumber > 1
+              ? `Period 2 · Test ${m.catNumber}`
+              : m.assessment,
         score: m.score,
         maxScore: m.maxScore,
         percent: m.maxScore ? Math.round((m.score / m.maxScore) * 1000) / 10 : '',

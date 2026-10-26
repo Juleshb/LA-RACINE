@@ -60,18 +60,10 @@ Demo student (from seed, if present): `student@laracineschool.rw` / `password123
 
 If that account is missing in your database, use any provisioned `STUDENT` login, or re-run `npm run db:setup`.
 
-## App Store (iOS) with EAS
+## App stores with EAS
 
-Bundle ID: `rw.laracineschool.students`  
+Package / Bundle ID: `rw.laracineschool.students`  
 Expo project: [juleshb/laracine-students](https://expo.dev/accounts/juleshb/projects/laracine-students)
-
-### Prerequisites
-
-- Apple Developer Program membership
-- Expo account ([expo.dev](https://expo.dev)) — linked as `@juleshb`
-- App Store Connect access for your team
-
-### Commands (from `mobile/`)
 
 ```bash
 # Already logged in? Check:
@@ -79,7 +71,43 @@ npm run eas:whoami
 
 # Login if needed:
 npm run eas:login
+```
 
+### Google Play Store (Android)
+
+#### Prerequisites
+
+- [Google Play Developer](https://play.google.com/console/signup) account (one-time ~$25 USD)
+- Expo account (`@juleshb`)
+- App created in Play Console with package name `rw.laracineschool.students`
+- Google **Service Account** JSON key linked to EAS (for `eas submit`) — see [Expo Android submit docs](https://docs.expo.dev/submit/android/)
+
+#### Commands (from `mobile/`)
+
+```bash
+# Production Android App Bundle (.aab)
+npm run eas:build:android
+
+# Upload latest build to Play Console (internal / draft by default)
+npm run eas:submit:android
+
+# Or build + auto-submit:
+npm run eas:build:submit:android
+```
+
+First successful submit lands on the **internal testing** track as a **draft**. Finish the Play Console listing (store text, screenshots, content rating, privacy policy), then promote the release to production.
+
+### App Store (iOS)
+
+#### Prerequisites
+
+- Apple Developer Program membership
+- Expo account (`@juleshb`)
+- App Store Connect access for your team
+
+#### Commands (from `mobile/`)
+
+```bash
 # Production iOS build (creates distribution certs on first run — follow Apple prompts)
 npm run eas:build:ios
 

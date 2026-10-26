@@ -17,6 +17,37 @@ export function parseAssessmentStepId(stepId) {
   return { assessment: stepId, catNumber: 0 };
 }
 
+/** First test in a period keeps the period number. Extra tests use period * 100 + test index. */
+export function encodePeriodTestCatNumber(periodNumber, testIndex) {
+  const period = Math.max(1, Math.trunc(Number(periodNumber) || 1));
+  const test = Math.min(99, Math.max(1, Math.trunc(Number(testIndex) || 1)));
+  if (test <= 1) return period;
+  return period * 100 + test;
+}
+
+export function decodePeriodTestCatNumber(catNumber) {
+  const n = Number(catNumber) || 0;
+  if (n >= 100) {
+    const period = Math.floor(n / 100);
+    const test = n % 100;
+    if (period >= 1 && test >= 2) return { period, test };
+  }
+  if (n > 0) return { period: n, test: 1 };
+  return { period: 0, test: 0 };
+}
+
+/** Stored mark catNumber for the period/test the user is recording. */
+export function selectionCatNumber(assessmentKey, testIndex) {
+  const parsed = parseAssessmentStepId(assessmentKey);
+  if (parsed.assessment === 'CAT') return Math.max(1, Number(testIndex) || 1);
+  if (parsed.assessment === 'TEST') return encodePeriodTestCatNumber(parsed.catNumber, testIndex);
+  if (parsed.assessment === 'TEST1' || parsed.assessment === 'TEST2') {
+    const test = Math.min(99, Math.max(1, Math.trunc(Number(testIndex) || 1)));
+    return test <= 1 ? 0 : test;
+  }
+  return 0;
+}
+
 export function courseUsesBulletinScale(course) {
   return Boolean(
     course?.totalMax

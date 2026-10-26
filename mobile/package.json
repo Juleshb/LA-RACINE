@@ -41,6 +41,9 @@
     "eas:build:ios": "npx eas-cli build --platform ios --profile production",
     "eas:submit:ios": "npx eas-cli submit --platform ios --profile production --latest",
     "eas:build:submit:ios": "npx eas-cli build --platform ios --profile production --auto-submit",
+    "eas:build:android": "npx eas-cli build --platform android --profile production",
+    "eas:submit:android": "npx eas-cli submit --platform android --profile production --latest",
+    "eas:build:submit:android": "npx eas-cli build --platform android --profile production --auto-submit",
     "eas:login": "npx eas-cli login",
     "eas:whoami": "npx eas-cli whoami",
     "eas:init": "npx eas-cli init"

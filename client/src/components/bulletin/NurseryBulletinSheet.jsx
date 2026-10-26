@@ -38,13 +38,6 @@ function GradeCell({ letter }) {
   );
 }
 
-function parentLine(student) {
-  const father = String(student?.fatherName || '').trim();
-  const mother = String(student?.motherName || '').trim();
-  if (father && mother) return `${father} / ${mother}`;
-  return father || mother || String(student?.parentName || '').trim();
-}
-
 export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sheet' }) {
   if (!report) return null;
 
@@ -64,7 +57,6 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
     .filter(Boolean)
     .join(' ')
     .toUpperCase();
-  const guardianLine = parentLine(student);
 
   const gradeLabels = report.config?.gradeScale || {
     A: 'Très bon travail',
@@ -132,9 +124,6 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
           <div><span>Classe</span>{cls?.name || ''} ({cls?.grade || ''})</div>
           <div><span>Matricule</span>{student.studentId}</div>
           <div><span>Enseignant(e)</span>{meta?.classTeacher || '—'}</div>
-          {guardianLine ? (
-            <div className="nursery-bulletin-parent"><span>Parent / tuteur</span>{guardianLine}</div>
-          ) : null}
         </div>
 
         <h2 className="nursery-bulletin-title">
@@ -222,7 +211,6 @@ export default function NurseryBulletinSheet({ report, id = 'nursery-bulletin-sh
             </div>
             <div className="nursery-sig">
               <p className="nursery-sig-label">Signature du parent / responsable</p>
-              {guardianLine ? <p className="sig-name">{guardianLine}</p> : null}
             </div>
             <div className="nursery-sig nursery-sig-director">
               <p className="nursery-sig-label">Sceau et signature de la direction</p>

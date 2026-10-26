@@ -26,13 +26,6 @@ function fmtPlace(place, totalStudents) {
   return totalStudents != null ? `${place}/${totalStudents}` : String(place);
 }
 
-function parentLine(student) {
-  const father = String(student?.fatherName || '').trim();
-  const mother = String(student?.motherName || '').trim();
-  if (father && mother) return `${father} / ${mother}`;
-  return father || mother || String(student?.parentName || '').trim();
-}
-
 function cell(score, max) {
   if (max == null || max === 0) {
     if (score == null) return { score: null, max: 0 };
@@ -165,7 +158,6 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
   const locationLine = [meta?.city, meta?.district, meta?.country || 'Rwanda'].filter(Boolean).join(' - ').toUpperCase();
   const studentName = [student.lastName, student.postName, student.firstName].filter(Boolean).join(' ').toUpperCase();
   const classLine = `${cls.name || ''}`.toUpperCase() || `${cls.grade} ${cls.section || ''}`.toUpperCase();
-  const guardianLine = parentLine(student);
   const yearLabel = meta?.academicYear || '';
   const bulletinTitle = `BULLETIN SCOLAIRE${yearLabel ? ` - ${yearLabel}` : ''}`.toUpperCase();
 
@@ -433,7 +425,6 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
           <p className="bulletin-student-meta">ID DE L'ÉLÈVE : {student.studentId || '—'}</p>
           <p className="bulletin-student-name">NOM DE L'ÉLÈVE : {studentName}</p>
           <p className="bulletin-student-class">CLASSE : {classLine}</p>
-          {guardianLine ? <p className="bulletin-student-parent">Parent : {guardianLine}</p> : null}
           <p className="bulletin-student-title">{bulletinTitle}</p>
           <p className="bulletin-student-term">{annual ? 'BULLETIN ANNUEL' : `TRIMESTRE : ${term}`}</p>
         </div>
@@ -520,7 +511,6 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
           </div>
           <div className="bulletin-sig-box">
             <p>Signature du parent</p>
-            {guardianLine ? <p className="sig-name">{guardianLine}</p> : null}
           </div>
           <div className="bulletin-sig-box bulletin-sig-director">
             <p>Fait à {meta?.city?.toUpperCase() || 'GISENYI'}, le {issuedDate}</p>
