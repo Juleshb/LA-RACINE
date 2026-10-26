@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
-import { verifyBulletinToken } from '../lib/bulletinVerification.js';
+import { verifyBulletinPdfToken, verifyBulletinToken } from '../lib/bulletinVerification.js';
 import { buildClassBulletinReport } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
 import { usesCompetenceBulletin } from '../config/grades.js';
@@ -76,6 +76,38 @@ router.get('/bulletin/:token', async (req, res) => {
     res.status(400).json({
       valid: false,
       error: error.message === 'Invalid bulletin token' ? 'Invalid verification code' : 'Verification failed',
+    });
+  }
+});
+
+router.get('/bulletin-pdf/:token', async (req, res) => {
+  try {
+    const decoded = verifyBulletinPdfToken(req.params.token);
+    const student = await prisma.student.findUnique({
+      where: { id: decoded.studentId },
+      include: {
+        class: { select: { id: true, grade: true, campusId: true, academicYearId: true } },
+      },
+    });
+    if (!student?.class || student.class.id !== decoded.classId) {
+      return res.status(404).json({ error: 'Bulletin not found' });
+    }
+
+    const args = {
+      classId: decoded.classId,
+      studentId: decoded.studentId,
+      term: decoded.term,
+      campusId: student.class.campusId || student.campusId,
+      academicYearId: student.class.academicYearId || student.academicYearId,
+    };
+    const report = usesCompetenceBulletin(student.class.grade)
+      ? await buildNurseryBulletinReport(prisma, args)
+      : await buildClassBulletinReport(prisma, args);
+
+    res.json(report);
+  } catch (error) {
+    res.status(400).json({
+      error: error.message === 'Invalid bulletin token' ? 'Invalid bulletin link' : 'Bulletin could not be opened',
     });
   }
 });

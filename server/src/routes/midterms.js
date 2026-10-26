@@ -12,6 +12,7 @@ import {
   notifyParentsMidtermPublished,
   publishMidtermSnapshot,
 } from '../lib/midterms.js';
+import { emailPeriodMarksToParents, listClassParentContacts } from '../lib/periodMarksEmail.js';
 
 const router = Router();
 router.use(authorizePermission(PERMISSIONS.MARKS));
@@ -142,6 +143,63 @@ router.post('/windows/:id/publish', async (req, res) => {
 
     const window = await prisma.midtermWindow.findUnique({ where: { id: existing.id } });
     res.json({ window, snapshot, sms });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/windows/:id/parent-contacts', async (req, res) => {
+  try {
+    if (!canManageMidterms(req.user.role)) {
+      return res.status(403).json({ error: 'Seuls les responsables peuvent envoyer les notes aux parents' });
+    }
+    const existing = await prisma.midtermWindow.findFirst({
+      where: {
+        id: req.params.id,
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+      },
+    });
+    if (!existing) return res.status(404).json({ error: 'Période introuvable' });
+    if (!req.query.classId) return res.status(400).json({ error: 'classId est obligatoire' });
+
+    const result = await listClassParentContacts({
+      campusId: req.campusId,
+      academicYearId: req.academicYearId,
+      classId: String(req.query.classId),
+    });
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/windows/:id/email-parents', async (req, res) => {
+  try {
+    if (!canManageMidterms(req.user.role)) {
+      return res.status(403).json({ error: 'Seuls les responsables peuvent envoyer les notes aux parents' });
+    }
+
+    const existing = await prisma.midtermWindow.findFirst({
+      where: {
+        id: req.params.id,
+        campusId: req.campusId,
+        academicYearId: req.academicYearId,
+      },
+    });
+    if (!existing) return res.status(404).json({ error: 'Période introuvable' });
+    if (existing.status !== 'PUBLISHED') {
+      return res.status(400).json({ error: 'Publiez la période avant d’envoyer les notes aux parents' });
+    }
+
+    const classId = req.body?.classId ? String(req.body.classId) : null;
+    const recipients = Array.isArray(req.body?.recipients) ? req.body.recipients : null;
+    const email = await emailPeriodMarksToParents(existing, { classId, recipients });
+    if (email.error && !email.sent) {
+      return res.status(400).json({ error: email.error, email });
+    }
+    res.json({ email });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

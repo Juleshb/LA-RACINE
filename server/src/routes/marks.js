@@ -1225,6 +1225,144 @@ router.post('/bulk', async (req, res) => {
   }
 });
 
+function sessionIdentity(body = {}) {
+  const termValue = body.term || 'Term 1';
+  const assessmentValue = body.assessment || 'Final';
+  return {
+    term: termValue,
+    assessment: assessmentValue,
+    catNumber: resolveCatNumber(assessmentValue, body.catNumber),
+  };
+}
+
+async function loadEditableCourse(req, subjectId) {
+  const course = await loadCourse(req, subjectId);
+  if (!course) {
+    const error = new Error('Course not found');
+    error.status = 404;
+    throw error;
+  }
+  const accessError = await assertTeacherCourseAccess(req, course);
+  if (accessError) {
+    const error = new Error(accessError);
+    error.status = 403;
+    throw error;
+  }
+  return course;
+}
+
+router.put('/sessions', async (req, res) => {
+  try {
+    if (['PARENT', 'STUDENT'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'You cannot edit assessments' });
+    }
+    const { subjectId, next } = req.body || {};
+    if (!subjectId || !next?.subjectId) {
+      return res.status(400).json({ error: 'subjectId and the updated assessment are required' });
+    }
+
+    const source = sessionIdentity(req.body);
+    const target = sessionIdentity(next);
+    const maxScore = Number(next.maxScore);
+    if (!maxScore || maxScore <= 0) {
+      return res.status(400).json({ error: 'Enter a maximum score greater than 0' });
+    }
+    let assessedOn = null;
+    if (next.assessedOn) {
+      const parsed = new Date(next.assessedOn);
+      if (!Number.isNaN(parsed.getTime())) assessedOn = parsed;
+    }
+
+    const fromCourse = await loadEditableCourse(req, subjectId);
+    const toCourse = next.subjectId === subjectId
+      ? fromCourse
+      : await loadEditableCourse(req, next.subjectId);
+    if (fromCourse.classId !== toCourse.classId) {
+      return res.status(400).json({ error: 'Keep the assessment in the same class' });
+    }
+
+    const marks = await prisma.mark.findMany({
+      where: {
+        subjectId,
+        term: source.term,
+        assessment: source.assessment,
+        catNumber: source.catNumber,
+      },
+    });
+    if (!marks.length) {
+      return res.status(404).json({ error: 'Assessment not found' });
+    }
+    if (marks.some((mark) => Number(mark.score) > maxScore)) {
+      return res.status(400).json({ error: 'Maximum score is lower than a mark already recorded' });
+    }
+
+    const sameSlot = subjectId === next.subjectId
+      && source.term === target.term
+      && source.assessment === target.assessment
+      && source.catNumber === target.catNumber;
+
+    if (!sameSlot) {
+      const clash = await prisma.mark.count({
+        where: {
+          subjectId: next.subjectId,
+          term: target.term,
+          assessment: target.assessment,
+          catNumber: target.catNumber,
+          studentId: { in: marks.map((mark) => mark.studentId) },
+          id: { notIn: marks.map((mark) => mark.id) },
+        },
+      });
+      if (clash) {
+        return res.status(409).json({ error: 'That assessment already has marks. Choose another test number or edit that assessment.' });
+      }
+    }
+
+    await prisma.$transaction(marks.map((mark) => prisma.mark.update({
+      where: { id: mark.id },
+      data: {
+        subjectId: next.subjectId,
+        term: target.term,
+        assessment: target.assessment,
+        catNumber: target.catNumber,
+        maxScore,
+        assessedOn: assessedOn || mark.assessedOn,
+      },
+    })));
+
+    res.json({
+      updated: marks.length,
+      label: formatAssessmentLabel(target.assessment, target.catNumber),
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.delete('/sessions', async (req, res) => {
+  try {
+    if (['PARENT', 'STUDENT'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'You cannot delete assessments' });
+    }
+    const subjectId = req.query.subjectId;
+    if (!subjectId) return res.status(400).json({ error: 'subjectId is required' });
+    const source = sessionIdentity(req.query);
+    await loadEditableCourse(req, subjectId);
+
+    const result = await prisma.mark.deleteMany({
+      where: {
+        subjectId: String(subjectId),
+        term: source.term,
+        assessment: source.assessment,
+        catNumber: source.catNumber,
+      },
+    });
+    if (!result.count) return res.status(404).json({ error: 'Assessment not found' });
+    res.json({ deleted: result.count });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const mark = await prisma.mark.findFirst({

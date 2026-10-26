@@ -35,15 +35,17 @@ export default function CreateAssessmentModal({
   canContinue,
   error,
   competenceMode = false,
+  title,
+  continueLabel,
 }) {
   return (
     <Modal open={open} onClose={onClose} size="md">
       <div className="pm-create-modal">
         <div className="pm-create-header">
           <h2 className="pm-create-title">
-            {competenceMode
+            {title || (competenceMode
               ? t('pages.marks.createCompetence')
-              : t('pages.marks.createAssessment')}
+              : t('pages.marks.createAssessment'))}
           </h2>
           <button
             type="button"
@@ -182,7 +184,7 @@ export default function CreateAssessmentModal({
             disabled={!canContinue}
             onClick={onContinue}
           >
-            {t('pages.marks.continueToRecord')}
+            {continueLabel || t('pages.marks.continueToRecord')}
           </button>
         </div>
       </div>

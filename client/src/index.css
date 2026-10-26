@@ -8657,6 +8657,18 @@
     @apply border-slate-300 bg-slate-50;
   }
 
+  .pm-action-delete {
+    @apply border-red-100 bg-white text-red-700 shadow-sm;
+  }
+
+  .pm-action-delete .pm-action-btn-icon {
+    @apply bg-red-50 text-red-600;
+  }
+
+  .pm-action-delete:hover {
+    @apply border-red-200 bg-red-50;
+  }
+
   .pm-action-view:hover .pm-action-btn-icon {
     @apply bg-slate-200 text-slate-800;
   }

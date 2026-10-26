@@ -48,6 +48,7 @@ import ScienceQuiz from './pages/ScienceQuiz';
 import StaffAskAi from './pages/StaffAskAi';
 import IdCards from './pages/IdCards';
 import VerifyBulletin from './pages/VerifyBulletin';
+import BulletinPdfLink from './pages/BulletinPdfLink';
 import Profile from './pages/Profile';
 import ProfileShell from './components/ProfileShell';
 import Reports from './pages/Reports';
@@ -73,6 +74,7 @@ export default function App() {
     <div className="app-frame">
     <Routes>
       <Route path="/verify/bulletin/:token" element={<VerifyBulletin />} />
+      <Route path="/bulletin/pdf/:token" element={<BulletinPdfLink />} />
 
       <Route element={<PublicLayout />}>
         <Route index element={<PublicHome />} />

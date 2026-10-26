@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
   Save, Info, FileText, BookOpen,
   CheckCircle2, Loader2, Cloud, FileSpreadsheet, Download,
-  Filter, PencilLine, Pencil, Eye, Play, BarChart3,
+  Filter, PencilLine, Pencil, Eye, Play, BarChart3, Trash2,
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -87,6 +87,7 @@ export default function Marks() {
   const { campusId } = useCampus();
   const { t } = useTranslation();
   const isTeacher = user?.role === 'TEACHER';
+  const canManageAssessments = Boolean(user && !['PARENT', 'STUDENT'].includes(user.role));
 
   const [classes, setClasses] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -136,6 +137,8 @@ export default function Marks() {
   const [testsDraft, setTestsDraft] = useState([]);
   const [testsSaving, setTestsSaving] = useState(false);
   const [testsLoading, setTestsLoading] = useState(false);
+  const [sessionSource, setSessionSource] = useState(null);
+  const [editIntent, setEditIntent] = useState('create');
 
   const lastSavedRef = useRef('');
   const hydratedRef = useRef(false);
@@ -343,7 +346,7 @@ export default function Marks() {
           : nextSaved
       ));
 
-      if (assessment === 'CAT') {
+      if (assessment === 'CAT' && !sessionSource) {
         setCatOptions(data.cats || []);
         setNextCatNumber(data.nextCatNumber || 1);
         if (data.cats?.length) {
@@ -355,7 +358,7 @@ export default function Marks() {
     }).catch(console.error);
 
     return () => { cancelled = true; };
-  }, [subjectId, term, assessment, bulletinAssessments, bulletinAssessmentKey, subjectInClass, usesFlexibleTests]);
+  }, [subjectId, term, assessment, bulletinAssessments, bulletinAssessmentKey, subjectInClass, usesFlexibleTests, sessionSource]);
 
   useEffect(() => {
     if (!classId || !subjectId || !subjectInClass) {
@@ -852,6 +855,8 @@ export default function Marks() {
     const starterClassId = classId || classes[0]?.id;
     if (starterClassId && starterClassId !== classId) setClassId(starterClassId);
     if (courseId) setSubjectId(courseId);
+    setSessionSource(null);
+    setEditIntent('create');
     setMaxScore('');
     setCreateError('');
     setMessage('');
@@ -966,6 +971,14 @@ export default function Marks() {
       return;
     }
     applySessionContext(session);
+    setSessionSource({
+      classId: session.classId,
+      subjectId: session.subjectId,
+      term: session.term,
+      assessment: session.assessment,
+      catNumber: session.catNumber,
+    });
+    setEditIntent('create');
     closeViewSession();
     closeCompetenceRecorder();
     setCreateOpen(false);
@@ -976,7 +989,71 @@ export default function Marks() {
     setRecordingOpen(true);
   };
 
-  const continueToRecord = () => {
+  const assessmentPayload = () => ({
+    subjectId: sessionSource?.subjectId,
+    term: sessionSource?.term,
+    assessment: sessionSource?.assessment,
+    catNumber: sessionSource?.catNumber,
+    next: {
+      subjectId,
+      term,
+      assessment: activeAssessment.assessment,
+      catNumber: selectionCatNumber(assessment, catNumber),
+      maxScore: Number(maxScore),
+      assessedOn,
+    },
+  });
+
+  const openEditAssessment = (session) => {
+    if (session.kind === 'competence') {
+      openCompetenceRecorder(session);
+      return;
+    }
+    applySessionContext(session);
+    setSessionSource({
+      classId: session.classId,
+      subjectId: session.subjectId,
+      term: session.term,
+      assessment: session.assessment,
+      catNumber: session.catNumber,
+    });
+    setEditIntent('list');
+    setCreateError('');
+    setMessage('');
+    setRecordingOpen(false);
+    setCreateOpen(true);
+  };
+
+  const handleDeleteAssessment = async (session) => {
+    const label = session.kind === 'competence'
+      ? [session.subjectName, session.term].filter(Boolean).join(' · ') || t('pages.marks.nurseryCompetence')
+      : (session.label || session.subjectName);
+    if (!window.confirm(t('pages.marks.deleteAssessmentConfirm', { label }))) return;
+    setMessage('');
+    try {
+      await api.deleteMarkSession({
+        subjectId: session.subjectId,
+        term: session.term,
+        assessment: session.assessment,
+        catNumber: session.catNumber,
+      });
+      if (sessionSource
+        && sessionSource.subjectId === session.subjectId
+        && sessionSource.term === session.term
+        && sessionSource.assessment === session.assessment
+        && Number(sessionSource.catNumber) === Number(session.catNumber)) {
+        setSessionSource(null);
+        setRecordingOpen(false);
+        setCreateOpen(false);
+      }
+      setMessage(t('pages.marks.assessmentDeleted'));
+      refreshRecorded();
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  const continueToRecord = async () => {
     if (!classId) {
       setCreateError(t('pages.marks.createNeedClass'));
       return;
@@ -1012,12 +1089,40 @@ export default function Marks() {
       setCreateError(t('pages.marks.createNeedMax'));
       return;
     }
+    if (sessionSource && editIntent !== 'create') {
+      try {
+        await api.updateMarkSession(assessmentPayload());
+      } catch (err) {
+        const notSavedYet = editIntent === 'recorder' && /not found/i.test(err.message || '');
+        if (!notSavedYet) {
+          setCreateError(err.message);
+          return;
+        }
+      }
+    }
+    const nextSource = {
+      classId,
+      subjectId,
+      term,
+      assessment: activeAssessment.assessment,
+      catNumber: selectionCatNumber(assessment, catNumber),
+    };
+    setSessionSource(nextSource);
     setCreateError('');
     setCreateOpen(false);
+    if (sessionSource && editIntent !== 'create') {
+      setMessage(t('pages.marks.assessmentUpdated'));
+      refreshRecorded();
+    }
+    if (editIntent === 'list') {
+      setEditIntent('create');
+      return;
+    }
     setRecordingOpen(true);
   };
 
   const backToCreate = () => {
+    setEditIntent(sessionSource ? 'recorder' : 'create');
     setRecordingOpen(false);
     setCreateOpen(true);
     setShowGuide(false);
@@ -1150,7 +1255,7 @@ export default function Marks() {
       />
 
       {message && !recordingOpen && !viewOpen && !competenceOpen && (
-        <div className={`pm-message ${message.toLowerCase().includes('saved') || message.includes('Next:') || message.includes('setup') || message.includes('Imported') ? 'is-ok' : 'is-error'}`}>
+        <div className={`pm-message ${message.toLowerCase().includes('saved') || message.toLowerCase().includes('updated') || message.toLowerCase().includes('deleted') || message.toLowerCase().includes('mise à jour') || message.toLowerCase().includes('supprim') || message.toLowerCase().includes('hinduw') || message.toLowerCase().includes('sibw') || message.toLowerCase().includes('sasishwa') || message.toLowerCase().includes('futwa') || message.includes('Next:') || message.includes('setup') || message.includes('Imported') ? 'is-ok' : 'is-error'}`}>
           {message}
         </div>
       )}
@@ -1365,6 +1470,38 @@ export default function Marks() {
                       </span>
                     </span>
                   </button>
+                  {canManageAssessments && (
+                    <>
+                      {session.kind !== 'competence' && (
+                      <button
+                        type="button"
+                        className="pm-action-btn pm-action-view"
+                        onClick={() => openEditAssessment(session)}
+                      >
+                        <span className="pm-action-btn-icon" aria-hidden>
+                          <PencilLine className="w-4 h-4" />
+                        </span>
+                        <span className="pm-action-btn-copy">
+                          <span className="pm-action-btn-label">{t('pages.marks.editAssessment')}</span>
+                          <span className="pm-action-btn-hint">{t('pages.marks.editAssessmentHint')}</span>
+                        </span>
+                      </button>
+                      )}
+                      <button
+                        type="button"
+                        className="pm-action-btn pm-action-delete"
+                        onClick={() => handleDeleteAssessment(session)}
+                      >
+                        <span className="pm-action-btn-icon" aria-hidden>
+                          <Trash2 className="w-4 h-4" />
+                        </span>
+                        <span className="pm-action-btn-copy">
+                          <span className="pm-action-btn-label">{t('pages.marks.deleteAssessment')}</span>
+                          <span className="pm-action-btn-hint">{t('pages.marks.deleteAssessmentHint')}</span>
+                        </span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </article>
             ))}
@@ -1434,6 +1571,10 @@ export default function Marks() {
             && (!showAssessmentNumber || Number(catNumber) > 0),
           )}
         error={createError}
+        title={editIntent === 'create' ? undefined : t('pages.marks.editAssessment')}
+        continueLabel={editIntent === 'create'
+          ? t('pages.marks.continueToRecord')
+          : t('pages.marks.saveAssessment')}
       />
 
       <FormModeModal
@@ -1469,6 +1610,20 @@ export default function Marks() {
             >
               <span className="pm-record-tool-label">{t('pages.marks.editAssessment')}</span>
             </button>
+            {canManageAssessments && sessionSource && (
+              <button
+                type="button"
+                className="btn-secondary pm-record-tool-btn text-red-600"
+                onClick={() => handleDeleteAssessment({
+                  ...sessionSource,
+                  label: currentAssessmentLabel,
+                  kind: 'score',
+                })}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="pm-record-tool-label">{t('pages.marks.deleteAssessment')}</span>
+              </button>
+            )}
             <button
               type="button"
               className="btn-secondary pm-record-tool-btn disabled:opacity-50"

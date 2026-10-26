@@ -12,6 +12,7 @@ import {
   GraduationCap,
   Info,
   Loader2,
+  Mail,
   Save,
   Search,
   Send,
@@ -25,6 +26,7 @@ import PageHeader from '../components/PageHeader';
 import { isPrimaryGrade } from '../lib/grades';
 import { exportPeriodReportExcel, exportPeriodReportPdf } from '../lib/periodReportExport';
 import { studentFullName as studentDisplayName } from '../lib/studentName';
+import PeriodMarksEmailModal from '../components/midterms/PeriodMarksEmailModal';
 
 function formatDateInput(value) {
   if (!value) return '';
@@ -88,6 +90,7 @@ export default function Midterms() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState('');
   const [publishingId, setPublishingId] = useState('');
+  const [emailWindow, setEmailWindow] = useState(null);
   const [notifyParents, setNotifyParents] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -209,6 +212,11 @@ export default function Midterms() {
     } finally {
       setPublishingId('');
     }
+  };
+
+  const openEmailParents = (periodWindow) => {
+    setError('');
+    setEmailWindow({ ...periodWindow, term });
   };
 
   const loadReport = async (windowId, selectedClassId = classId) => {
@@ -409,8 +417,22 @@ export default function Midterms() {
                   : <Send className="w-4 h-4" />}
                 {published ? 'Republier' : 'Publier'}
               </button>
+              <button
+                type="button"
+                className="btn-secondary text-sm inline-flex items-center gap-1.5"
+                disabled={!published}
+                onClick={() => openEmailParents(periodWindow)}
+                title={published
+                  ? 'Envoyer les notes de chaque enfant aux emails des parents'
+                  : 'Publiez d’abord cette période'}
+              >
+                <Mail className="w-4 h-4" />
+                Email aux parents
+              </button>
               <p className="period-hint period-hint-inline">
-                Fige les moyennes et le classement pour tout le primaire
+                {published
+                  ? 'Chaque parent reçoit les notes de son enfant en français, anglais, kinyarwanda et kiswahili'
+                  : 'Publiez la période, puis envoyez les notes par email'}
               </p>
             </div>
           )}
@@ -485,6 +507,7 @@ export default function Midterms() {
             <li><strong>1. Contexte</strong> — choisissez le trimestre et la classe pour les rapports.</li>
             <li><strong>2. Périodes</strong> — fixez la date limite, enregistrez, puis publiez (P1 avant P2).</li>
             <li><strong>3. Résultats</strong> — ouvrez le classement, exportez Excel (détail) ou PDF (proclamation).</li>
+            <li><strong>Email</strong> — après publication, envoyez à chaque parent les notes de son enfant dans les quatre langues.</li>
           </ol>
           <p>Les notes continues sont moyennées sur le MAXIMA de la matière. P2 inclut P1.</p>
         </div>
@@ -498,6 +521,16 @@ export default function Midterms() {
           </button>
         </div>
       )}
+      {emailWindow && (
+        <PeriodMarksEmailModal
+          periodWindow={emailWindow}
+          classes={classes}
+          defaultClassId={classId}
+          onClose={() => setEmailWindow(null)}
+          onResult={(text) => setMessage(text)}
+        />
+      )}
+
       {message && (
         <div className="period-alert period-alert-success" role="status">
           <span>{message}</span>

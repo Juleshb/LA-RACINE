@@ -347,6 +347,10 @@ export const api = {
     request(`/midterms/windows/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   publishMidtermWindow: (id, data = {}) =>
     request(`/midterms/windows/${id}/publish`, { method: 'POST', body: JSON.stringify(data) }),
+  emailMidtermParents: (id, data = {}) =>
+    request(`/midterms/windows/${id}/email-parents`, { method: 'POST', body: JSON.stringify(data) }),
+  getMidtermParentContacts: (id, classId) =>
+    request(`/midterms/windows/${id}/parent-contacts?classId=${encodeURIComponent(classId)}`),
   getMidtermReport: (windowId, classId) => {
     const q = new URLSearchParams({ classId });
     return request(`/midterms/windows/${windowId}/report?${q}`);
@@ -371,6 +375,16 @@ export const api = {
     return request(`/marks/proclamation?${params}`);
   },
   deleteMark: (id) => request(`/marks/${id}`, { method: 'DELETE' }),
+  updateMarkSession: (data) => request('/marks/sessions', { method: 'PUT', body: JSON.stringify(data) }),
+  deleteMarkSession: ({ subjectId, term, assessment, catNumber }) => {
+    const params = new URLSearchParams({
+      subjectId: String(subjectId),
+      term: String(term || ''),
+      assessment: String(assessment || ''),
+      catNumber: String(catNumber ?? 0),
+    });
+    return request(`/marks/sessions?${params}`, { method: 'DELETE' });
+  },
 
   getAttendance: (date, classId) => {
     const params = new URLSearchParams();
