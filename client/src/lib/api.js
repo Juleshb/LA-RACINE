@@ -225,6 +225,8 @@ export const api = {
   getStudentAccountSuggestions: (id) => request(`/students/${id}/account-suggestions`),
   provisionStudentFamilyAccounts: (id, data) =>
     request(`/students/${id}/provision-accounts`, { method: 'POST', body: JSON.stringify(data) }),
+  linkStudentParent: (id, data) =>
+    request(`/students/${id}/link-parent`, { method: 'PATCH', body: JSON.stringify(data) }),
   getRegistrationOptions: () => request('/students/registration/options'),
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

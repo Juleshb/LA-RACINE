@@ -751,6 +751,76 @@ router.post('/:id/provision-accounts', canProvisionAccounts, async (req, res) =>
   }
 });
 
+router.patch('/:id/link-parent', canProvisionAccounts, async (req, res) => {
+  try {
+    const parentId = String(req.body?.parentId || '').trim();
+    if (!parentId) return res.status(400).json({ error: 'Select a parent' });
+    const slot = req.body?.emailSlot === 'mother' ? 'mother' : 'father';
+
+    const scope = await studentScopeWhere(req);
+    const student = await prisma.student.findFirst({
+      where: { id: req.params.id, ...scope },
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const parent = await prisma.parent.findFirst({
+      where: { id: parentId },
+      include: {
+        user: {
+          select: { email: true, firstName: true, lastName: true, campusId: true, phone: true },
+        },
+        students: { select: { campusId: true }, take: 5 },
+      },
+    });
+    if (!parent) return res.status(404).json({ error: 'Parent not found' });
+
+    const parentCampus = parent.user?.campusId
+      || parent.students.find((row) => row.campusId)?.campusId
+      || null;
+    if (parentCampus && parentCampus !== student.campusId) {
+      return res.status(400).json({ error: 'That parent belongs to another campus' });
+    }
+
+    const data = { parentId: parent.id };
+    const emailField = slot === 'mother' ? 'motherEmail' : 'fatherEmail';
+    const phoneField = slot === 'mother' ? 'motherPhone' : 'fatherPhone';
+    const nameField = slot === 'mother' ? 'motherName' : 'fatherName';
+    if (parent.user?.email) data[emailField] = parent.user.email.toLowerCase();
+    if (parent.phone && !student[phoneField]) data[phoneField] = parent.phone;
+    const parentName = [parent.user?.firstName, parent.user?.lastName].filter(Boolean).join(' ').trim();
+    if (parentName && !student[nameField]) data[nameField] = parentName;
+
+    const updated = await prisma.student.update({
+      where: { id: student.id },
+      data,
+      include: {
+        ...studentInclude,
+        parent: {
+          select: {
+            id: true,
+            phone: true,
+            user: {
+              select: { id: true, email: true, isActive: true, firstName: true, lastName: true },
+            },
+          },
+        },
+        user: {
+          select: { id: true, email: true, isActive: true, firstName: true, lastName: true, createdAt: true },
+        },
+      },
+    });
+    res.json({
+      ...updated,
+      photoUrl: loadPhotoDataUrl(updated.documents),
+      message: parent.user?.email
+        ? 'Student signed to the selected parent. The parent email on this student was updated.'
+        : 'Student signed to the selected parent. Add a parent login to store their email on this student.',
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
 router.patch('/:id/registration-status', async (req, res) => {
   try {
     if (['TEACHER', 'PARENT', 'STUDENT'].includes(req.user.role)) {

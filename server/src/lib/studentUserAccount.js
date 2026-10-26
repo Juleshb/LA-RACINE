@@ -233,6 +233,52 @@ export async function createParentPortalAccount({
   });
 }
 
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+/**
+ * Write a parent login email onto the student record.
+ * overwrite replaces the chosen guardian email.
+ * Otherwise only fill an empty father email, or replace an email that matched the previous login.
+ */
+export async function applyParentEmailToStudents(parentId, email, {
+  previousEmail = null,
+  onlyStudentId = null,
+  overwrite = false,
+  slot = 'father',
+} = {}) {
+  const normalized = normalizeEmail(email);
+  if (!parentId || !normalized) return 0;
+  const students = await prisma.student.findMany({
+    where: {
+      parentId,
+      ...(onlyStudentId ? { id: onlyStudentId } : {}),
+    },
+    select: { id: true, fatherEmail: true, motherEmail: true },
+  });
+  const previous = normalizeEmail(previousEmail);
+  const field = slot === 'mother' ? 'motherEmail' : 'fatherEmail';
+  let updated = 0;
+
+  for (const row of students) {
+    const father = normalizeEmail(row.fatherEmail);
+    const mother = normalizeEmail(row.motherEmail);
+    const data = {};
+    if (overwrite) {
+      if ((field === 'fatherEmail' ? father : mother) !== normalized) data[field] = normalized;
+    } else {
+      if (previous && father === previous) data.fatherEmail = normalized;
+      if (previous && mother === previous) data.motherEmail = normalized;
+      if (!Object.keys(data).length && !father) data.fatherEmail = normalized;
+    }
+    if (!Object.keys(data).length) continue;
+    await prisma.student.update({ where: { id: row.id }, data });
+    updated += 1;
+  }
+  return updated;
+}
+
 export async function provisionFamilyAccounts(student, body) {
   const {
     createParent = true,
@@ -269,7 +315,13 @@ export async function provisionFamilyAccounts(student, body) {
         firstName: parentFirstName,
         lastName: parentLastName,
       });
-      result.messages.push('Parent login created and linked to this family.');
+      const slot = body.parentEmailSlot === 'mother' ? 'mother' : 'father';
+      await applyParentEmailToStudents(student.parent.id, parentEmail, {
+        onlyStudentId: student.id,
+        overwrite: true,
+        slot,
+      });
+      result.messages.push('Parent login created and linked to this family. The parent email on this student was updated.');
     }
   }
 

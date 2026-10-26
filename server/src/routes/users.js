@@ -10,6 +10,7 @@ import {
   backfillStaffIdentityNumbers,
   resolveStaffIdentityNumber,
 } from '../lib/staffIdentity.js';
+import { applyParentEmailToStudents } from '../lib/studentUserAccount.js';
 import {
   extractPhotoPayload,
   removeUserPhotoDir,
@@ -285,6 +286,10 @@ router.post('/', async (req, res) => {
       });
     }
 
+    if (role === 'PARENT' && parentId) {
+      await applyParentEmailToStudents(parentId, email, { overwrite: false });
+    }
+
     if (role === 'TEACHER' && teacherId) {
       await prisma.teacher.update({
         where: { id: teacherId },
@@ -484,6 +489,15 @@ router.put('/:id', async (req, res) => {
       await prisma.parent.update({
         where: { id: user.parentId },
         data: { phone: phoneValue },
+      });
+    }
+
+    if (user.role === 'PARENT' && user.parentId && user.email) {
+      const previousEmail = target.email !== user.email ? target.email : null;
+      const parentChanged = target.parentId && target.parentId !== user.parentId;
+      await applyParentEmailToStudents(user.parentId, user.email, {
+        previousEmail: parentChanged ? null : previousEmail,
+        overwrite: false,
       });
     }
 
