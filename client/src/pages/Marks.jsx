@@ -1580,7 +1580,7 @@ export default function Marks() {
       <FormModeModal
         open={recordingOpen}
         mode="edit"
-        size="2xl"
+        size="full"
         title={t('pages.marks.recorderTitle')}
         subtitle={t('pages.marks.recorderSubtitle')}
         context={modalContext || undefined}

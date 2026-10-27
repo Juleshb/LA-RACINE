@@ -8175,6 +8175,108 @@
     @apply max-w-5xl max-h-[min(96vh,900px)] sm:max-h-[min(94vh,900px)];
   }
 
+  .modal-overlay:has(.modal-panel-full) {
+    @apply p-0 items-stretch;
+  }
+
+  .modal-panel-full {
+    @apply h-full max-h-none max-w-none rounded-none;
+  }
+
+  .modal-panel-full .form-mode-panel-modal {
+    @apply h-full max-h-none;
+  }
+
+  .modal-panel-full .form-mode-header-tools {
+    @apply max-w-none;
+  }
+
+  .modal-panel-full .form-mode-panel-header {
+    @apply items-center px-4 py-2;
+  }
+
+  .modal-panel-full .form-mode-icon,
+  .modal-panel-full .form-mode-badge,
+  .modal-panel-full .form-mode-panel-header p {
+    display: none;
+  }
+
+  .modal-panel-full .form-mode-panel-header h2 {
+    @apply m-0 text-lg;
+  }
+
+  .modal-panel-full .form-mode-body {
+    @apply flex flex-col overflow-hidden px-4 py-2;
+    gap: 0.5rem;
+  }
+
+  .modal-panel-full .pm-record-summary {
+    @apply py-2;
+  }
+
+  .modal-panel-full .form-section-header {
+    display: none;
+  }
+
+  .modal-panel-full .form-section-stack .form-section-body {
+    @apply p-2;
+  }
+
+  .modal-panel-full .form-mode-footer {
+    @apply px-4 py-2;
+  }
+
+  .modal-panel-full .form-section-stack {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .modal-panel-full .form-section-stack .form-section-body {
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+  }
+
+  .modal-panel-full .pm-grid-scroll,
+  .modal-panel-full .pm-mobile-scores {
+    @apply min-h-0 flex-1 max-h-none overflow-auto;
+  }
+
+  .modal-panel-full .pm-table {
+    @apply text-base;
+  }
+
+  .modal-panel-full .pm-table td,
+  .modal-panel-full .pm-table thead th {
+    @apply px-4 py-2.5;
+  }
+
+  .modal-panel-full .pm-col-name {
+    @apply min-w-[14rem] text-base font-semibold leading-snug text-gray-900;
+    white-space: normal;
+  }
+
+  html.dark .modal-panel-full .pm-col-name,
+  html.dark .modal-panel-full .pm-mobile-score-name {
+    color: #f8fafc;
+  }
+
+  .modal-panel-full .pm-col-id {
+    @apply w-36 text-sm;
+  }
+
+  .modal-panel-full .pm-score-input {
+    @apply w-28 py-2 text-lg;
+  }
+
+  .modal-panel-full .pm-mobile-score-name {
+    @apply text-base font-semibold leading-snug;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .modal-panel-full .pm-mobile-score-card {
+    @apply p-4;
+  }
+
   .form-mode-panel-modal {
     @apply mb-0 border-0 rounded-none shadow-none max-h-[min(90vh,720px)] flex flex-col;
   }
