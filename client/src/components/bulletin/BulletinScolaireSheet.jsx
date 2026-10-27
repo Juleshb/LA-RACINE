@@ -96,7 +96,7 @@ function sumColumn(subjects, index, maps, midtermMode, courseMarkOnly) {
 
 function periodColumnLabels(term, midtermMode, courseMarkOnly) {
   if (courseMarkOnly && !midtermMode) return ['Période', 'Ex', 'Tot'];
-  if (!midtermMode) return ['Période', 'Période', 'Ex', 'Tot'];
+  if (!midtermMode) return ['Période 1', 'Période 2', 'Ex', 'Tot'];
   const t = String(term || '');
   if (/3/.test(t)) return ['5eP', '6eP', 'Ex', 'Tot'];
   if (/2/.test(t)) return ['3eP', '4eP', 'Ex', 'Tot'];
@@ -105,10 +105,13 @@ function periodColumnLabels(term, midtermMode, courseMarkOnly) {
 
 function maximaColumnLabels(midtermMode, courseMarkOnly) {
   if (courseMarkOnly && !midtermMode) return ['Période', 'Ex', 'Tot'];
-  return ['Période', 'Période', 'Ex', 'Tot'];
+  return ['Période 1', 'Période 2', 'Ex', 'Tot'];
 }
 
-function columnsFromSummary(summaryColumns, midtermMode, courseMarkOnly, subjects, maps) {
+function columnsFromSummary(summaryColumns, midtermMode, courseMarkOnly, subjects, maps, periodKey) {
+  if (periodKey) {
+    return [summaryColumns?.[periodKey], summaryColumns?.total];
+  }
   if (midtermMode) {
     return [0, 1, 2, 3].map((i) => sumColumn(subjects, i, maps, true, false));
   }
@@ -136,20 +139,29 @@ function domainsForSubtotal(domain, index, list) {
 export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-sheet' }) {
   if (!report) return null;
 
-  const { student, class: cls, term, domains, summary, midterms, meta, photoUrl, verification, rank, overallRank } = report;
+  const { student, class: cls, term, domains, summary, midterms, meta, photoUrl, verification, rank, overallRank, periodRanks, overallPeriodRanks } = report;
   const annual = Boolean(report.annual);
   const yearTerms = report.year?.terms || [];
   const courseMarkOnly = Boolean(report.config?.courseMarkOnly);
-  const midtermMode = Boolean(midterms?.mt1 || midterms?.mt2);
+  const periodKey = !annual && report.periodScope === 'period2'
+    ? 'test2'
+    : (!annual && report.periodScope === 'period1' ? 'test1' : null);
+  const periodLabel = periodKey === 'test2' ? 'Période 2' : 'Période 1';
+  // Period columns stay on the recorded period tests so they match the period bulletin.
+  const midtermMode = false;
   const maps = midtermSubjectMap(midterms);
 
-  const columnLabels = periodColumnLabels(term, midtermMode, courseMarkOnly);
-  const maxLabels = maximaColumnLabels(
-    annual ? yearTerms.some((t) => t.midterms?.mt1 || t.midterms?.mt2) : midtermMode,
+  const columnLabels = periodKey
+    ? [periodLabel, 'Tot']
+    : periodColumnLabels(term, midtermMode, courseMarkOnly);
+  const maxLabels = periodKey
+    ? [periodLabel, 'Tot']
+    : maximaColumnLabels(
+    false,
     annual ? yearTerms.every((t) => t.courseMarkOnly) : courseMarkOnly,
   );
   const termLabelSets = annual
-    ? yearTerms.map((t) => periodColumnLabels(t.term, Boolean(t.midterms?.mt1 || t.midterms?.mt2), t.courseMarkOnly))
+    ? yearTerms.map((t) => periodColumnLabels(t.term, false, t.courseMarkOnly))
     : [columnLabels];
   const columnSpan = annual ? (termLabelSets[0]?.length || 4) : columnLabels.length;
 
@@ -166,12 +178,22 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
     : new Date().toLocaleDateString('fr-FR');
 
   const subjectColumns = (sub) => {
+    if (periodKey) {
+      return [sub.columns?.[periodKey] || cell(null, 0), sub.columns?.total || cell(null, 0)];
+    }
     if (midtermMode) return midtermSubjectColumns(sub, maps);
     return courseMarkOnly ? flexibleSubjectColumns(sub) : legacySubjectColumns(sub);
   };
 
   const domainColumnsFor = (domainList) => {
     const subjects = domainList.flatMap((d) => d.subjects);
+    if (periodKey) {
+      return subjects.reduce((acc, sub) => {
+        acc[0] = addCells(acc[0], sub.columns?.[periodKey] || cell(null, 0));
+        acc[1] = addCells(acc[1], sub.columns?.total || cell(null, 0));
+        return acc;
+      }, [cell(null, 0), cell(null, 0)]);
+    }
     if (midtermMode) {
       return [0, 1, 2, 3].map((i) => sumColumn(subjects, i, maps, true, false));
     }
@@ -198,9 +220,9 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
   const otherSubjects = otherDomains.flatMap((d) => d.subjects);
   const allSubjects = domains.flatMap((d) => d.subjects);
 
-  const generalColumns = columnsFromSummary(summary.general?.columns || summary.columns, midtermMode, courseMarkOnly, generalSubjects, maps);
-  const otherColumns = columnsFromSummary(summary.otherLanguages?.columns, midtermMode, courseMarkOnly, otherSubjects, maps);
-  const overallColumns = columnsFromSummary(summary.overall?.columns, midtermMode, courseMarkOnly, allSubjects, maps);
+  const generalColumns = columnsFromSummary(summary.general?.columns || summary.columns, midtermMode, courseMarkOnly, generalSubjects, maps, periodKey);
+  const otherColumns = columnsFromSummary(summary.otherLanguages?.columns, midtermMode, courseMarkOnly, otherSubjects, maps, periodKey);
+  const overallColumns = columnsFromSummary(summary.overall?.columns, midtermMode, courseMarkOnly, allSubjects, maps, periodKey);
 
   const yearSummaryFor = (kind) => report.year?.summary?.[kind];
   const sumYearCells = (list, termIdx) => list.flatMap((d) => d.subjects).reduce((acc, sub) => {
@@ -214,10 +236,10 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
 
   const isTotCol = (len, i) => i === len - 1;
 
-  const periodPlaceAt = (index, rankInfo, termMidterms) => {
-    if ((termMidterms?.mt1 || termMidterms?.mt2) && index < 2) {
-      const standing = index === 0 ? termMidterms.mt1?.standing : termMidterms.mt2?.standing;
-      return fmtPlace(standing?.place, standing?.totalStudents);
+  const periodPlaceAt = (index, rankInfo, scopedRanks, columnCount) => {
+    if (!periodKey && columnCount >= 4 && scopedRanks) {
+      const standing = index === 0 ? scopedRanks.period1 : index === 1 ? scopedRanks.period2 : null;
+      if (standing) return fmtPlace(standing.place, standing.totalStudents);
     }
     return fmtPlace(rankInfo?.place, rankInfo?.totalStudents);
   };
@@ -226,11 +248,11 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
     <td key={`${keyPrefix}-${i}`} className="num font-bold">{fmtPct(col)}</td>
   ));
 
-  const renderPlaceGroup = (cols, rankInfo, termMidterms, keyPrefix) => cols.map((_, i) => (
+  const renderPlaceGroup = (cols, rankInfo, scopedRanks, keyPrefix) => cols.map((_, i) => (
     <td key={`${keyPrefix}-${i}`} className="num font-bold">
       {isTotCol(cols.length, i)
         ? fmtPlace(rankInfo?.place, rankInfo?.totalStudents)
-        : periodPlaceAt(i, rankInfo, termMidterms)}
+        : periodPlaceAt(i, rankInfo, scopedRanks, cols.length)}
     </td>
   ));
 
@@ -336,16 +358,18 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
     if (!annual) {
       const cols = kind === 'overall' ? overallColumns : kind === 'other' ? otherColumns : generalColumns;
       const usedRank = kind === 'overall' ? (overallRank || rank) : rank;
-      return renderPlaceGroup(cols, usedRank, midterms, `${labelPrefix}-place`);
+      const usedPeriodRanks = kind === 'overall' ? (overallPeriodRanks || periodRanks) : periodRanks;
+      return renderPlaceGroup(cols, usedRank, usedPeriodRanks, `${labelPrefix}-place`);
     }
     return (
       <>
         {yearTerms.map((t, ti) => {
           const packed = yearSummaryFor(kind === 'other' ? 'otherLanguages' : kind);
           const termRank = kind === 'overall' ? (t.overallRank || t.rank) : t.rank;
+          const termPeriodRanks = kind === 'overall' ? (t.overallPeriodRanks || t.periodRanks) : t.periodRanks;
           return (
             <Fragment key={`${labelPrefix}-place-${ti}`}>
-              {renderPlaceGroup(packed?.terms?.[ti]?.cells || [], termRank, t.midterms, `${labelPrefix}-t${ti}-pl`)}
+              {renderPlaceGroup(packed?.terms?.[ti]?.cells || [], termRank, termPeriodRanks, `${labelPrefix}-t${ti}-pl`)}
             </Fragment>
           );
         })}
@@ -426,7 +450,7 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
           <p className="bulletin-student-name">NOM DE L'ÉLÈVE : {studentName}</p>
           <p className="bulletin-student-class">CLASSE : {classLine}</p>
           <p className="bulletin-student-title">{bulletinTitle}</p>
-          <p className="bulletin-student-term">{annual ? 'BULLETIN ANNUEL' : `TRIMESTRE : ${term}`}</p>
+          <p className="bulletin-student-term">{annual ? 'BULLETIN ANNUEL' : (periodKey ? `TRIMESTRE : ${term} · ${periodLabel.toUpperCase()}` : `TRIMESTRE : ${term}`)}</p>
         </div>
 
         <table className="bulletin-table">

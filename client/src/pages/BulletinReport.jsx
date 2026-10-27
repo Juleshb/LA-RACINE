@@ -41,6 +41,7 @@ export default function BulletinReport() {
   const [classId, setClassId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [term, setTerm] = useState('Trimestre 1');
+  const [periodScope, setPeriodScope] = useState('full');
   const [terms, setTerms] = useState(['Trimestre 1', 'Trimestre 2', 'Trimestre 3']);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -136,14 +137,14 @@ export default function BulletinReport() {
     }
     setLoading(true);
     setError('');
-    api.getBulletinReport(classId, studentId, term)
+    api.getBulletinReport(classId, studentId, term, term === 'Annuel' ? 'full' : periodScope)
       .then(setReport)
       .catch((err) => {
         setError(err.message);
         setReport(null);
       })
       .finally(() => setLoading(false));
-  }, [classId, studentId, term]);
+  }, [classId, studentId, term, periodScope]);
 
   useEffect(() => {
     if (!PRIMARY_BULLETIN_TERM_OPTIONS.some((o) => o.value === term)) {
@@ -195,7 +196,7 @@ export default function BulletinReport() {
     try {
       const fetched = await Promise.all(students.map(async (student) => {
         try {
-          return await api.getBulletinReport(classId, student.id, term);
+          return await api.getBulletinReport(classId, student.id, term, term === 'Annuel' ? 'full' : periodScope);
         } catch (err) {
           failures.push(studentFullName(student));
           return null;
@@ -203,7 +204,7 @@ export default function BulletinReport() {
       }));
       const ready = fetched.filter(Boolean);
       if (!ready.length) throw new Error(failures[0] ? `Failed to generate bulletins` : 'No bulletins to download');
-      const safe = `${selectedClass?.name || 'classe'}-${term}`.replace(/\s+/g, '-');
+      const safe = `${selectedClass?.name || 'classe'}-${term}${periodScope === 'period1' && term !== 'Annuel' ? '-periode-1' : ''}`.replace(/\s+/g, '-');
       await downloadClassBulletinsPdf(ready, `bulletins-${safe}.pdf`, setClassPdf);
       if (failures.length) {
         setError(`Some bulletins were skipped: ${failures.join(', ')}`);
@@ -316,7 +317,7 @@ export default function BulletinReport() {
 
       <div className="filter-panel print:hidden">
         <p className="filter-panel-title">{isFamily ? t('pages.bulletin.filterFamily') : t('pages.bulletin.filterStaff')}</p>
-        <div className={`grid grid-cols-1 ${isFamily ? (isCompetenceClass ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-1 max-w-sm') : 'md:grid-cols-3'} gap-4`}>
+        <div className={`grid grid-cols-1 ${isFamily ? 'md:grid-cols-2 max-w-3xl' : 'md:grid-cols-4'} gap-4`}>
           {!isFamily && (
             <div>
               <label className="label flex items-center gap-1.5">
@@ -376,10 +377,25 @@ export default function BulletinReport() {
               ))}
             </select>
           </div>
+          {!isCompetenceClass && term !== 'Annuel' && (
+            <div>
+              <label className="label">{t('pages.bulletin.periodScope')}</label>
+              <select className="input" value={periodScope} onChange={(e) => setPeriodScope(e.target.value)}>
+                <option value="full">{t('pages.bulletin.periodScopeFull')}</option>
+                <option value="period1">{t('pages.bulletin.periodScopePeriod1')}</option>
+              </select>
+            </div>
+          )}
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          Choose one trimestre for a single-term bulletin, or Bulletin annuel for the full year
-          {isCompetenceClass ? ' (T1 + T2 + T3 + Résultat Annuel).' : ' (T1 + T2 + T3 + MAX / P.O).'}
+          {periodScope === 'period1' && term !== 'Annuel'
+            ? t('pages.bulletin.periodScopePeriod1Hint')
+            : (
+              <>
+                Choose one trimestre for a single-term bulletin, or Bulletin annuel for the full year
+                {isCompetenceClass ? ' (T1 + T2 + T3 + Résultat Annuel).' : ' (T1 + T2 + T3 + MAX / P.O).'}
+              </>
+            )}
         </p>
         {selectedClass && (
           <p className="text-xs text-gray-400 mt-3">

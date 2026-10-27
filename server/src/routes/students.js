@@ -8,6 +8,7 @@ import { authorizePermission, authorizeRoles, PERMISSIONS, isManagerRole } from 
 import {
   suggestFamilyAccountEmails,
   provisionFamilyAccounts,
+  applyParentEmailToStudents,
 } from '../lib/studentUserAccount.js';
 import { getFormOptions } from '../config/registration.js';
 import {
@@ -815,6 +816,153 @@ router.patch('/:id/link-parent', canProvisionAccounts, async (req, res) => {
       message: parent.user?.email
         ? 'Student signed to the selected parent. The parent email on this student was updated.'
         : 'Student signed to the selected parent. Add a parent login to store their email on this student.',
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.patch('/:id/unlink-parent', canProvisionAccounts, async (req, res) => {
+  try {
+    const scope = await studentScopeWhere(req);
+    const student = await prisma.student.findFirst({
+      where: { id: req.params.id, ...scope },
+      include: {
+        parent: {
+          select: {
+            user: { select: { email: true } },
+          },
+        },
+      },
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student.parentId) {
+      return res.status(400).json({ error: 'This child is not linked to a parent' });
+    }
+
+    const updated = await prisma.student.update({
+      where: { id: student.id },
+      data: { parentId: null },
+      include: {
+        ...studentInclude,
+        parent: {
+          select: {
+            id: true,
+            phone: true,
+            user: {
+              select: { id: true, email: true, isActive: true, firstName: true, lastName: true },
+            },
+          },
+        },
+        user: {
+          select: { id: true, email: true, isActive: true, firstName: true, lastName: true, createdAt: true },
+        },
+      },
+    });
+    const previous = student.parent?.user?.email || 'the current parent';
+    res.json({
+      ...updated,
+      photoUrl: loadPhotoDataUrl(updated.documents),
+      message: `This child was removed from ${previous}. Assign the new parent below.`,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+function cleanAccountEmail(value, label, { required = false } = {}) {
+  const email = String(value ?? '').trim().toLowerCase();
+  if (!email) {
+    if (required) {
+      const error = new Error(`${label} is required`);
+      error.status = 400;
+      throw error;
+    }
+    return null;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const error = new Error(`${label} is not a valid email`);
+    error.status = 400;
+    throw error;
+  }
+  return email;
+}
+
+router.patch('/:id/parent-account', canProvisionAccounts, async (req, res) => {
+  try {
+    const scope = await studentScopeWhere(req);
+    const student = await prisma.student.findFirst({
+      where: { id: req.params.id, ...scope },
+      include: {
+        parent: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const studentData = {};
+    if (req.body?.fatherEmail !== undefined) {
+      studentData.fatherEmail = cleanAccountEmail(req.body.fatherEmail, 'Father email');
+    }
+    if (req.body?.motherEmail !== undefined) {
+      studentData.motherEmail = cleanAccountEmail(req.body.motherEmail, 'Mother email');
+    }
+
+    const parentUser = student.parent?.user || null;
+    let loginUpdated = false;
+    if (req.body?.loginEmail !== undefined && parentUser) {
+      const loginEmail = cleanAccountEmail(req.body.loginEmail, 'Login email', { required: true });
+      const previous = String(parentUser.email || '').trim().toLowerCase();
+      if (loginEmail !== previous) {
+        const taken = await prisma.user.findFirst({
+          where: { email: loginEmail, NOT: { id: parentUser.id } },
+        });
+        if (taken) return res.status(400).json({ error: 'That email is already used by another account' });
+        await prisma.user.update({
+          where: { id: parentUser.id },
+          data: { email: loginEmail },
+        });
+        await applyParentEmailToStudents(student.parentId, loginEmail, { previousEmail: previous });
+        if (studentData.fatherEmail === previous) studentData.fatherEmail = loginEmail;
+        if (studentData.motherEmail === previous) studentData.motherEmail = loginEmail;
+        loginUpdated = true;
+      }
+    }
+
+    if (Object.keys(studentData).length) {
+      await prisma.student.update({
+        where: { id: student.id },
+        data: studentData,
+      });
+    }
+
+    const updated = await prisma.student.findUnique({
+      where: { id: student.id },
+      include: {
+        ...studentInclude,
+        parent: {
+          select: {
+            id: true,
+            phone: true,
+            user: {
+              select: { id: true, email: true, isActive: true, firstName: true, lastName: true },
+            },
+          },
+        },
+        user: {
+          select: { id: true, email: true, isActive: true, firstName: true, lastName: true, createdAt: true },
+        },
+      },
+    });
+    res.json({
+      ...updated,
+      photoUrl: loadPhotoDataUrl(updated.documents),
+      message: loginUpdated
+        ? 'Parent login and emails were updated.'
+        : 'Parent emails were updated.',
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });

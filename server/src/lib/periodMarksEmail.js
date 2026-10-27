@@ -236,12 +236,13 @@ const emptySend = (error) => ({
   error,
 });
 
-function bulletinPdfUrl(student, term) {
+function bulletinPdfUrl(student, term, sequence) {
   if (!student.classId) return '';
   const token = createBulletinPdfToken({
     studentId: student.id,
     classId: student.classId,
     term,
+    periodScope: Number(sequence) === 2 ? 'period2' : 'period1',
   });
   return buildBulletinPdfUrl(token);
 }
@@ -408,7 +409,7 @@ export async function emailPeriodMarksToParents(window, { classId = null, recipi
       className: student.class?.name || '—',
       periodTitle: window.title,
       term: window.term,
-      pdfUrl: bulletinPdfUrl(student, window.term),
+      pdfUrl: bulletinPdfUrl(student, window.term, window.sequence),
       subjects: subjectRows,
       standing: standing
         ? {

@@ -50,7 +50,12 @@ export default function BulletinPdfLink() {
     try {
       const student = report?.student || {};
       const name = [student.lastName, student.firstName].filter(Boolean).join('-') || 'bulletin';
-      await downloadBulletinPdf(element, `bulletin-${name}.pdf`);
+      const periodBit = report?.periodScope === 'period1'
+        ? '-periode-1'
+        : report?.periodScope === 'period2'
+          ? '-periode-2'
+          : '';
+      await downloadBulletinPdf(element, `bulletin-${name}${periodBit}.pdf`);
     } catch (err) {
       setError(err.message || 'Le PDF n’a pas pu être créé');
     } finally {

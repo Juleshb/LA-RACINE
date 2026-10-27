@@ -6,6 +6,7 @@ import {
   GraduationCap,
   KeyRound,
   RefreshCw,
+  UserMinus,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -42,6 +43,7 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
   const [studentPassword, setStudentPassword] = useState('');
   const [createParent, setCreateParent] = useState(true);
   const [createStudent, setCreateStudent] = useState(true);
+  const [loginEmail, setLoginEmail] = useState(student?.parent?.user?.email || '');
   const [fatherEmail, setFatherEmail] = useState(student?.fatherEmail || '');
   const [motherEmail, setMotherEmail] = useState(student?.motherEmail || '');
   const [emailSlot, setEmailSlot] = useState('father');
@@ -73,9 +75,10 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
   }, [studentId]);
 
   useEffect(() => {
+    setLoginEmail(student?.parent?.user?.email || '');
     setFatherEmail(student?.fatherEmail || '');
     setMotherEmail(student?.motherEmail || '');
-  }, [student?.id, student?.fatherEmail, student?.motherEmail]);
+  }, [student?.id, student?.fatherEmail, student?.motherEmail, student?.parent?.user?.email]);
 
   useEffect(() => {
     if (!student?.campusId) return undefined;
@@ -130,16 +133,45 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
     setError('');
     setMessage('');
     try {
-      await api.updateStudent(studentId, {
-        fatherEmail: fatherEmail.trim(),
-        motherEmail: motherEmail.trim(),
+      const previousLogin = String(student?.parent?.user?.email || '').trim().toLowerCase();
+      const nextLogin = loginEmail.trim();
+      let nextFather = fatherEmail.trim();
+      let nextMother = motherEmail.trim();
+      if (previousLogin && nextLogin && nextLogin.toLowerCase() !== previousLogin) {
+        if (nextFather.toLowerCase() === previousLogin) nextFather = nextLogin;
+        if (nextMother.toLowerCase() === previousLogin) nextMother = nextLogin;
+      }
+      const result = await api.updateStudentParentAccount(studentId, {
+        loginEmail: nextLogin,
+        fatherEmail: nextFather,
+        motherEmail: nextMother,
       });
-      setMessage('Parent emails on this student were saved.');
+      setMessage(result.message || 'Parent emails were updated.');
       onUpdated?.();
     } catch (err) {
       setError(err.message);
     } finally {
       setSavingEmails(false);
+    }
+  };
+
+  const removeFromParent = async () => {
+    const label = student?.parent?.user?.email || student?.parent?.phone || 'the current parent';
+    if (!window.confirm(`Remove this child from ${label}? That parent will no longer see this child. You can assign a new parent next.`)) {
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const result = await api.unlinkStudentParent(studentId);
+      setMessage(result.message || 'This child was removed from the parent. Assign the new parent below.');
+      await loadSuggestions();
+      onUpdated?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -149,7 +181,7 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
     const selected = parents.find((parent) => parent.id === nextParentId);
     const label = selected?.user?.email || selected?.phone || 'the selected parent';
     const guardian = emailSlot === 'mother' ? 'mother' : 'father';
-    if (!window.confirm(`Sign this student to ${label}? The ${guardian} email on the student record will use that parent's login email.`)) {
+    if (!window.confirm(`Assign this child to ${label}? The ${guardian} email on the student record will use that parent's login email.`)) {
       return;
     }
     setBusy(true);
@@ -206,7 +238,7 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
                 Parent account
               </p>
               {parentHasLogin ? (
-                <p className="mt-2 text-green-700 font-medium flex items-center gap-1.5">
+                <p className="mt-2 text-green-700 font-medium flex items-center gap-1.5 break-all">
                   <CheckCircle className="w-4 h-4 shrink-0" />
                   {(student?.parent?.user || suggestions.parent?.login)?.email}
                 </p>
@@ -223,6 +255,52 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
               )}
               {student?.parent?.phone && (
                 <p className="text-gray-500 mt-1">Record · {student.parent.phone}</p>
+              )}
+              <form onSubmit={saveParentEmails} className="mt-3 space-y-2">
+                {parentHasLogin && (
+                  <div>
+                    <label className="label">Login email</label>
+                    <input
+                      type="email"
+                      className="input"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="label">Father email</label>
+                  <input
+                    type="email"
+                    className="input"
+                    value={fatherEmail}
+                    onChange={(e) => setFatherEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Mother email</label>
+                  <input
+                    type="email"
+                    className="input"
+                    value={motherEmail}
+                    onChange={(e) => setMotherEmail(e.target.value)}
+                  />
+                </div>
+                <button type="submit" disabled={savingEmails} className="btn-secondary text-sm">
+                  {savingEmails ? 'Saving…' : 'Save emails'}
+                </button>
+              </form>
+              {student?.parent && (
+                <button
+                  type="button"
+                  onClick={removeFromParent}
+                  disabled={busy}
+                  className="btn-secondary text-sm text-red-700 inline-flex items-center gap-1.5 mt-3"
+                >
+                  <UserMinus className="w-4 h-4" />
+                  Remove access to this child
+                </button>
               )}
             </div>
 
@@ -254,68 +332,48 @@ export default function AdminFamilyAccounts({ studentId, student, onUpdated }) {
             </div>
           </div>
 
-          <form onSubmit={saveParentEmails} className="mt-4 p-4 rounded-xl bg-white border border-gray-100 space-y-3">
-            <p className="text-sm font-medium text-gray-900">Parent emails on this student</p>
-            <p className="text-xs text-gray-500">
-              These are the addresses used for period marks. Linking a parent login, or signing this student to another parent, updates the chosen one.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">Father email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={fatherEmail}
-                  onChange={(e) => setFatherEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Mother email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={motherEmail}
-                  onChange={(e) => setMotherEmail(e.target.value)}
-                />
-              </div>
+          <div className="mt-4 p-4 rounded-xl bg-white border border-gray-100 space-y-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Change this child’s parent</p>
+              <p className="text-xs text-gray-500 mt-1">
+                First remove the child from the current parent, then assign the new parent.
+              </p>
             </div>
-            <div className="max-w-xs">
-              <label className="label">Which email a linked account updates</label>
-              <select className="input" value={emailSlot} onChange={(e) => setEmailSlot(e.target.value)}>
-                <option value="father">Father email</option>
-                <option value="mother">Mother email</option>
-              </select>
-            </div>
-            <button type="submit" disabled={savingEmails} className="btn-secondary text-sm">
-              {savingEmails ? 'Saving…' : 'Save parent emails'}
-            </button>
-          </form>
 
-          <form onSubmit={signToParent} className="mt-4 p-4 rounded-xl bg-white border border-gray-100 space-y-3">
-            <p className="text-sm font-medium text-gray-900">Sign this student to another parent</p>
-            <p className="text-xs text-gray-500">
-              Moves this child to an existing family. If that parent already has a login, their email is saved on the student.
-            </p>
-            <select
-              className="input"
-              value={nextParentId}
-              onChange={(e) => setNextParentId(e.target.value)}
-            >
-              <option value="">Select a parent</option>
-              {parents
-                .filter((parent) => parent.id !== student?.parent?.id)
-                .map((parent) => (
-                  <option key={parent.id} value={parent.id}>
-                    {parent.user?.email || parent.phone || parent.id.slice(0, 8)}
-                    {' — '}
-                    {parent.students?.map((child) => studentFullName(child)).filter(Boolean).join(', ') || 'No children'}
-                  </option>
-                ))}
-            </select>
-            <button type="submit" disabled={busy || !nextParentId} className="btn-secondary text-sm">
-              Sign to this parent
-            </button>
-          </form>
+            <form onSubmit={signToParent} className="p-3 rounded-lg border border-gray-100 space-y-3">
+              <p className="text-sm font-medium text-gray-900">Assign a new parent</p>
+              <p className="text-xs text-gray-500">
+                Use this after removing access, or to move the child straight to another parent.
+              </p>
+              <div className="max-w-xs">
+                <label className="label">Save the new login on</label>
+                <select className="input" value={emailSlot} onChange={(e) => setEmailSlot(e.target.value)}>
+                  <option value="father">Father email</option>
+                  <option value="mother">Mother email</option>
+                </select>
+              </div>
+              <select
+                className="input"
+                value={nextParentId}
+                onChange={(e) => setNextParentId(e.target.value)}
+              >
+                <option value="">Select a parent</option>
+                {parents
+                  .filter((parent) => parent.id !== student?.parent?.id)
+                  .map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.user?.email || parent.phone || parent.id.slice(0, 8)}
+                      {' — '}
+                      {parent.students?.map((child) => studentFullName(child)).filter(Boolean).join(', ') || 'No children'}
+                    </option>
+                  ))}
+              </select>
+              <button type="submit" disabled={busy || !nextParentId} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+                <UserPlus className="w-4 h-4" />
+                Assign this parent
+              </button>
+            </form>
+          </div>
 
           {message && (
             <p className="mt-4 text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">{message}</p>

@@ -173,7 +173,7 @@ router.get('/report', async (req, res) => {
     if (req.user.role === 'TEACHER') {
       return res.status(403).json({ error: 'Teachers cannot access bulletin reports' });
     }
-    const { classId, studentId, term } = req.query;
+    const { classId, studentId, term, periodScope } = req.query;
     if (!classId || !studentId) {
       return res.status(400).json({ error: 'classId and studentId are required' });
     }
@@ -222,6 +222,7 @@ router.get('/report', async (req, res) => {
       term: termValue,
       campusId: req.campusId,
       academicYearId: req.academicYearId,
+      periodScope: periodScope === 'period1' ? 'period1' : 'full',
     });
     res.json(report);
   } catch (error) {

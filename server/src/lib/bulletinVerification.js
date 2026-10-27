@@ -23,12 +23,10 @@ export function buildVerifyUrl(token) {
   return `${clientUrl}/verify/bulletin/${token}`;
 }
 
-export function createBulletinPdfToken({ studentId, classId, term }) {
-  return jwt.sign(
-    { type: 'bulletin-pdf', studentId, classId, term },
-    SECRET,
-    { expiresIn: '10y' },
-  );
+export function createBulletinPdfToken({ studentId, classId, term, periodScope }) {
+  const payload = { type: 'bulletin-pdf', studentId, classId, term };
+  if (periodScope === 'period1' || periodScope === 'period2') payload.periodScope = periodScope;
+  return jwt.sign(payload, SECRET, { expiresIn: '10y' });
 }
 
 export function verifyBulletinPdfToken(token) {

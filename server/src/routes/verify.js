@@ -93,12 +93,16 @@ router.get('/bulletin-pdf/:token', async (req, res) => {
       return res.status(404).json({ error: 'Bulletin not found' });
     }
 
+    const periodScope = decoded.periodScope === 'period1' || decoded.periodScope === 'period2'
+      ? decoded.periodScope
+      : 'full';
     const args = {
       classId: decoded.classId,
       studentId: decoded.studentId,
       term: decoded.term,
       campusId: student.class.campusId || student.campusId,
       academicYearId: student.class.academicYearId || student.academicYearId,
+      periodScope,
     };
     const report = usesCompetenceBulletin(student.class.grade)
       ? await buildNurseryBulletinReport(prisma, args)

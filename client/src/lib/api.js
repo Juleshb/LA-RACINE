@@ -227,6 +227,10 @@ export const api = {
     request(`/students/${id}/provision-accounts`, { method: 'POST', body: JSON.stringify(data) }),
   linkStudentParent: (id, data) =>
     request(`/students/${id}/link-parent`, { method: 'PATCH', body: JSON.stringify(data) }),
+  unlinkStudentParent: (id) =>
+    request(`/students/${id}/unlink-parent`, { method: 'PATCH' }),
+  updateStudentParentAccount: (id, data) =>
+    request(`/students/${id}/parent-account`, { method: 'PATCH', body: JSON.stringify(data) }),
   getRegistrationOptions: () => request('/students/registration/options'),
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -366,9 +370,10 @@ export const api = {
   },
   saveCompetenceMarks: (data) =>
     request('/marks/competence/bulk', { method: 'PUT', body: JSON.stringify(data) }),
-  getBulletinReport: (classId, studentId, term) => {
+  getBulletinReport: (classId, studentId, term, periodScope) => {
     const params = new URLSearchParams({ classId, studentId });
     if (term) params.set('term', term);
+    if (periodScope === 'period1') params.set('periodScope', 'period1');
     return request(`/marks/report?${params}`);
   },
   getClassProclamation: (classId, term) => {

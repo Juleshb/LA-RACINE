@@ -139,6 +139,41 @@ function buildLegacySubject(subject, config, markMap) {
   };
 }
 
+function asSinglePeriod(subject, slot) {
+  const period = subject.columns?.[slot] || { score: null, max: 0 };
+  const hasScore = period.score != null;
+  const cell = { score: hasScore ? period.score : null, max: period.max || 0 };
+  const empty = { score: null, max: 0 };
+  return {
+    ...subject,
+    columns: {
+      ...subject.columns,
+      tests: cell,
+      test1: slot === 'test1' ? cell : empty,
+      test2: slot === 'test2' ? cell : empty,
+      exam: empty,
+      total: cell,
+    },
+    test2Max: slot === 'test1' ? 0 : (subject.test2Max ?? cell.max),
+    testsMarkMax: cell.max,
+    obtained: cell.score,
+    max: cell.max,
+    total: cell.score,
+    totalMax: cell.max,
+    maximaVerified: true,
+  };
+}
+
+function asPeriod1Only(subject) {
+  return asSinglePeriod(subject, 'test1');
+}
+
+function scopeBuiltSubject(built, periodScope) {
+  if (periodScope === 'period1') return asSinglePeriod(built, 'test1');
+  if (periodScope === 'period2') return asSinglePeriod(built, 'test2');
+  return built;
+}
+
 function subjectContribution(subjectEntry) {
   if (subjectEntry.flexible) {
     return {
@@ -172,53 +207,79 @@ function grandTotalFromSubjects(subjectEntries) {
   return { obtained: hasAny ? round1(obtained) : 0, max, hasAny };
 }
 
-async function computeClassRank(db, { classId, studentId, term, subjects, config, assessmentsBySubject }) {
-  const students = await db.student.findMany({
-    where: { classId },
-    select: { id: true },
-  });
-  if (!students.length) return { place: null, totalStudents: 0 };
+function placeFromRankings(rankings, studentId, totalStudents) {
+  const idx = rankings.findIndex((row) => row.studentId === studentId);
+  return {
+    place: idx >= 0 ? idx + 1 : null,
+    totalStudents,
+  };
+}
 
-  const subjectIds = subjects.map((s) => s.id);
-  const allMarks = await db.mark.findMany({
-    where: {
-      term,
-      subjectId: { in: subjectIds },
-      studentId: { in: students.map((s) => s.id) },
-    },
-  });
-
-  const marksByStudent = new Map();
-  for (const m of allMarks) {
-    if (!marksByStudent.has(m.studentId)) marksByStudent.set(m.studentId, []);
-    marksByStudent.get(m.studentId).push(m);
-  }
-
+function rankingsForScope(students, marksByStudent, subjects, config, assessmentsBySubject, periodScope) {
   const rankings = students.map((st) => {
     const markMap = new Map();
-    for (const m of marksByStudent.get(st.id) || []) {
-      markMap.set(`${m.subjectId}:${m.assessment}:${m.catNumber}`, m);
+    for (const mark of marksByStudent.get(st.id) || []) {
+      markMap.set(`${mark.subjectId}:${mark.assessment}:${mark.catNumber}`, mark);
     }
 
     const subjectEntries = subjects.map((subject) => {
       const assessments = assessmentsBySubject.get(subject.id) || [];
-      if (assessments.length) {
-        return buildFlexibleSubject(subject, assessments, markMap);
-      }
-      return buildLegacySubject(subject, config, markMap);
+      const built = assessments.length
+        ? buildFlexibleSubject(subject, assessments, markMap)
+        : buildLegacySubject(subject, config, markMap);
+      const scoped = scopeBuiltSubject(built, periodScope);
+      if (periodScope === 'period1' || periodScope === 'period2') return { ...scoped, flexible: true };
+      return scoped;
     });
 
-    const { obtained, max, hasAny } = grandTotalFromSubjects(subjectEntries);
+    const { obtained, max } = grandTotalFromSubjects(subjectEntries);
     const pct = max > 0 ? (obtained / max) * 100 : 0;
-    return { studentId: st.id, obtained, max, pct, hasAny };
+    return { studentId: st.id, obtained, max, pct };
   });
 
   rankings.sort((a, b) => b.pct - a.pct || b.obtained - a.obtained);
-  const idx = rankings.findIndex((r) => r.studentId === studentId);
-  return {
-    place: idx >= 0 ? idx + 1 : null,
-    totalStudents: students.length,
-  };
+  return rankings;
+}
+
+async function computeClassRankSet(db, { classId, studentId, term, subjects, config, assessmentsBySubject, periodScope }) {
+  const empty = { place: null, totalStudents: 0 };
+  const students = await db.student.findMany({
+    where: { classId },
+    select: { id: true },
+  });
+  if (!students.length) return { full: empty, period1: empty, period2: empty };
+
+  const subjectIds = subjects.map((s) => s.id);
+  const allMarks = subjectIds.length
+    ? await db.mark.findMany({
+      where: {
+        term,
+        subjectId: { in: subjectIds },
+        studentId: { in: students.map((s) => s.id) },
+      },
+    })
+    : [];
+
+  const marksByStudent = new Map();
+  for (const mark of allMarks) {
+    if (!marksByStudent.has(mark.studentId)) marksByStudent.set(mark.studentId, []);
+    marksByStudent.get(mark.studentId).push(mark);
+  }
+
+  const scopes = periodScope === 'period1'
+    ? ['period1']
+    : periodScope === 'period2'
+      ? ['period2']
+      : ['full', 'period1', 'period2'];
+  const result = { full: empty, period1: empty, period2: empty };
+  for (const scope of scopes) {
+    result[scope] = placeFromRankings(
+      rankingsForScope(students, marksByStudent, subjects, config, assessmentsBySubject, scope),
+      studentId,
+      students.length,
+    );
+  }
+  return result;
 }
 
 function scoreSum(values) {
@@ -367,27 +428,7 @@ function midtermMaps(midterms) {
   return map;
 }
 
-function subjectPeriodCells(sub, midterms, courseMarkOnly) {
-  if (midterms?.mt1 || midterms?.mt2) {
-    const maps = midtermMaps(midterms);
-    const m1 = maps.mt1.get(sub.id);
-    const m2 = maps.mt2.get(sub.id);
-    const exam = sub.columns?.exam || emptyCell();
-    const continuous = m2?.obtained != null ? m2 : (m1?.obtained != null ? m1 : null);
-    return periodExamColumns({
-      period1Max: sub.test1Max ?? sub.columns?.test1?.max,
-      period2Max: sub.test2Max ?? sub.columns?.test2?.max,
-      testsMax: sub.testsMarkMax,
-      examMax: exam.max,
-      examScore: exam.score,
-      period1Score: m1?.obtained ?? null,
-      period1ScoreMax: m1?.maxScore,
-      period2Score: m2?.obtained ?? null,
-      period2ScoreMax: m2?.maxScore,
-      continuousScore: continuous?.obtained ?? null,
-      continuousScoreMax: continuous?.maxScore,
-    }).cells;
-  }
+function subjectPeriodCells(sub, _midterms, courseMarkOnly) {
   if (courseMarkOnly) {
     return [
       sub.columns?.tests || emptyCell(),
@@ -403,12 +444,7 @@ function subjectPeriodCells(sub, midterms, courseMarkOnly) {
   ];
 }
 
-function summaryPeriodCells(columns, midterms, courseMarkOnly, subjects) {
-  if (midterms?.mt1 || midterms?.mt2) {
-    return [0, 1, 2, 3].map((i) => subjects.reduce((acc, sub) => (
-      addScoreCells(acc, subjectPeriodCells(sub, midterms, false)[i] || emptyCell())
-    ), emptyCell()));
-  }
+function summaryPeriodCells(columns, _midterms, courseMarkOnly) {
   if (courseMarkOnly) {
     return [columns?.tests, columns?.exam, columns?.total].map((c) => c || emptyCell());
   }
@@ -604,6 +640,8 @@ async function buildAnnualClassBulletinReport(db, { classId, studentId, campusId
         term: slice.term,
         rank: slice.rank,
         overallRank: slice.overallRank,
+        periodRanks: slice.periodRanks,
+        overallPeriodRanks: slice.overallPeriodRanks,
         midterms: slice.midterms,
         courseMarkOnly: Boolean(slice.config?.courseMarkOnly),
       })),
@@ -622,7 +660,7 @@ async function buildAnnualClassBulletinReport(db, { classId, studentId, campusId
   };
 }
 
-export async function buildClassBulletinReport(db, { classId, studentId, term, campusId, academicYearId }) {
+export async function buildClassBulletinReport(db, { classId, studentId, term, campusId, academicYearId, periodScope = 'full' }) {
   if (isAnnualBulletinTerm(term)) {
     return buildAnnualClassBulletinReport(db, { classId, studentId, campusId, academicYearId });
   }
@@ -678,11 +716,11 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
   for (const group of grouped) {
     const subjects = group.courses.map((subject) => {
       const assessments = assessmentsBySubject.get(subject.id) || [];
-      if (assessments.length) {
-        usesFlexibleTests = true;
-        return buildFlexibleSubject(subject, assessments, markMap);
-      }
-      return buildLegacySubject(subject, config, markMap);
+      if (assessments.length) usesFlexibleTests = true;
+      const built = assessments.length
+        ? buildFlexibleSubject(subject, assessments, markMap)
+        : buildLegacySubject(subject, config, markMap);
+      return scopeBuiltSubject(built, periodScope);
     });
 
     const domainColumns = buildDomainColumns(subjects);
@@ -718,24 +756,36 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
   const allSubjects = cls.subjects;
 
   const percentage = generalTotals.percentage;
-  const rank = await computeClassRank(db, {
+  const rankSubjects = generalSubjects.length ? generalSubjects : allSubjects;
+  const generalSet = await computeClassRankSet(db, {
     classId,
     studentId,
     term,
-    subjects: generalSubjects.length ? generalSubjects : allSubjects,
+    subjects: rankSubjects,
     config,
     assessmentsBySubject,
+    periodScope,
   });
-  const overallRank = otherLanguageDomains.length
-    ? await computeClassRank(db, {
+  const overallSet = otherLanguageDomains.length
+    ? await computeClassRankSet(db, {
       classId,
       studentId,
       term,
       subjects: allSubjects,
       config,
       assessmentsBySubject,
+      periodScope,
     })
-    : rank;
+    : generalSet;
+  const singlePeriod = periodScope === 'period1' || periodScope === 'period2';
+  const rank = singlePeriod ? generalSet[periodScope] : generalSet.full;
+  const overallRank = singlePeriod ? overallSet[periodScope] : overallSet.full;
+  const periodRanks = singlePeriod
+    ? null
+    : { period1: generalSet.period1, period2: generalSet.period2 };
+  const overallPeriodRanks = singlePeriod
+    ? null
+    : { period1: overallSet.period1, period2: overallSet.period2 };
 
   const photoUrl = loadPhotoDataUrl(student.documents || []);
   const issuedAt = new Date().toISOString();
@@ -779,7 +829,7 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
   const summaryColumns = generalColumns;
 
   let midterms = null;
-  if (isPrimaryGrade(cls.grade) && campusId && academicYearId) {
+  if (!singlePeriod && isPrimaryGrade(cls.grade) && campusId && academicYearId) {
     midterms = await getPublishedMidtermsForTerm({
       campusId,
       academicYearId,
@@ -790,13 +840,13 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
 
   const maximaSubjects = domains.flatMap((domain) => domain.subjects);
   const maximaCheck = {
-    ok: maximaSubjects.every((sub) => sub.maximaVerified !== false && maximaIdentityHolds([
+    ok: singlePeriod || maximaSubjects.every((sub) => sub.maximaVerified !== false && maximaIdentityHolds([
       sub.columns?.test1,
       sub.columns?.test2,
       sub.columns?.exam,
       sub.columns?.total,
     ])),
-    rule: 'period1 + period2 = exam',
+    rule: singlePeriod ? `${periodScope} only` : 'period1 + period2 = exam',
   };
 
   return {
@@ -813,6 +863,7 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
       parentName: student.parentName || null,
     },
     term,
+    periodScope: singlePeriod ? periodScope : 'full',
     config: {
       preset: config.preset,
       label: config.label,
@@ -841,6 +892,8 @@ export async function buildClassBulletinReport(db, { classId, studentId, term, c
     },
     rank,
     overallRank,
+    periodRanks,
+    overallPeriodRanks,
     midterms,
     meta,
     photoUrl,
