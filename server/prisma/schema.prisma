@@ -225,6 +225,7 @@ model Class {
   name           String
   grade          String
   section        String
+  capacity       Int             @default(35)
   teacherId      String?
   teacher        Teacher?        @relation(fields: [teacherId], references: [id])
   bulletinConfig Json?

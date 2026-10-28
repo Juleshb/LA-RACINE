@@ -1,5 +1,21 @@
-/** Hard cap on students assigned to a class (non-rejected). */
+/** Default number of students a class can hold. Each class can set its own size. */
 export const CLASS_CAPACITY = 35;
+
+export function parseClassCapacity(value) {
+  if (value == null || value === '') return CLASS_CAPACITY;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 500) {
+    const err = new Error('Class size must be a whole number from 1 to 500.');
+    err.status = 400;
+    throw err;
+  }
+  return n;
+}
+
+export function capacityOf(cls) {
+  const n = Number(cls?.capacity);
+  return Number.isInteger(n) && n > 0 ? n : CLASS_CAPACITY;
+}
 
 const ENROLLED_STATUS = { not: 'REJECTED' };
 
@@ -30,10 +46,15 @@ export async function countClassStudents(prisma, classId, opts = {}) {
  */
 export async function assertClassHasSeat(prisma, classId, opts = {}) {
   if (!classId) return;
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { capacity: true },
+  });
+  const capacity = capacityOf(cls);
   const count = await countClassStudents(prisma, classId, opts);
-  if (count >= CLASS_CAPACITY) {
+  if (count >= capacity) {
     const err = new Error(
-      `This class is full (${CLASS_CAPACITY} students maximum). Transfer a student out or choose another class.`,
+      `This class is full (${capacity} students maximum). Transfer a student out, raise the class size, or choose another class.`,
     );
     err.status = 400;
     err.code = 'CLASS_FULL';
@@ -49,13 +70,21 @@ export async function assertClassHasSeat(prisma, classId, opts = {}) {
  */
 export async function getClassEnrollmentStats(prisma, classIds) {
   const map = new Map();
+  const classRows = classIds.length
+    ? await prisma.class.findMany({
+      where: { id: { in: classIds } },
+      select: { id: true, capacity: true },
+    })
+    : [];
+  const capacityById = new Map(classRows.map((row) => [row.id, capacityOf(row)]));
   for (const id of classIds) {
+    const capacity = capacityById.get(id) ?? CLASS_CAPACITY;
     map.set(id, {
-      capacity: CLASS_CAPACITY,
+      capacity,
       students: 0,
       boys: 0,
       girls: 0,
-      remaining: CLASS_CAPACITY,
+      remaining: capacity,
     });
   }
   if (!classIds.length) return map;
@@ -79,7 +108,7 @@ export async function getClassEnrollmentStats(prisma, classIds) {
   }
 
   for (const entry of map.values()) {
-    entry.remaining = Math.max(0, CLASS_CAPACITY - entry.students);
+    entry.remaining = Math.max(0, entry.capacity - entry.students);
   }
   return map;
 }

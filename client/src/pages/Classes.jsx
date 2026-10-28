@@ -41,8 +41,8 @@ import Modal from '../components/form/Modal';
 import { isNurseryGrade, isPrimaryGrade } from '../lib/grades';
 import { studentFullName } from '../lib/studentName';
 
-const EMPTY_FORM = { name: '', grade: '', section: '', teacherId: '' };
 const CLASS_CAPACITY = 35;
+const EMPTY_FORM = { name: '', grade: '', section: '', teacherId: '', capacity: CLASS_CAPACITY };
 const CHART_COLORS = {
   nursery: '#0ea5e9',
   primary: '#16a34a',
@@ -163,8 +163,8 @@ export default function Classes() {
         boys: cls.stats?.boys ?? 0,
         girls: cls.stats?.girls ?? 0,
         courses: cls.stats?.courses ?? cls._count?.subjects ?? 0,
-        remaining: cls.stats?.remaining ?? Math.max(0, CLASS_CAPACITY - (cls._count?.students || 0)),
-        capacity: cls.stats?.capacity ?? CLASS_CAPACITY,
+        remaining: cls.stats?.remaining ?? Math.max(0, (cls.capacity || CLASS_CAPACITY) - (cls._count?.students || 0)),
+        capacity: cls.stats?.capacity ?? cls.capacity ?? CLASS_CAPACITY,
       };
 
       next.classes += 1;
@@ -276,7 +276,7 @@ export default function Classes() {
     if (!detailClass) return [];
     return classes
       .filter((c) => c.id !== detailClass.id)
-      .filter((c) => (c.stats?.remaining ?? CLASS_CAPACITY) > 0 || transferTargetId === c.id);
+      .filter((c) => (c.stats?.remaining ?? (c.capacity || CLASS_CAPACITY)) > 0 || transferTargetId === c.id);
   }, [classes, detailClass, transferTargetId]);
 
   const filteredDetailStudents = useMemo(() => {
@@ -309,6 +309,7 @@ export default function Classes() {
       grade: cls.grade,
       section: cls.section,
       teacherId: cls.teacherId || '',
+      capacity: cls.capacity || cls.stats?.capacity || CLASS_CAPACITY,
     });
     setEditingId(cls.id);
     setFormMode('edit');
@@ -327,7 +328,11 @@ export default function Classes() {
     e.preventDefault();
     setError('');
     setSubmitting(true);
-    const payload = { ...form, teacherId: form.teacherId || null };
+    const payload = {
+      ...form,
+      teacherId: form.teacherId || null,
+      capacity: Number(form.capacity) || CLASS_CAPACITY,
+    };
     try {
       if (isEditing) {
         await api.updateClass(editingId, payload);
@@ -440,9 +445,9 @@ export default function Classes() {
   };
 
   const classStats = (cls) => ({
-    capacity: cls.stats?.capacity ?? CLASS_CAPACITY,
+    capacity: cls.stats?.capacity ?? cls.capacity ?? CLASS_CAPACITY,
     students: cls.stats?.students ?? cls._count?.students ?? 0,
-    remaining: cls.stats?.remaining ?? Math.max(0, CLASS_CAPACITY - (cls._count?.students || 0)),
+    remaining: cls.stats?.remaining ?? Math.max(0, (cls.capacity || CLASS_CAPACITY) - (cls._count?.students || 0)),
     boys: cls.stats?.boys ?? 0,
     girls: cls.stats?.girls ?? 0,
     courses: cls.stats?.courses ?? cls._count?.subjects ?? 0,
@@ -830,6 +835,19 @@ export default function Classes() {
                 onChange={(e) => setForm({ ...form, section: e.target.value.toUpperCase() })}
               />
             </div>
+          </div>
+          <div className="max-w-xs">
+            <label className="label">{t('pageBody.classes.studentsPerClass')}</label>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={500}
+              required
+              value={form.capacity}
+              onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+            />
+            <p className="text-xs text-gray-500 mt-1">{t('pageBody.classes.studentsPerClassHint')}</p>
           </div>
         </FormSection>
       </FormModeModal>

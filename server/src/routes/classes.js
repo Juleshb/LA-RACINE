@@ -6,7 +6,7 @@ import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { listBulletinPresets, resolveBulletinConfig } from '../config/bulletinPresets.js';
 import { usesNurseryCompetence } from '../config/grades.js';
 import { ensureDefaultClasses, classSortKey } from '../lib/defaultClasses.js';
-import { CLASS_CAPACITY, getClassEnrollmentStats } from '../lib/classCapacity.js';
+import { CLASS_CAPACITY, getClassEnrollmentStats, parseClassCapacity, countClassStudents } from '../lib/classCapacity.js';
 
 const router = Router();
 
@@ -254,6 +254,7 @@ router.post('/', async (req, res) => {
         teacherId,
         campusId: req.campusId,
         academicYearId: req.academicYearId,
+        capacity: parseClassCapacity(req.body.capacity),
         bulletinConfig: usesNurseryCompetence(grade)
           ? { preset: 'COMPETENCE' }
           : { preset: 'STANDARD' },
@@ -262,6 +263,7 @@ router.post('/', async (req, res) => {
     });
     res.status(201).json(cls);
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
     if (error?.code === 'P2002') {
       return res.status(409).json({
         error: 'A class with this niveau and section already exists for this school year. Use a different section or edit the existing class.',
@@ -288,6 +290,16 @@ router.put('/:id', async (req, res) => {
     if (data.grade != null) data.grade = String(data.grade).trim().toUpperCase();
     if (data.section != null) data.section = String(data.section).trim().toUpperCase();
     if (data.teacherId === '') data.teacherId = null;
+    if (data.capacity !== undefined) {
+      const capacity = parseClassCapacity(data.capacity);
+      const enrolled = await countClassStudents(prisma, existing.id);
+      if (capacity < enrolled) {
+        return res.status(400).json({
+          error: `This class already has ${enrolled} students. Set the size to at least ${enrolled}.`,
+        });
+      }
+      data.capacity = capacity;
+    }
 
     if (data.name && (/top\s*class/i.test(data.name) || /grande\s*section.*top/i.test(data.name))
       && (data.grade === 'N3' || data.grade === 'M3' || data.grade === 'NURSERY 3')) {
@@ -321,6 +333,7 @@ router.put('/:id', async (req, res) => {
     });
     res.json(cls);
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
     if (error?.code === 'P2002') {
       return res.status(409).json({
         error: 'A class with this niveau and section already exists for this school year.',

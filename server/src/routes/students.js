@@ -1091,7 +1091,11 @@ router.post('/:id/change-class', async (req, res) => {
       include: studentInclude,
     });
 
-    const remaining = CLASS_CAPACITY - await countClassStudents(prisma, destClass.id);
+    const seated = await prisma.class.findUnique({
+      where: { id: destClass.id },
+      select: { capacity: true },
+    });
+    const remaining = (seated?.capacity || CLASS_CAPACITY) - await countClassStudents(prisma, destClass.id);
 
     res.json({
       ...student,
