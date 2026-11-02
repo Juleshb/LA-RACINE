@@ -110,7 +110,7 @@ function maximaColumnLabels(midtermMode, courseMarkOnly) {
 
 function columnsFromSummary(summaryColumns, midtermMode, courseMarkOnly, subjects, maps, periodKey) {
   if (periodKey) {
-    return [summaryColumns?.[periodKey], summaryColumns?.total];
+    return [summaryColumns?.[periodKey] || summaryColumns?.total || cell(null, 0)];
   }
   if (midtermMode) {
     return [0, 1, 2, 3].map((i) => sumColumn(subjects, i, maps, true, false));
@@ -152,10 +152,10 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
   const maps = midtermSubjectMap(midterms);
 
   const columnLabels = periodKey
-    ? [periodLabel, 'Tot']
+    ? [periodLabel]
     : periodColumnLabels(term, midtermMode, courseMarkOnly);
   const maxLabels = periodKey
-    ? [periodLabel, 'Tot']
+    ? [periodLabel]
     : maximaColumnLabels(
     false,
     annual ? yearTerms.every((t) => t.courseMarkOnly) : courseMarkOnly,
@@ -179,7 +179,7 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
 
   const subjectColumns = (sub) => {
     if (periodKey) {
-      return [sub.columns?.[periodKey] || cell(null, 0), sub.columns?.total || cell(null, 0)];
+      return [sub.columns?.[periodKey] || cell(null, 0)];
     }
     if (midtermMode) return midtermSubjectColumns(sub, maps);
     return courseMarkOnly ? flexibleSubjectColumns(sub) : legacySubjectColumns(sub);
@@ -190,9 +190,8 @@ export default function BulletinScolaireSheet({ report, id = 'bulletin-scolaire-
     if (periodKey) {
       return subjects.reduce((acc, sub) => {
         acc[0] = addCells(acc[0], sub.columns?.[periodKey] || cell(null, 0));
-        acc[1] = addCells(acc[1], sub.columns?.total || cell(null, 0));
         return acc;
-      }, [cell(null, 0), cell(null, 0)]);
+      }, [cell(null, 0)]);
     }
     if (midtermMode) {
       return [0, 1, 2, 3].map((i) => sumColumn(subjects, i, maps, true, false));

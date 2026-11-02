@@ -373,12 +373,13 @@ export const api = {
   getBulletinReport: (classId, studentId, term, periodScope) => {
     const params = new URLSearchParams({ classId, studentId });
     if (term) params.set('term', term);
-    if (periodScope === 'period1') params.set('periodScope', 'period1');
+    if (periodScope === 'period1' || periodScope === 'period2') params.set('periodScope', periodScope);
     return request(`/marks/report?${params}`);
   },
-  getClassProclamation: (classId, term) => {
+  getClassProclamation: (classId, term, periodScope) => {
     const params = new URLSearchParams({ classId });
     if (term) params.set('term', term);
+    if (periodScope === 'period1' || periodScope === 'period2') params.set('periodScope', periodScope);
     return request(`/marks/proclamation?${params}`);
   },
   deleteMark: (id) => request(`/marks/${id}`, { method: 'DELETE' }),

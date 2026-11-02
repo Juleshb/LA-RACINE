@@ -1050,8 +1050,8 @@ function genderLetter(gender) {
 }
 
 /**
- * Class proclamation list: one row per student, using the same subject totals
- * as the bulletin (general courses, published midterms when they exist).
+ * Class proclamation list: one row per student, using the recorded period,
+ * exam, and term totals from the bulletin.
  */
 export async function buildClassProclamation(db, {
   classId,
@@ -1059,6 +1059,7 @@ export async function buildClassProclamation(db, {
   campusId,
   academicYearId,
   studentWhere = {},
+  periodScope = 'full',
 }) {
   const cls = await db.class.findUnique({
     where: { id: classId },
@@ -1100,6 +1101,10 @@ export async function buildClassProclamation(db, {
   const scoredSubjects = generalSubjects.length ? generalSubjects : cls.subjects;
 
   const annual = isAnnualBulletinTerm(term);
+  const scope = annual
+    ? 'annual'
+    : (periodScope === 'period1' || periodScope === 'period2' ? periodScope : 'full');
+  const periodSlot = scope === 'period1' ? 'test1' : scope === 'period2' ? 'test2' : null;
   const terms = annual ? PRIMARY_YEAR_TERMS : [term || 'Trimestre 1'];
   const studentIds = students.map((student) => student.id);
 
@@ -1120,18 +1125,6 @@ export async function buildClassProclamation(db, {
     marksByStudentTerm.get(key).set(`${mark.subjectId}:${mark.assessment}:${mark.catNumber}`, mark);
   }
 
-  const midtermsByTerm = new Map();
-  if (isPrimaryGrade(cls.grade) && campusId && academicYearId) {
-    for (const termName of terms) {
-      midtermsByTerm.set(termName, await midtermsByStudentForTerm(db, {
-        campusId,
-        academicYearId,
-        term: termName,
-        studentIds,
-      }));
-    }
-  }
-
   const buildEntries = (markMap) => cls.subjects.map((subject) => {
     const assessments = assessmentsBySubject.get(subject.id) || [];
     if (assessments.length) return buildFlexibleSubject(subject, assessments, markMap);
@@ -1150,11 +1143,22 @@ export async function buildClassProclamation(db, {
     const subjectCells = scoredSubjects.map((subject) => {
       const termCells = terms.map((termName) => {
         const entry = entriesByTerm.get(termName).get(subject.id);
-        const midterms = midtermsByTerm.get(termName)?.get(student.id) || null;
-        return subjectDisplayTotal(entry, midterms);
+        if (periodSlot) return entry?.columns?.[periodSlot] || emptyCell();
+        return entry?.columns?.total || emptyCell();
       });
       return terms.length === 1 ? termCells[0] : combineDisplayCells(termCells);
     });
+    const columnSum = (key) => {
+      const scores = [];
+      for (const termName of terms) {
+        for (const subject of scoredSubjects) {
+          const entry = entriesByTerm.get(termName).get(subject.id);
+          const score = entry?.columns?.[key]?.score;
+          if (score != null) scores.push(Number(score) || 0);
+        }
+      }
+      return scores.length ? round1(scores.reduce((sum, score) => sum + score, 0)) : null;
+    };
 
     const totals = proclamationTotals(subjectCells);
     return {
@@ -1164,7 +1168,10 @@ export async function buildClassProclamation(db, {
       postName: student.postName || '',
       firstName: student.firstName || '',
       gender: genderLetter(student.gender),
-      total: totals.total,
+      period1: scope === 'period2' ? null : columnSum('test1'),
+      period2: scope === 'period1' ? null : columnSum('test2'),
+      exam: periodSlot ? null : columnSum('exam'),
+      total: periodSlot ? null : totals.total,
       max: totals.max,
       percentage: totals.percentage,
       failures: totals.failures,
@@ -1177,6 +1184,11 @@ export async function buildClassProclamation(db, {
   const average = scored.length
     ? Math.round((scored.reduce((sum, row) => sum + row.percentage, 0) / scored.length) * 10) / 10
     : null;
+  const genderCount = (list) => ({
+    F: list.filter((row) => row.gender === 'F').length,
+    M: list.filter((row) => row.gender === 'M').length,
+    total: list.length,
+  });
 
   let meta = {
     schoolName: 'École La RACINE',
@@ -1205,12 +1217,14 @@ export async function buildClassProclamation(db, {
   return {
     class: { id: cls.id, name: cls.name, grade: cls.grade, section: cls.section },
     term: annual ? 'Annuel' : (term || 'Trimestre 1'),
+    periodScope: scope,
     meta,
     rows: placedRows,
     summary: {
       average,
-      success: scored.length ? scored.filter((row) => row.passed).length : null,
-      failed: scored.length ? scored.filter((row) => !row.passed).length : null,
+      success: genderCount(placedRows.filter((row) => row.passed === true)),
+      failed: genderCount(placedRows.filter((row) => row.passed === false)),
+      unclassified: genderCount(placedRows.filter((row) => row.percentage == null)),
       studentCount: rows.length,
     },
   };

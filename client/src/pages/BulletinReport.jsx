@@ -50,6 +50,7 @@ export default function BulletinReport() {
   const [proclamationLoading, setProclamationLoading] = useState(false);
   const [classPdf, setClassPdf] = useState(null);
   const [proclamation, setProclamation] = useState(null);
+  const [proclamationOpen, setProclamationOpen] = useState(false);
   const [error, setError] = useState('');
   const proclamationRef = useRef(null);
 
@@ -166,26 +167,44 @@ export default function BulletinReport() {
   const handlePrint = () => window.print();
 
   useEffect(() => {
-    setProclamation(null);
-  }, [classId, term]);
+    if (!proclamationOpen || !classId || isCompetenceClass) {
+      setProclamation(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setProclamationLoading(true);
+    setError('');
+    const scope = term === 'Annuel' ? 'full' : periodScope;
+    api.getClassProclamation(classId, term, scope)
+      .then((data) => {
+        if (!cancelled) setProclamation(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to generate the proclamation');
+          setProclamation(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProclamationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [proclamationOpen, classId, term, periodScope, isCompetenceClass]);
 
   useEffect(() => {
     if (!proclamation) return;
     proclamationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [proclamation]);
 
-  const handleProclamation = async () => {
+  const handleProclamation = () => {
     if (!classId || isCompetenceClass) return;
-    setProclamationLoading(true);
-    setError('');
-    try {
-      const data = await api.getClassProclamation(classId, term);
-      setProclamation(data);
-    } catch (err) {
-      setError(err.message || 'Failed to generate the proclamation');
-    } finally {
-      setProclamationLoading(false);
+    if (proclamationOpen) {
+      proclamationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
     }
+    setProclamationOpen(true);
   };
 
   const handleClassBulletins = async () => {
@@ -204,7 +223,14 @@ export default function BulletinReport() {
       }));
       const ready = fetched.filter(Boolean);
       if (!ready.length) throw new Error(failures[0] ? `Failed to generate bulletins` : 'No bulletins to download');
-      const safe = `${selectedClass?.name || 'classe'}-${term}${periodScope === 'period1' && term !== 'Annuel' ? '-periode-1' : ''}`.replace(/\s+/g, '-');
+      const periodBit = term === 'Annuel'
+        ? ''
+        : periodScope === 'period1'
+          ? '-periode-1'
+          : periodScope === 'period2'
+            ? '-periode-2'
+            : '';
+      const safe = `${selectedClass?.name || 'classe'}-${term}${periodBit}`.replace(/\s+/g, '-');
       await downloadClassBulletinsPdf(ready, `bulletins-${safe}.pdf`, setClassPdf);
       if (failures.length) {
         setError(`Some bulletins were skipped: ${failures.join(', ')}`);
@@ -383,19 +409,19 @@ export default function BulletinReport() {
               <select className="input" value={periodScope} onChange={(e) => setPeriodScope(e.target.value)}>
                 <option value="full">{t('pages.bulletin.periodScopeFull')}</option>
                 <option value="period1">{t('pages.bulletin.periodScopePeriod1')}</option>
+                <option value="period2">{t('pages.bulletin.periodScopePeriod2')}</option>
               </select>
             </div>
           )}
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          {periodScope === 'period1' && term !== 'Annuel'
-            ? t('pages.bulletin.periodScopePeriod1Hint')
-            : (
-              <>
-                Choose one trimestre for a single-term bulletin, or Bulletin annuel for the full year
-                {isCompetenceClass ? ' (T1 + T2 + T3 + Résultat Annuel).' : ' (T1 + T2 + T3 + MAX / P.O).'}
-              </>
-            )}
+          {term === 'Annuel'
+            ? t('pages.bulletin.periodScopeAnnualHint')
+            : periodScope === 'period1'
+              ? t('pages.bulletin.periodScopePeriod1Hint')
+              : periodScope === 'period2'
+                ? t('pages.bulletin.periodScopePeriod2Hint')
+                : t('pages.bulletin.periodScopeFullHint')}
         </p>
         {selectedClass && (
           <p className="text-xs text-gray-400 mt-3">
@@ -452,7 +478,7 @@ export default function BulletinReport() {
           <div className="flex flex-wrap items-center justify-end gap-2 mb-3 print:hidden">
             <button
               type="button"
-              onClick={() => setProclamation(null)}
+              onClick={() => setProclamationOpen(false)}
               className="btn-secondary"
             >
               {t('ui.close')}

@@ -9049,7 +9049,7 @@
   }
 
   .proclamation-sheet {
-    width: min(100%, 1100px);
+    width: min(100%, 1280px);
     margin: 0 auto;
     background: #fff;
     color: #111;
@@ -9096,7 +9096,11 @@
   .proclamation-sheet table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.92rem;
+    font-size: 0.82rem;
+  }
+
+  .proclamation-table-wrap table {
+    min-width: 980px;
   }
 
   .proclamation-sheet th,
@@ -9125,43 +9129,45 @@
     align-items: start;
   }
 
-  .proclamation-sign {
-    margin-top: 1.25rem;
-    min-height: 4.5rem;
+  .proclamation-date {
+    margin: 0;
+    min-height: 3rem;
     border: 2px solid #111;
+    padding: 0.75rem;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .proclamation-sign {
+    margin-top: 0;
+    min-height: 6.5rem;
+    border: 2px solid #111;
+    border-top: 0;
     padding: 0.75rem;
     text-align: center;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 0.35rem;
   }
 
-  .proclamation-foot dl {
-    margin: 0;
-    display: grid;
-    gap: 0.4rem;
+  .proclamation-summary {
+    width: 100%;
+    max-width: 280px;
+    margin-left: auto;
+    font-size: 0.92rem;
   }
 
-  .proclamation-foot dl div {
-    display: grid;
-    grid-template-columns: 1fr 4.5rem;
+  .proclamation-summary th,
+  .proclamation-summary td {
     border: 2px solid #111;
-  }
-
-  .proclamation-foot dt,
-  .proclamation-foot dd {
-    margin: 0;
-    padding: 0.35rem 0.5rem;
-  }
-
-  .proclamation-foot dt {
-    font-weight: 700;
-  }
-
-  .proclamation-foot dd {
+    padding: 0.28rem 0.45rem;
     text-align: center;
-    font-weight: 700;
-    border-left: 1px solid #111;
+  }
+
+  .proclamation-summary th {
+    text-align: left;
+    background: transparent;
   }
 
   @media (max-width: 720px) {

@@ -10,7 +10,7 @@ import {
   getTeacherMarksClassIdsForReq,
 } from '../lib/teacherAccess.js';
 import { studentScopeWhere, classScopeWhere, resolveClassIdFilter } from '../lib/scope.js';
-import { buildClassBulletinReport, buildClassProclamation } from '../lib/bulletinReport.js';
+import { buildClassBulletinReport, buildClassProclamation, isAnnualBulletinTerm } from '../lib/bulletinReport.js';
 import { buildNurseryBulletinReport } from '../lib/nurseryBulletinReport.js';
 import { usesCompetenceBulletin, usesNurseryCompetence } from '../config/grades.js';
 import {
@@ -140,7 +140,7 @@ router.get('/stats', async (req, res) => {
 
 router.get('/proclamation', async (req, res) => {
   try {
-    const { classId, term } = req.query;
+    const { classId, term, periodScope } = req.query;
     if (!classId) return res.status(400).json({ error: 'classId is required' });
 
     await resolveClassIdFilter(req, classId);
@@ -152,12 +152,14 @@ router.get('/proclamation', async (req, res) => {
     }
 
     const studentWhere = await studentScopeWhere(req);
+    const termValue = term || 'Trimestre 1';
     const report = await buildClassProclamation(prisma, {
       classId,
-      term: term || 'Trimestre 1',
+      term: termValue,
       campusId: req.campusId,
       academicYearId: req.academicYearId,
       studentWhere,
+      periodScope: bulletinPeriodScope(termValue, periodScope),
     });
     res.json(report);
   } catch (error) {
@@ -222,7 +224,7 @@ router.get('/report', async (req, res) => {
       term: termValue,
       campusId: req.campusId,
       academicYearId: req.academicYearId,
-      periodScope: periodScope === 'period1' ? 'period1' : 'full',
+      periodScope: bulletinPeriodScope(termValue, periodScope),
     });
     res.json(report);
   } catch (error) {
@@ -232,6 +234,12 @@ router.get('/report', async (req, res) => {
     res.status(error.status || 500).json({ error: error.message });
   }
 });
+
+function bulletinPeriodScope(term, periodScope) {
+  if (isAnnualBulletinTerm(term)) return 'full';
+  if (periodScope === 'period1' || periodScope === 'period2') return periodScope;
+  return 'full';
+}
 
 function parseCatNumber(value) {
   const n = Number(value);

@@ -25,8 +25,9 @@ function sheetName(name) {
   return cleaned || 'Proclamation';
 }
 
-function fileName(className, term) {
-  const safe = clean(`${className}-${term}`)
+function fileName(className, term, periodScope) {
+  const scope = periodScope === 'period1' ? '-periode-1' : periodScope === 'period2' ? '-periode-2' : '';
+  const safe = clean(`${className}-${term}${scope}`)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\-]+/g, '_')
@@ -52,6 +53,66 @@ export function proclamationPlaceLine(meta) {
 
 export function proclamationTermLabel(term) {
   return TERM_LABELS[term] || clean(term) || 'Trimestre';
+}
+
+export function proclamationSheetTitle(term) {
+  if (/^(annuel|annual|ann[eé]e)$/i.test(clean(term))) return 'FICHE DE PROCLAMATION ANNUELLE';
+  return 'FICHE DE PROCLAMATION TRIMESTIELLE';
+}
+
+export function proclamationContextLine(report) {
+  const term = proclamationTermLabel(report?.term);
+  if (report?.periodScope === 'period1') return `Trimestre : ${term} · Période 1`;
+  if (report?.periodScope === 'period2') return `Trimestre : ${term} · Période 2`;
+  return `Trimestre : ${term}`;
+}
+
+const IDENTITY_COLUMNS = [
+  { key: 'sn', label: 'S/N', kind: 'sn' },
+  { key: 'studentId', label: "Id de l'élève", kind: 'text' },
+  { key: 'lastName', label: 'NOM', kind: 'name' },
+  { key: 'postName', label: 'POST-NOM', kind: 'name' },
+  { key: 'firstName', label: 'PRENOM', kind: 'name' },
+  { key: 'gender', label: 'Genre', kind: 'gender' },
+];
+
+const SCORE_COLUMNS = {
+  period1: { key: 'period1', label: 'Tot. (1eP)', kind: 'score', width: 12 },
+  period2: { key: 'period2', label: 'Tot. (2eP)', kind: 'score', width: 12 },
+  exam: { key: 'exam', label: 'Tot. (Exam)', kind: 'score', width: 13 },
+  total: { key: 'total', label: 'Tot. Trim', kind: 'score', width: 11 },
+  percentage: { key: 'percentage', label: '%', kind: 'score', width: 9 },
+  failures: { key: 'failures', label: 'échecs', kind: 'count', width: 12 },
+};
+
+export function proclamationColumns(report) {
+  const scope = report?.periodScope;
+  if (scope === 'period1') {
+    return [...IDENTITY_COLUMNS, SCORE_COLUMNS.period1, SCORE_COLUMNS.percentage, SCORE_COLUMNS.failures];
+  }
+  if (scope === 'period2') {
+    return [...IDENTITY_COLUMNS, SCORE_COLUMNS.period2, SCORE_COLUMNS.percentage, SCORE_COLUMNS.failures];
+  }
+  return [
+    ...IDENTITY_COLUMNS,
+    SCORE_COLUMNS.period1,
+    SCORE_COLUMNS.period2,
+    SCORE_COLUMNS.exam,
+    SCORE_COLUMNS.total,
+    SCORE_COLUMNS.percentage,
+    SCORE_COLUMNS.failures,
+  ];
+}
+
+const IDENTITY_WIDTHS = [6, 25, 30, 29, 30, 8];
+
+function sheetCellValue(student, index, column) {
+  if (column.kind === 'sn') return index + 1;
+  if (column.kind === 'text') return clean(student.studentId);
+  if (column.kind === 'name') return clean(student[column.key]).toUpperCase();
+  if (column.kind === 'gender') return clean(student.gender);
+  const value = student?.[column.key];
+  return value == null || value === '' ? null : Number(value);
 }
 
 export function proclamationIssuedLine(meta, date = new Date()) {
@@ -116,9 +177,11 @@ export async function buildClassProclamationWorkbook(report) {
     views: [{ showGridLines: false }],
   });
 
-  const widths = [8, 6, 12, 20, 26, 24, 24, 11, 12, 11, 12];
-  widths.forEach((width, index) => {
-    sheet.getColumn(index + 1).width = width;
+  const columns = proclamationColumns(report);
+  const lastCol = columns.length + 1;
+  sheet.getColumn(1).width = 8;
+  columns.forEach((column, index) => {
+    sheet.getColumn(index + 2).width = column.width || IDENTITY_WIDTHS[index] || 12;
   });
 
   const headingFont = font(12, { bold: true });
@@ -127,55 +190,54 @@ export async function buildClassProclamationWorkbook(report) {
   const leftIndent = { horizontal: 'left', vertical: 'middle', indent: 2 };
 
   sheet.getRow(6).height = 24;
-  paintMerged(sheet, 2, 2, 11, proclamationSchoolHeading(report?.meta?.schoolName, report?.meta?.city), {
+  paintMerged(sheet, 2, 2, lastCol, proclamationSchoolHeading(report?.meta?.schoolName, report?.meta?.city), {
     font: headingFont,
     alignment: center,
     border: sideBox(MEDIUM, undefined),
   });
-  paintMerged(sheet, 3, 2, 11, proclamationPlaceLine(report?.meta), {
+  paintMerged(sheet, 3, 2, lastCol, proclamationPlaceLine(report?.meta), {
     font: placeFont,
     alignment: center,
     border: sideBox(undefined, undefined),
   });
-  paintMerged(sheet, 4, 2, 11, clean(report?.meta?.country || 'RWANDA').toUpperCase(), {
+  paintMerged(sheet, 4, 2, lastCol, clean(report?.meta?.country || 'RWANDA').toUpperCase(), {
     font: headingFont,
     alignment: center,
     border: sideBox(undefined, undefined),
   });
-  paintMerged(sheet, 6, 2, 11, 'FICHE DE PROCLAMATION', {
+  paintMerged(sheet, 6, 2, lastCol, proclamationSheetTitle(report?.term), {
     font: font(18, { bold: true }),
     alignment: center,
     border: sideBox(undefined, undefined),
   });
-  paintMerged(sheet, 8, 2, 11, `Classe : ${clean(report?.class?.name)}`, {
+  paintMerged(sheet, 8, 2, lastCol, `Classe : ${clean(report?.class?.name)}`, {
     font: font(12, { bold: true }),
     alignment: leftIndent,
     border: sideBox(undefined, undefined),
   });
-  paintMerged(sheet, 9, 2, 11, `Année scolaire : ${clean(report?.meta?.academicYear)}`, {
+  paintMerged(sheet, 9, 2, lastCol, `Année scolaire : ${clean(report?.meta?.academicYear)}`, {
     font: font(12, { bold: true }),
     alignment: leftIndent,
     border: sideBox(undefined, undefined),
   });
-  paintMerged(sheet, 10, 2, 11, `Trimestre : ${proclamationTermLabel(report?.term)}`, {
+  paintMerged(sheet, 10, 2, lastCol, proclamationContextLine(report), {
     font: font(12, { bold: true }),
     alignment: leftIndent,
     border: sideBox(undefined, MEDIUM),
   });
 
-  const headers = ['S/N', 'Place', "Id de l'élève", 'NOM', 'POST-NOM', 'PRENOM', 'Genre', 'Total', '%', 'échecs'];
   const headerRow = sheet.getRow(11);
-  headerRow.height = 20;
-  headers.forEach((label, index) => {
+  headerRow.height = 22;
+  columns.forEach((column, index) => {
     const cell = headerRow.getCell(index + 2);
-    cell.value = label;
+    cell.value = column.label;
     cell.font = font(12, { bold: true });
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     cell.border = {
       top: MEDIUM,
       bottom: THIN,
       left: index === 0 ? MEDIUM : THIN,
-      right: index === headers.length - 1 ? MEDIUM : THIN,
+      right: index === columns.length - 1 ? MEDIUM : THIN,
     };
   });
 
@@ -183,31 +245,20 @@ export async function buildClassProclamationWorkbook(report) {
   rows.forEach((student, index) => {
     const row = sheet.getRow(12 + index);
     row.height = 18;
-    const place = student.place == null
-      ? ''
-      : (student.totalStudents ? `${student.place}/${student.totalStudents}` : String(student.place));
-    const values = [
-      index + 1,
-      place,
-      clean(student.studentId),
-      clean(student.lastName).toUpperCase(),
-      clean(student.postName).toUpperCase(),
-      clean(student.firstName).toUpperCase(),
-      clean(student.gender),
-      student.total == null ? null : Number(student.total),
-      student.percentage == null ? null : Number(student.percentage),
-      student.failures == null ? null : Number(student.failures),
-    ];
+    const values = columns.map((column) => sheetCellValue(student, index, column));
     values.forEach((value, col) => {
       const cell = row.getCell(col + 2);
       cell.value = value == null || value === '' ? null : value;
       cell.font = font(12);
-      const numeric = col >= 7;
+      const numeric = col === 0 || col >= 5;
       cell.alignment = {
-        horizontal: col === 0 || col === 1 || col === 6 || numeric ? 'center' : 'left',
+        horizontal: numeric ? 'center' : 'left',
         vertical: 'middle',
       };
-      if (col === 7 || col === 8) cell.numFmt = Number.isInteger(Number(value)) ? '0' : '0.0';
+      const column = columns[col];
+      if ((column?.kind === 'score' || column?.kind === 'count') && value != null) {
+        cell.numFmt = column.kind === 'count' || Number.isInteger(Number(value)) ? '0' : '0.0';
+      }
       cell.border = {
         top: THIN,
         bottom: THIN,
@@ -223,64 +274,95 @@ export async function buildClassProclamationWorkbook(report) {
   const signature = teacher
     ? `${teacher}\nNoms et Signature de l'enseignant titulaire de la classe`
     : "Noms et Signature de l'enseignant titulaire de la classe";
+  const boxBorder = (rowNumber, topRow, bottomRow) => ({
+    top: rowNumber === topRow ? MEDIUM : undefined,
+    bottom: rowNumber === bottomRow ? MEDIUM : undefined,
+    left: MEDIUM,
+    right: MEDIUM,
+  });
 
   sheet.mergeCells(footer, 2, footer + 1, 5);
-  const dateCell = sheet.getCell(footer, 2);
-  dateCell.value = dateText;
-  dateCell.font = font(12);
-  dateCell.alignment = center;
   for (const rowNumber of [footer, footer + 1]) {
     for (let col = 2; col <= 5; col += 1) {
-      sheet.getCell(rowNumber, col).border = {
+      const cell = sheet.getCell(rowNumber, col);
+      cell.border = {
         top: rowNumber === footer ? MEDIUM : undefined,
         left: col === 2 ? MEDIUM : undefined,
         right: col === 5 ? MEDIUM : undefined,
       };
-      sheet.getCell(rowNumber, col).font = font(12);
-      sheet.getCell(rowNumber, col).alignment = center;
+      cell.font = font(12, { bold: true });
+      cell.alignment = center;
     }
   }
+  const dateCell = sheet.getCell(footer, 2);
+  dateCell.value = dateText;
 
-  const summaryLabels = [
-    [footer, 'Moyenne', report?.summary?.average],
-    [footer + 1, 'Succès', report?.summary?.success],
-    [footer + 4, 'échec', report?.summary?.failed],
-  ];
-  summaryLabels.forEach(([rowNumber, label, value]) => {
-    const labelCell = sheet.getCell(rowNumber, 6);
-    labelCell.value = label;
-    labelCell.font = font(12, { bold: label === 'Moyenne' });
-    labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
-    labelCell.border = { top: MEDIUM, bottom: MEDIUM, left: MEDIUM, right: THIN };
-    const valueCell = sheet.getCell(rowNumber, 7);
-    valueCell.value = value == null ? null : Number(value);
-    valueCell.font = font(12, { bold: true });
-    valueCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    if (label === 'Moyenne') valueCell.numFmt = '0.0';
-    valueCell.border = { top: MEDIUM, bottom: MEDIUM, left: THIN, right: MEDIUM };
-  });
-
-  sheet.mergeCells(footer + 2, 2, footer + 3, 5);
-  const signCell = sheet.getCell(footer + 2, 2);
-  signCell.value = signature;
-  signCell.font = font(12);
-  signCell.alignment = { ...center, wrapText: true };
-  sheet.getRow(footer + 2).height = 22;
-  sheet.getRow(footer + 3).height = 22;
-  for (const rowNumber of [footer + 2, footer + 3]) {
+  sheet.mergeCells(footer + 2, 2, footer + 5, 5);
+  for (const rowNumber of [footer + 2, footer + 3, footer + 4, footer + 5]) {
+    sheet.getRow(rowNumber).height = 18;
     for (let col = 2; col <= 5; col += 1) {
-      sheet.getCell(rowNumber, col).border = {
+      const cell = sheet.getCell(rowNumber, col);
+      cell.border = {
         top: rowNumber === footer + 2 ? MEDIUM : undefined,
-        bottom: rowNumber === footer + 3 ? MEDIUM : undefined,
+        bottom: rowNumber === footer + 5 ? MEDIUM : undefined,
         left: col === 2 ? MEDIUM : undefined,
         right: col === 5 ? MEDIUM : undefined,
       };
-      sheet.getCell(rowNumber, col).alignment = { ...center, wrapText: true };
-      sheet.getCell(rowNumber, col).font = font(12);
+      cell.font = font(12, { bold: true });
+      cell.alignment = { ...center, wrapText: true };
     }
   }
+  sheet.getCell(footer + 2, 2).value = signature;
 
-  sheet.pageSetup.printArea = `A1:K${footer + 4}`;
+  const countOf = (group, key) => {
+    const value = group?.[key];
+    return value == null ? null : Number(value);
+  };
+  const summaryRows = [
+    ['Moyenne', null, report?.summary?.average == null ? null : Number(report.summary.average)],
+    ['Succès', 'F', countOf(report?.summary?.success, 'F')],
+    ['Succès', 'M', countOf(report?.summary?.success, 'M')],
+    ['Succès', 'Total', countOf(report?.summary?.success, 'total')],
+    ['échec', 'F', countOf(report?.summary?.failed, 'F')],
+    ['échec', 'M', countOf(report?.summary?.failed, 'M')],
+    ['échec', 'Total', countOf(report?.summary?.failed, 'total')],
+    ['Non classés', 'F', countOf(report?.summary?.unclassified, 'F')],
+    ['Non classés', 'M', countOf(report?.summary?.unclassified, 'M')],
+    ['Non classés', 'Total', countOf(report?.summary?.unclassified, 'total')],
+  ];
+  summaryRows.forEach(([label, gender, value], index) => {
+    const rowNumber = footer + index;
+    const labelCell = sheet.getCell(rowNumber, 6);
+    const genderCell = sheet.getCell(rowNumber, 7);
+    const valueCell = sheet.getCell(rowNumber, 8);
+    const showLabel = index === 0 || summaryRows[index - 1][0] !== label;
+    labelCell.value = showLabel ? label : null;
+    labelCell.font = font(12, { bold: true });
+    labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    genderCell.value = label === 'Moyenne' ? value : gender;
+    genderCell.font = font(12, { bold: label === 'Moyenne' });
+    genderCell.alignment = center;
+    valueCell.value = label === 'Moyenne' ? null : value;
+    valueCell.font = font(12, { bold: true });
+    valueCell.alignment = center;
+    if (label === 'Moyenne' && value != null) valueCell.numFmt = '0.0';
+    [labelCell, genderCell, valueCell].forEach((cell) => {
+      cell.border = {
+        top: MEDIUM,
+        bottom: index === summaryRows.length - 1 || summaryRows[index + 1]?.[0] !== label ? MEDIUM : THIN,
+        left: MEDIUM,
+        right: MEDIUM,
+      };
+    });
+  });
+  sheet.mergeCells(footer + 1, 6, footer + 3, 6);
+  sheet.mergeCells(footer + 4, 6, footer + 6, 6);
+  sheet.mergeCells(footer + 7, 6, footer + 9, 6);
+  sheet.getCell(footer, 7).border = boxBorder(footer, footer, footer);
+  sheet.mergeCells(footer, 7, footer, 8);
+
+  const endColumn = String.fromCharCode(64 + lastCol);
+  sheet.pageSetup.printArea = `A1:${endColumn}${footer + summaryRows.length}`;
   return workbook;
 }
 
@@ -293,7 +375,7 @@ export async function downloadClassProclamation(report) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = fileName(report?.class?.name, report?.term);
+  link.download = fileName(report?.class?.name, report?.term, report?.periodScope);
   link.rel = 'noopener';
   document.body.appendChild(link);
   link.click();
