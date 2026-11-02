@@ -69,6 +69,30 @@ export function proclamationContextLine(report) {
   return `Trimestre : ${term}`;
 }
 
+export function proclamationModelLine(report) {
+  if (report?.template === 'rwanda') return 'Modèle : Rwanda — moyenne avec English et Kinyarwanda';
+  if (report?.template === 'drc') return 'Modèle : RDC — moyenne sans English et Kinyarwanda';
+  return '';
+}
+
+export function proclamationSheets(report) {
+  if (!Array.isArray(report?.sheets) || !report.sheets.length) return [report];
+  return report.sheets.map((sheet) => ({
+    ...report,
+    rows: sheet.rows,
+    summary: sheet.summary,
+    template: sheet.template,
+    label: sheet.label,
+    note: sheet.note,
+  }));
+}
+
+function worksheetName(report) {
+  if (report?.template === 'drc') return 'RDC';
+  if (report?.template === 'rwanda') return 'Rwanda';
+  return sheetName(report?.class?.name);
+}
+
 const IDENTITY_COLUMNS = [
   { key: 'sn', label: 'S/N', kind: 'sn' },
   { key: 'studentId', label: "Id de l'élève", kind: 'text' },
@@ -163,10 +187,8 @@ function sideBox(top, bottom) {
  * Fiche de proclamation for one class.
  * One worksheet, one row per student, matching the school template.
  */
-export async function buildClassProclamationWorkbook(report) {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = proclamationSchoolHeading(report?.meta?.schoolName, report?.meta?.city);
-  const sheet = workbook.addWorksheet(sheetName(report?.class?.name), {
+function appendProclamationWorksheet(workbook, report) {
+  const sheet = workbook.addWorksheet(worksheetName(report), {
     pageSetup: {
       paperSize: 9,
       orientation: 'portrait',
@@ -212,6 +234,14 @@ export async function buildClassProclamationWorkbook(report) {
     alignment: center,
     border: sideBox(undefined, undefined),
   });
+  const modelLine = proclamationModelLine(report);
+  if (modelLine) {
+    paintMerged(sheet, 7, 2, lastCol, modelLine, {
+      font: font(12, { bold: true }),
+      alignment: center,
+      border: sideBox(undefined, undefined),
+    });
+  }
   paintMerged(sheet, 8, 2, lastCol, `Classe : ${clean(report?.class?.name)}`, {
     font: font(12, { bold: true }),
     alignment: leftIndent,
@@ -365,6 +395,14 @@ export async function buildClassProclamationWorkbook(report) {
 
   const endColumn = String.fromCharCode(64 + lastCol);
   sheet.pageSetup.printArea = `A1:${endColumn}${footer + summaryRows.length}`;
+}
+
+export async function buildClassProclamationWorkbook(report) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = proclamationSchoolHeading(report?.meta?.schoolName, report?.meta?.city);
+  proclamationSheets(report).forEach((sheetReport) => {
+    appendProclamationWorksheet(workbook, sheetReport);
+  });
   return workbook;
 }
 
@@ -391,13 +429,16 @@ export async function downloadClassProclamation(report) {
  */
 export async function downloadProclamationPdf(element, report) {
   if (!element) throw new Error('Proclamation sheet not found');
-  const wrap = element.querySelector('.proclamation-table-wrap');
-  const table = wrap?.querySelector('table');
+  const wraps = [...element.querySelectorAll('.proclamation-table-wrap')];
+  const tables = [...element.querySelectorAll('.proclamation-table-wrap table')];
   const previousWidth = element.style.width;
-  const previousOverflow = wrap?.style.overflow || '';
+  const previousOverflow = wraps.map((wrap) => wrap.style.overflow);
   element.classList.add('is-pdf-export');
-  if (wrap) wrap.style.overflow = 'visible';
-  const contentWidth = Math.max(element.scrollWidth, (table?.scrollWidth || 0) + 48, 1100);
+  wraps.forEach((wrap) => {
+    wrap.style.overflow = 'visible';
+  });
+  const widestTable = tables.reduce((width, table) => Math.max(width, table.scrollWidth), 0);
+  const contentWidth = Math.max(element.scrollWidth, widestTable + 48, 1100);
   element.style.width = `${contentWidth}px`;
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -431,7 +472,9 @@ export async function downloadProclamationPdf(element, report) {
     pdf.save(`${fileName(report?.class?.name, report?.term, report?.periodScope)}.pdf`);
   } finally {
     element.style.width = previousWidth;
-    if (wrap) wrap.style.overflow = previousOverflow;
+    wraps.forEach((wrap, index) => {
+      wrap.style.overflow = previousOverflow[index] || '';
+    });
     element.classList.remove('is-pdf-export');
   }
 }

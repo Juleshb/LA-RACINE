@@ -2,8 +2,10 @@ import {
   proclamationColumns,
   proclamationContextLine,
   proclamationIssuedLine,
+  proclamationModelLine,
   proclamationPlaceLine,
   proclamationSchoolHeading,
+  proclamationSheets,
   proclamationSheetTitle,
 } from '../../lib/proclamationExport';
 
@@ -24,14 +26,13 @@ function countCell(group, key) {
   return value == null ? '' : String(value);
 }
 
-export default function ProclamationSheet({ report, sheetRef }) {
-  if (!report) return null;
-
+function ProclamationArticle({ report }) {
   const rows = report.rows || [];
   const columns = proclamationColumns(report);
   const teacher = clean(report.meta?.classTeacher);
   const country = clean(report.meta?.country || 'RWANDA').toUpperCase();
   const summary = report.summary || {};
+  const modelLine = proclamationModelLine(report);
 
   const displayValue = (student, index, column) => {
     if (column.kind === 'sn') return index + 1;
@@ -43,12 +44,13 @@ export default function ProclamationSheet({ report, sheetRef }) {
   };
 
   return (
-    <article ref={sheetRef} className="proclamation-sheet">
+    <article className="proclamation-sheet">
       <header className="proclamation-head">
         <p className="proclamation-school">{proclamationSchoolHeading(report.meta?.schoolName, report.meta?.city)}</p>
         <p className="proclamation-place">{proclamationPlaceLine(report.meta)}</p>
         <p className="proclamation-country">{country}</p>
         <h2>{proclamationSheetTitle(report.term)}</h2>
+        {modelLine && <p className="proclamation-model">{modelLine}</p>}
         <p>Classe : {clean(report.class?.name)}</p>
         <p>Année scolaire : {clean(report.meta?.academicYear)}</p>
         <p>{proclamationContextLine(report)}</p>
@@ -140,5 +142,17 @@ export default function ProclamationSheet({ report, sheetRef }) {
         </table>
       </footer>
     </article>
+  );
+}
+
+export default function ProclamationSheet({ report, sheetRef }) {
+  if (!report) return null;
+  const sheets = proclamationSheets(report);
+  return (
+    <div ref={sheetRef} className="proclamation-sheet-stack">
+      {sheets.map((sheet) => (
+        <ProclamationArticle key={sheet.template || 'fiche'} report={sheet} />
+      ))}
+    </div>
   );
 }

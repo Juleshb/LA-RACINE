@@ -1093,12 +1093,15 @@ export async function buildClassProclamation(db, {
 
   const curriculum = getCurriculum(cls.grade);
   const domainMetaByName = new Map((curriculum?.domains || []).map((domain) => [domain.name, domain]));
-  const generalSubjects = cls.subjects.filter((subject) => {
+  const isOtherLanguage = (subject) => {
     const meta = domainMetaByName.get(subject.category) || {};
-    const excluded = Boolean(meta.excludeFromGeneral) || /autres langues/i.test(subject.category || '');
-    return !excluded;
-  });
-  const scoredSubjects = generalSubjects.length ? generalSubjects : cls.subjects;
+    if (meta.excludeFromGeneral) return true;
+    if (/autres langues/i.test(subject.category || '')) return true;
+    return /\b(english|anglais|kinyarwanda)\b/i.test(`${subject.name || ''} ${subject.code || ''}`);
+  };
+  const rwandaSubjects = cls.subjects;
+  const drcSubjects = cls.subjects.filter((subject) => !isOtherLanguage(subject));
+  const drcScored = drcSubjects.length ? drcSubjects : rwandaSubjects;
 
   const annual = isAnnualBulletinTerm(term);
   const scope = annual
@@ -1131,7 +1134,8 @@ export async function buildClassProclamation(db, {
     return buildLegacySubject(subject, config, markMap);
   });
 
-  const rows = students.map((student) => {
+  const entriesByStudent = new Map();
+  for (const student of students) {
     const entriesByTerm = new Map();
     for (const termName of terms) {
       const markMap = marksByStudentTerm.get(`${student.id}:${termName}`) || new Map();
@@ -1140,55 +1144,75 @@ export async function buildClassProclamation(db, {
         new Map(buildEntries(markMap).map((item) => [item.id, item])),
       );
     }
-    const subjectCells = scoredSubjects.map((subject) => {
-      const termCells = terms.map((termName) => {
-        const entry = entriesByTerm.get(termName).get(subject.id);
-        if (periodSlot) return entry?.columns?.[periodSlot] || emptyCell();
-        return entry?.columns?.total || emptyCell();
-      });
-      return terms.length === 1 ? termCells[0] : combineDisplayCells(termCells);
-    });
-    const columnSum = (key) => {
-      const scores = [];
-      for (const termName of terms) {
-        for (const subject of scoredSubjects) {
-          const entry = entriesByTerm.get(termName).get(subject.id);
-          const score = entry?.columns?.[key]?.score;
-          if (score != null) scores.push(Number(score) || 0);
-        }
-      }
-      return scores.length ? round1(scores.reduce((sum, score) => sum + score, 0)) : null;
-    };
+    entriesByStudent.set(student.id, entriesByTerm);
+  }
 
-    const totals = proclamationTotals(subjectCells);
-    return {
-      id: student.id,
-      studentId: student.studentId,
-      lastName: student.lastName || '',
-      postName: student.postName || '',
-      firstName: student.firstName || '',
-      gender: genderLetter(student.gender),
-      period1: scope === 'period2' ? null : columnSum('test1'),
-      period2: scope === 'period1' ? null : columnSum('test2'),
-      exam: periodSlot ? null : columnSum('exam'),
-      total: periodSlot ? null : totals.total,
-      max: totals.max,
-      percentage: totals.percentage,
-      failures: totals.failures,
-      passed: totals.passed,
-    };
-  });
-  const placedRows = assignProclamationPlaces(rows);
-
-  const scored = placedRows.filter((row) => row.percentage != null);
-  const average = scored.length
-    ? Math.round((scored.reduce((sum, row) => sum + row.percentage, 0) / scored.length) * 10) / 10
-    : null;
   const genderCount = (list) => ({
     F: list.filter((row) => row.gender === 'F').length,
     M: list.filter((row) => row.gender === 'M').length,
     total: list.length,
   });
+
+  const buildTemplate = (scoredSubjects) => {
+    const rows = students.map((student) => {
+      const entriesByTerm = entriesByStudent.get(student.id);
+      const subjectCells = scoredSubjects.map((subject) => {
+        const termCells = terms.map((termName) => {
+          const entry = entriesByTerm.get(termName).get(subject.id);
+          if (periodSlot) return entry?.columns?.[periodSlot] || emptyCell();
+          return entry?.columns?.total || emptyCell();
+        });
+        return terms.length === 1 ? termCells[0] : combineDisplayCells(termCells);
+      });
+      const columnSum = (key) => {
+        const scores = [];
+        for (const termName of terms) {
+          for (const subject of scoredSubjects) {
+            const entry = entriesByTerm.get(termName).get(subject.id);
+            const score = entry?.columns?.[key]?.score;
+            if (score != null) scores.push(Number(score) || 0);
+          }
+        }
+        return scores.length ? round1(scores.reduce((sum, score) => sum + score, 0)) : null;
+      };
+
+      const totals = proclamationTotals(subjectCells);
+      return {
+        id: student.id,
+        studentId: student.studentId,
+        lastName: student.lastName || '',
+        postName: student.postName || '',
+        firstName: student.firstName || '',
+        gender: genderLetter(student.gender),
+        period1: scope === 'period2' ? null : columnSum('test1'),
+        period2: scope === 'period1' ? null : columnSum('test2'),
+        exam: periodSlot ? null : columnSum('exam'),
+        total: periodSlot ? null : totals.total,
+        max: totals.max,
+        percentage: totals.percentage,
+        failures: totals.failures,
+        passed: totals.passed,
+      };
+    });
+    const placedRows = assignProclamationPlaces(rows);
+    const scored = placedRows.filter((row) => row.percentage != null);
+    const average = scored.length
+      ? Math.round((scored.reduce((sum, row) => sum + row.percentage, 0) / scored.length) * 10) / 10
+      : null;
+    return {
+      rows: placedRows,
+      summary: {
+        average,
+        success: genderCount(placedRows.filter((row) => row.passed === true)),
+        failed: genderCount(placedRows.filter((row) => row.passed === false)),
+        unclassified: genderCount(placedRows.filter((row) => row.percentage == null)),
+        studentCount: rows.length,
+      },
+    };
+  };
+
+  const drc = buildTemplate(drcScored);
+  const rwanda = buildTemplate(rwandaSubjects);
 
   let meta = {
     schoolName: 'École La RACINE',
@@ -1219,13 +1243,21 @@ export async function buildClassProclamation(db, {
     term: annual ? 'Annuel' : (term || 'Trimestre 1'),
     periodScope: scope,
     meta,
-    rows: placedRows,
-    summary: {
-      average,
-      success: genderCount(placedRows.filter((row) => row.passed === true)),
-      failed: genderCount(placedRows.filter((row) => row.passed === false)),
-      unclassified: genderCount(placedRows.filter((row) => row.percentage == null)),
-      studentCount: rows.length,
-    },
+    rows: drc.rows,
+    summary: drc.summary,
+    sheets: [
+      {
+        template: 'drc',
+        label: 'RDC',
+        note: 'Moyenne sans English et Kinyarwanda',
+        ...drc,
+      },
+      {
+        template: 'rwanda',
+        label: 'Rwanda',
+        note: 'Moyenne avec English et Kinyarwanda',
+        ...rwanda,
+      },
+    ],
   };
 }

@@ -9048,6 +9048,18 @@
     @apply bg-gray-100 rounded-xl border border-gray-200 p-4;
   }
 
+  .proclamation-sheet-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .proclamation-model {
+    margin: 0.35rem 0 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
   .proclamation-sheet.is-pdf-export,
   .proclamation-sheet.is-pdf-export .proclamation-table-wrap {
     overflow: visible;
