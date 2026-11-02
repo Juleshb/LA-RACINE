@@ -9048,6 +9048,11 @@
     @apply bg-gray-100 rounded-xl border border-gray-200 p-4;
   }
 
+  .proclamation-sheet.is-pdf-export,
+  .proclamation-sheet.is-pdf-export .proclamation-table-wrap {
+    overflow: visible;
+  }
+
   .proclamation-sheet {
     width: min(100%, 1280px);
     margin: 0 auto;

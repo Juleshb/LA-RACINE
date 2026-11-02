@@ -14,7 +14,7 @@ import NurseryBulletinSheet from '../components/bulletin/NurseryBulletinSheet';
 import ProclamationSheet from '../components/bulletin/ProclamationSheet';
 import { downloadBulletinPdf, downloadBulletinJpeg } from '../lib/bulletinPdf';
 import { downloadClassBulletinsPdf } from '../lib/classBulletinPdf';
-import { downloadClassProclamation } from '../lib/proclamationExport';
+import { downloadClassProclamation, downloadProclamationPdf } from '../lib/proclamationExport';
 import { usesCompetenceBulletin } from '../lib/grades';
 import StudentSelect from '../components/StudentSelect';
 import { studentFullName } from '../lib/studentName';
@@ -51,6 +51,8 @@ export default function BulletinReport() {
   const [classPdf, setClassPdf] = useState(null);
   const [proclamation, setProclamation] = useState(null);
   const [proclamationOpen, setProclamationOpen] = useState(false);
+  const [proclamationPdf, setProclamationPdf] = useState(false);
+  const proclamationSheetRef = useRef(null);
   const [error, setError] = useState('');
   const proclamationRef = useRef(null);
 
@@ -249,6 +251,19 @@ export default function BulletinReport() {
       await downloadClassProclamation(proclamation);
     } catch (err) {
       setError(err.message || 'Failed to download the proclamation');
+    }
+  };
+
+  const handleDownloadProclamationPdf = async () => {
+    if (!proclamation || !proclamationSheetRef.current || proclamationPdf) return;
+    setProclamationPdf(true);
+    setError('');
+    try {
+      await downloadProclamationPdf(proclamationSheetRef.current, proclamation);
+    } catch (err) {
+      setError(err.message || 'Failed to download the proclamation PDF');
+    } finally {
+      setProclamationPdf(false);
     }
   };
 
@@ -485,14 +500,23 @@ export default function BulletinReport() {
             </button>
             <button
               type="button"
+              onClick={handleDownloadProclamationPdf}
+              disabled={proclamationPdf}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {proclamationPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {t('ui.download')} PDF
+            </button>
+            <button
+              type="button"
               onClick={handleDownloadProclamation}
-              className="btn-primary flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               {t('ui.download')} Excel
             </button>
           </div>
-          <ProclamationSheet report={proclamation} />
+          <ProclamationSheet report={proclamation} sheetRef={proclamationSheetRef} />
         </div>
       )}
 

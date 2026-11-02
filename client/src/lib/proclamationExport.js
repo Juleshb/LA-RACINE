@@ -1,4 +1,6 @@
 import ExcelJS from 'exceljs';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { reportSchoolTitle } from './reportSchoolTitle';
 
 const FONT = 'Times New Roman';
@@ -34,7 +36,7 @@ function fileName(className, term, periodScope) {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
     .slice(0, 60) || 'classe';
-  return `fiche-de-proclamation-${safe}.xlsx`;
+  return `fiche-de-proclamation-${safe}`;
 }
 
 export function proclamationSchoolHeading(name, city) {
@@ -375,10 +377,61 @@ export async function downloadClassProclamation(report) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = fileName(report?.class?.name, report?.term, report?.periodScope);
+  link.download = `${fileName(report?.class?.name, report?.term, report?.periodScope)}.xlsx`;
   link.rel = 'noopener';
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Download the on-screen fiche as a landscape A4 PDF.
+ * The sheet is fitted to the page width and continues on the next page when the class is long.
+ */
+export async function downloadProclamationPdf(element, report) {
+  if (!element) throw new Error('Proclamation sheet not found');
+  const wrap = element.querySelector('.proclamation-table-wrap');
+  const table = wrap?.querySelector('table');
+  const previousWidth = element.style.width;
+  const previousOverflow = wrap?.style.overflow || '';
+  element.classList.add('is-pdf-export');
+  if (wrap) wrap.style.overflow = 'visible';
+  const contentWidth = Math.max(element.scrollWidth, (table?.scrollWidth || 0) + 48, 1100);
+  element.style.width = `${contentWidth}px`;
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: element.scrollWidth,
+      height: Math.max(element.scrollHeight, element.offsetHeight),
+      windowWidth: element.scrollWidth,
+      windowHeight: Math.max(element.scrollHeight, element.offsetHeight),
+    });
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const margin = 6;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const printableWidth = pageWidth - margin * 2;
+    const printableHeight = pageHeight - margin * 2;
+    const imgHeight = (canvas.height * printableWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    let offset = 0;
+    let remaining = imgHeight;
+    while (remaining > 1) {
+      if (offset > 0) pdf.addPage('a4', 'landscape');
+      pdf.addImage(imgData, 'JPEG', margin, margin - offset, printableWidth, imgHeight, undefined, 'SLOW');
+      remaining -= printableHeight;
+      offset += printableHeight;
+    }
+    pdf.save(`${fileName(report?.class?.name, report?.term, report?.periodScope)}.pdf`);
+  } finally {
+    element.style.width = previousWidth;
+    if (wrap) wrap.style.overflow = previousOverflow;
+    element.classList.remove('is-pdf-export');
+  }
 }

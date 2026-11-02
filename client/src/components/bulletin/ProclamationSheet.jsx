@@ -24,7 +24,7 @@ function countCell(group, key) {
   return value == null ? '' : String(value);
 }
 
-export default function ProclamationSheet({ report }) {
+export default function ProclamationSheet({ report, sheetRef }) {
   if (!report) return null;
 
   const rows = report.rows || [];
@@ -43,7 +43,7 @@ export default function ProclamationSheet({ report }) {
   };
 
   return (
-    <article className="proclamation-sheet">
+    <article ref={sheetRef} className="proclamation-sheet">
       <header className="proclamation-head">
         <p className="proclamation-school">{proclamationSchoolHeading(report.meta?.schoolName, report.meta?.city)}</p>
         <p className="proclamation-place">{proclamationPlaceLine(report.meta)}</p>
