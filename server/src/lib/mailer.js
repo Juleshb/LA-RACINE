@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 function getSmtpSettings() {
   const user = String(process.env.SMTP_USER || '').trim();
   const pass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
-  const host = String(process.env.SMTP_HOST || 'smtp.zoho.com').trim();
+  const host = String(process.env.SMTP_HOST || 'smtp.gmail.com').trim();
   const port = Number(process.env.SMTP_PORT || 587);
   return { user, pass, host, port: Number.isFinite(port) && port > 0 ? port : 587 };
 }
