@@ -1,0 +1,240 @@
+.status-page {
+  min-height: 100vh;
+  background: #f7f7f8;
+  color: #1f2937;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.status-top,
+.status-banner,
+.status-incidents,
+.status-group,
+.status-confirmed,
+.status-loading,
+.status-uptime-label,
+.status-foot {
+  width: min(880px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.status-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.status-top-actions,
+.status-lang {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-lang button,
+.status-cancel {
+  border: 1px solid #dbe3ea;
+  background: white;
+  color: #475569;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-lang button.is-on {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.status-subscribe {
+  border: 0;
+  background: #0284c7;
+  color: white;
+  border-radius: 0.7rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-subscribe:disabled { opacity: 0.6; }
+
+.status-confirmed {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.8rem;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-confirmed.is-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+.status-confirmed button {
+  border: 0;
+  background: transparent;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.status-banner strong { font-size: 1.05rem; }
+.status-banner span,
+.status-scale,
+.status-uptime-label,
+.status-component time,
+.status-incidents time { color: #6b7280; font-size: 0.8rem; }
+.status-banner button,
+.status-foot a { color: #0369a1; font-weight: 700; font-size: 0.85rem; }
+
+.status-banner.is-operational { border-color: #86efac; background: #f0fdf4; }
+.status-banner.is-operational strong { color: #166534; }
+.status-banner.is-degraded { border-color: #fcd34d; background: #fffbeb; }
+.status-banner.is-degraded strong { color: #92400e; }
+.status-banner.is-outage { border-color: #fca5a5; background: #fef2f2; }
+.status-banner.is-outage strong { color: #991b1b; }
+
+.status-incidents,
+.status-group {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.status-incidents { padding: 0.2rem 0 0.2rem; }
+.status-incidents h2,
+.status-group > h2 {
+  font-size: 0.95rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.status-incidents article,
+.status-component {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.status-component {
+  display: block;
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 99px;
+  margin-top: 0.4rem;
+}
+.status-dot.is-down { background: #ef4444; }
+.status-dot.is-degraded { background: #f59e0b; }
+
+.status-incidents h3 { font-size: 0.95rem; }
+.status-incidents p { color: #4b5563; font-size: 0.85rem; margin-top: 0.2rem; }
+
+.status-uptime-label { text-align: right; margin: 1.4rem auto 0.4rem; }
+.status-schedule {
+  width: min(880px, 100%);
+  margin: 0 auto 0.8rem;
+  text-align: right;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.status-component-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+.status-component h3 { font-size: 0.95rem; }
+.status-pill { font-size: 0.82rem; font-weight: 700; }
+.status-pill.is-up { color: #16a34a; }
+.status-pill.is-degraded { color: #d97706; }
+.status-pill.is-down { color: #dc2626; }
+
+.status-bars {
+  display: flex;
+  gap: 2px;
+  height: 34px;
+  align-items: stretch;
+}
+.status-bars i {
+  flex: 1;
+  border-radius: 1px;
+  background: #e5e7eb;
+}
+.status-bars i.is-up { background: #22c55e; }
+.status-bars i.is-degraded { background: #f59e0b; }
+.status-bars i.is-down { background: #ef4444; }
+
+.status-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.status-foot { margin-top: 2rem; }
+
+.status-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.status-dialog {
+  width: min(440px, 100%);
+  background: white;
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+.status-dialog h2 { font-size: 1.15rem; }
+.status-dialog p { color: #4b5563; font-size: 0.9rem; margin: 0.4rem 0 1rem; }
+.status-dialog label { display: block; font-size: 0.8rem; font-weight: 700; color: #374151; }
+.status-dialog input {
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.75rem;
+}
+.status-dialog > div { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+.status-form-error { color: #b91c1c; }
+
+@media (max-width: 640px) {
+  .status-top { align-items: flex-start; flex-direction: column; }
+  .status-incidents article { grid-template-columns: auto 1fr; }
+  .status-incidents time { grid-column: 2; }
+}

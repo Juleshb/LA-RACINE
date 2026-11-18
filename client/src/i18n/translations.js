@@ -30,7 +30,7 @@ const en = {
     myLearning: 'My learning',
     aiTutor: 'Ask AI',
     ai: 'AI',
-    scienceQuiz: 'Science quiz',
+    scienceQuiz: 'Online quiz',
     quiz: 'Quiz',
     updates: 'Latest updates',
     updatesShort: 'Updates',
@@ -285,7 +285,7 @@ const en = {
     guideOpen: 'How it works',
   },
   scienceQuiz: {
-    title: 'Science quiz',
+    title: 'Online quiz',
     subtitle: 'Answer one question at a time and see how many you get right.',
     questionCount: '{{count}} questions',
     progress: 'Question {{current}} of {{total}}',
@@ -373,7 +373,7 @@ const rw = {
     myLearning: 'Kwiga kwanjye',
     aiTutor: 'Baza AI',
     ai: 'AI',
-    scienceQuiz: 'Ikibazo cya siyansi',
+    scienceQuiz: 'Ikibazo kuri interineti',
     quiz: 'Ikibazo',
   },
   school: {
@@ -626,7 +626,7 @@ const rw = {
     guideOpen: 'Uko ikora',
   },
   scienceQuiz: {
-    title: 'Ikibazo cya siyansi',
+    title: 'Ikibazo kuri interineti',
     subtitle: 'Subiza ikibazo kimwe icyo ari cyo cyose, urebe uko watsinze.',
     questionCount: 'Ibibazo {{count}}',
     progress: 'Ikibazo {{current}} cya {{total}}',
@@ -714,7 +714,7 @@ const sw = {
     myLearning: 'Kujifunza kwangu',
     aiTutor: 'Uliza AI',
     ai: 'AI',
-    scienceQuiz: 'Maswali ya sayansi',
+    scienceQuiz: 'Maswali mtandaoni',
     quiz: 'Maswali',
   },
   school: {
@@ -967,7 +967,7 @@ const sw = {
     guideOpen: 'Inavyofanya kazi',
   },
   scienceQuiz: {
-    title: 'Maswali ya sayansi',
+    title: 'Maswali mtandaoni',
     subtitle: 'Jibu swali moja kwa wakati uone umepatwa mangapi.',
     questionCount: 'Maswali {{count}}',
     progress: 'Swali {{current}} kati ya {{total}}',
@@ -1055,7 +1055,7 @@ const fr = {
     myLearning: 'Mon apprentissage',
     aiTutor: 'Demander à l’IA',
     ai: 'IA',
-    scienceQuiz: 'Quiz de sciences',
+    scienceQuiz: 'Quiz en ligne',
     quiz: 'Quiz',
     updates: 'Dernières mises à jour',
     updatesShort: 'Mises à jour',
@@ -1310,7 +1310,7 @@ const fr = {
     guideOpen: 'Comment ça marche',
   },
   scienceQuiz: {
-    title: 'Quiz de sciences',
+    title: 'Quiz en ligne',
     subtitle: 'Réponds à une question à la fois et vois combien tu en trouves.',
     questionCount: '{{count}} questions',
     progress: 'Question {{current}} sur {{total}}',

@@ -11,6 +11,7 @@ const SUGGESTIONS = {
   ACCOUNTANT: ['suggestFees', 'suggestStudents', 'suggestAttendance'],
   ACTIVITIES_MANAGER: ['suggestActivities'],
   LIBRARIAN: ['suggestLibrary', 'suggestStudents'],
+  INVENTORY_MANAGER: ['suggestLibrary'],
   HEAD_OF_DISCIPLINE: ['suggestAttendance', 'suggestStudents', 'suggestActivities'],
   DEFAULT: ['suggestStudents', 'suggestAttendance', 'suggestMarks', 'suggestFees'],
 };

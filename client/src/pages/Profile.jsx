@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   User, Mail, Shield, KeyRound, Save, GraduationCap, Users, BookOpen, Building2,
-  Calendar, Phone, Eye, EyeOff, CheckCircle2, Languages, Link2, Camera, X,
+  Calendar, Eye, EyeOff, CheckCircle2, Languages, Link2,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import { useStudentPhotoUrl } from '../hooks/useStudentPhotoUrl';
 import { ROLE_LABELS } from '../config/permissions';
 import { PASSWORD_POLICY_HINT, passwordStrengthLabel, validateStrongPassword } from '../lib/passwordPolicy';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
+import StaffProfileForm, { hireDateInput } from '../components/StaffProfileForm';
 import { studentFullName } from '../lib/studentName';
 
 function formatDate(value) {
@@ -42,7 +43,7 @@ const SECTIONS = [
 
 export default function Profile() {
   const { user, roleLabel, refreshUser, campuses, defaultCampusId } = useAuth();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const campusId = user?.campusId || defaultCampusId || localStorage.getItem('campusId');
   const campus = user?.campus || campuses?.find((c) => c.id === campusId);
   const [profile, setProfile] = useState(null);
@@ -56,7 +57,10 @@ export default function Profile() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '' });
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', postName: '', phone: '', email: '', identityNumber: '', gender: '',
+    bankName: '', bankAccount: '', contractType: '', hireDate: '', qualification: '', professionalExperience: '',
+  });
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [clearPhoto, setClearPhoto] = useState(false);
@@ -82,7 +86,17 @@ export default function Profile() {
       setForm({
         firstName: data.user.firstName || '',
         lastName: data.user.lastName || '',
+        postName: data.user.postName || '',
         phone: data.user.phone || data.user.parent?.phone || '',
+        email: data.user.email || '',
+        identityNumber: data.user.identityNumber || '',
+        gender: data.user.gender || '',
+        bankName: data.user.bankName || '',
+        bankAccount: data.user.bankAccount || '',
+        contractType: data.user.contractType || '',
+        hireDate: hireDateInput(data.user.hireDate),
+        qualification: data.user.qualification || '',
+        professionalExperience: data.user.professionalExperience || '',
       });
       setPhotoFile(null);
       setClearPhoto(false);
@@ -108,6 +122,32 @@ export default function Profile() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  const handlePhotoPick = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please choose an image file (JPEG, PNG, or WEBP).');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setProfileError(`Photo is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+    setProfileError('');
+    setPhotoFile(file);
+    setClearPhoto(false);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoClear = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setClearPhoto(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -120,6 +160,17 @@ export default function Profile() {
       };
       if (needsPhone) {
         payload.phone = form.phone.trim();
+      }
+      if (canEditPhoto) {
+        payload.postName = form.postName.trim();
+        payload.identityNumber = form.identityNumber.trim();
+        payload.gender = form.gender || null;
+        payload.bankName = form.bankName.trim();
+        payload.bankAccount = form.bankAccount.trim();
+        payload.contractType = form.contractType;
+        payload.hireDate = form.hireDate || null;
+        payload.qualification = form.qualification;
+        payload.professionalExperience = form.professionalExperience.trim();
       }
       if (canEditPhoto) {
         if (photoFile) {
@@ -191,6 +242,15 @@ export default function Profile() {
     return (
       form.firstName !== (profile.firstName || '')
       || form.lastName !== (profile.lastName || '')
+      || form.postName !== (profile.postName || '')
+      || form.identityNumber !== (profile.identityNumber || '')
+      || form.gender !== (profile.gender || '')
+      || form.bankName !== (profile.bankName || '')
+      || form.bankAccount !== (profile.bankAccount || '')
+      || form.contractType !== (profile.contractType || '')
+      || form.hireDate !== hireDateInput(profile.hireDate)
+      || form.qualification !== (profile.qualification || '')
+      || form.professionalExperience !== (profile.professionalExperience || '')
       || (needsPhone && form.phone !== phoneNow)
       || Boolean(photoFile)
       || clearPhoto
@@ -306,114 +366,46 @@ export default function Profile() {
             )}
 
             <div className="profile-fields">
-              {canEditPhoto && (
-                <div>
-                  <label className="label">Profile photo</label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      {photoPreview ? 'Change photo' : 'Upload photo'}
-                    </button>
-                    {photoPreview && (
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1"
-                        onClick={() => {
-                          setPhotoFile(null);
-                          setPhotoPreview(null);
-                          setClearPhoto(true);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Remove
-                      </button>
-                    )}
+              {canEditPhoto ? (
+                <StaffProfileForm
+                  form={form}
+                  onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+                  photoPreview={photoPreview}
+                  onPhotoPick={handlePhotoPick}
+                  onPhotoClear={handlePhotoClear}
+                  fileRef={fileInputRef}
+                  phoneRequired
+                  emailReadOnly
+                  access={(
+                    <label className="label">{language === 'fr' ? 'Rôle' : 'Role'}
+                      <input className="input" value={displayRole} readOnly />
+                    </label>
+                  )}
+                />
+              ) : (
+                <>
+                  <div className="profile-field-grid">
+                    <div>
+                      <label className="label" htmlFor="profile-first">{t('ui.firstName')}</label>
+                      <input id="profile-first" className="input" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="profile-last">{t('ui.lastName')}</label>
+                      <input id="profile-last" className="input" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+                    </div>
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (!file.type.startsWith('image/')) {
-                        setProfileError('Please choose an image file (JPEG, PNG, WebP, or GIF).');
-                        return;
-                      }
-                      if (file.size > MAX_FILE_SIZE_BYTES) {
-                        setProfileError(`Photo is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
-                        return;
-                      }
-                      setProfileError('');
-                      setPhotoFile(file);
-                      setClearPhoto(false);
-                      const reader = new FileReader();
-                      reader.onload = () => setPhotoPreview(reader.result);
-                      reader.readAsDataURL(file);
-                    }}
-                  />
-                  <p className="field-hint mt-1">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
-                </div>
-              )}
-              <div className="profile-field-grid">
-                <div>
-                  <label className="label" htmlFor="profile-first">{t('ui.firstName')}</label>
-                  <input
-                    id="profile-first"
-                    className="input"
-                    required
-                    value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="label" htmlFor="profile-last">{t('ui.lastName')}</label>
-                  <input
-                    id="profile-last"
-                    className="input"
-                    required
-                    value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="label" htmlFor="profile-email">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-gray-400" aria-hidden />
-                    {t('ui.email')}
-                  </span>
-                </label>
-                <input id="profile-email" className="input bg-gray-50 text-gray-600" value={profile?.email || ''} readOnly />
-                <p className="field-hint mt-1">{t('ui.emailReadonlyHint')}</p>
-              </div>
-
-              {needsPhone && (
-                <div>
-                  <label className="label" htmlFor="profile-phone">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" aria-hidden />
-                      {t('ui.phone')} *
-                    </span>
-                  </label>
-                  <input
-                    id="profile-phone"
-                    className="input"
-                    type="tel"
-                    required
-                    minLength={8}
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="078XXXXXXX"
-                  />
-                </div>
+                  <div>
+                    <label className="label" htmlFor="profile-email">{t('ui.email')}</label>
+                    <input id="profile-email" className="input bg-gray-50 text-gray-600" value={profile?.email || ''} readOnly />
+                    <p className="field-hint mt-1">{t('ui.emailReadonlyHint')}</p>
+                  </div>
+                  {needsPhone && (
+                    <div>
+                      <label className="label" htmlFor="profile-phone">{t('ui.phone')} *</label>
+                      <input id="profile-phone" className="input" type="tel" required minLength={8} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="078XXXXXXX" />
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

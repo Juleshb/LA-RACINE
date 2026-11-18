@@ -19,6 +19,7 @@ const ROLE_LABELS = {
   ACCOUNTANT: 'Accountant',
   ACTIVITIES_MANAGER: 'Activities manager',
   LIBRARIAN: 'Librarian',
+  INVENTORY_MANAGER: 'Inventory manager',
 };
 
 function esc(value) {

@@ -11,6 +11,7 @@ import {
   resolveStaffIdentityNumber,
 } from '../lib/staffIdentity.js';
 import { applyParentEmailToStudents } from '../lib/studentUserAccount.js';
+import { pickStaffProfile, displayName } from '../lib/staffProfile.js';
 import {
   extractPhotoPayload,
   removeUserPhotoDir,
@@ -33,6 +34,7 @@ const STAFF_ROLES = new Set([
   'ACCOUNTANT',
   'ACTIVITIES_MANAGER',
   'LIBRARIAN',
+  'INVENTORY_MANAGER',
 ]);
 
 function roleRequiresPhone(role) {
@@ -41,6 +43,27 @@ function roleRequiresPhone(role) {
 
 function cleanGender(value) {
   return value === 'MALE' || value === 'FEMALE' ? value : null;
+}
+
+async function syncStaffToTeacher(teacherId, user) {
+  if (!teacherId || !user) return;
+  const name = displayName(user);
+  await prisma.teacher.update({
+    where: { id: teacherId },
+    data: {
+      ...(name ? { name, lastName: user.lastName || null, postName: user.postName || null, firstName: user.firstName || null } : {}),
+      email: user.email || null,
+      phone: user.phone || null,
+      gender: user.gender || null,
+      identityNumber: user.identityNumber || null,
+      bankName: user.bankName || null,
+      bankAccount: user.bankAccount || null,
+      contractType: user.contractType || null,
+      hireDate: user.hireDate || null,
+      qualifications: user.qualification || null,
+      professionalExperience: user.professionalExperience || null,
+    },
+  }).catch(() => {});
 }
 
 function normalizePhone(value) {
@@ -259,6 +282,7 @@ router.post('/', async (req, res) => {
         parentId: parentId || null,
         gender: cleanGender(gender),
         mustChangePassword: false,
+        ...(STAFF_ROLES.has(role) ? pickStaffProfile(req.body) : {}),
       },
       select: { ...userSelect, photoPath: true, photoMimeType: true },
     });
@@ -295,15 +319,8 @@ router.post('/', async (req, res) => {
       await applyParentEmailToStudents(parentId, email, { overwrite: false });
     }
 
-    if (role === 'TEACHER' && teacherId) {
-      await prisma.teacher.update({
-        where: { id: teacherId },
-        data: {
-          ...(phoneValue ? { phone: phoneValue } : {}),
-          ...(identityNumber ? { identityNumber } : {}),
-          ...(user.gender ? { gender: user.gender } : {}),
-        },
-      }).catch(() => {});
+    if (role === 'TEACHER' && (teacherId || user.teacherId)) {
+      await syncStaffToTeacher(teacherId || user.teacherId, user);
     }
 
     if (role === 'STUDENT' && studentId) {
@@ -395,9 +412,13 @@ router.put('/:id', async (req, res) => {
     if (lastName !== undefined) data.lastName = String(lastName).trim();
     if (email !== undefined) data.email = String(email).trim().toLowerCase();
     if (role !== undefined) data.role = role;
-    if (typeof isActive === 'boolean') data.isActive = isActive;
+    if (typeof isActive === 'boolean' && req.body.accountStatus === undefined) {
+      data.isActive = isActive;
+      data.accountStatus = isActive ? 'ACTIVE' : 'INACTIVE';
+    }
     if (phoneValue !== undefined) data.phone = phoneValue;
     if (gender !== undefined) data.gender = cleanGender(gender);
+    if (STAFF_ROLES.has(nextRole)) Object.assign(data, pickStaffProfile(req.body));
 
     if (STAFF_ROLES.has(nextRole)) {
       data.identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber ?? target.identityNumber, {
@@ -510,14 +531,7 @@ router.put('/:id', async (req, res) => {
     }
 
     if (user.role === 'TEACHER' && user.teacherId) {
-      await prisma.teacher.update({
-        where: { id: user.teacherId },
-        data: {
-          ...(phoneValue ? { phone: phoneValue } : {}),
-          ...(result.identityNumber ? { identityNumber: result.identityNumber } : {}),
-          ...(result.gender ? { gender: result.gender } : {}),
-        },
-      }).catch(() => {});
+      await syncStaffToTeacher(user.teacherId, result);
     }
 
     if (user.role === 'STUDENT' && user.studentId) {
@@ -549,7 +563,10 @@ router.patch('/:id/status', async (req, res) => {
 
     const user = await prisma.user.update({
       where: { id: req.params.id },
-      data: { isActive: req.body.isActive },
+      data: {
+        isActive: req.body.isActive,
+        accountStatus: req.body.isActive ? 'ACTIVE' : 'INACTIVE',
+      },
       select: userSelect,
     });
     res.json(user);

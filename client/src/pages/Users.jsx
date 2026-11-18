@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Trash2, UserCheck, UserX, KeyRound, Pencil, Search, Eye,
-  Users as UsersIcon, GraduationCap, HeartHandshake, Briefcase, Camera, X,
+  Users as UsersIcon, GraduationCap, HeartHandshake, Briefcase,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
@@ -13,11 +13,14 @@ import { useTranslation } from '../context/LanguageContext';
 import StudentSelect from '../components/StudentSelect';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
+import StaffProfileForm, { hireDateInput } from '../components/StaffProfileForm';
 import { studentFullName } from '../lib/studentName';
 
 const EMPTY_FORM = {
-  email: '', password: '', firstName: '', lastName: '', phone: '', identityNumber: '', gender: '', role: 'TEACHER',
+  email: '', password: '', firstName: '', lastName: '', postName: '', phone: '', identityNumber: '', gender: '', role: 'TEACHER',
   teacherId: '', studentId: '', parentId: '',
+  bankName: '', bankAccount: '', contractType: '', hireDate: '', qualification: '', professionalExperience: '',
+  accountStatus: 'ACTIVE',
 };
 
 function displayPhone(user) {
@@ -228,6 +231,14 @@ export default function Users() {
       lastName: user.lastName || '',
       phone: displayPhone(user),
       identityNumber: user.identityNumber || '',
+      postName: user.postName || '',
+      bankName: user.bankName || '',
+      bankAccount: user.bankAccount || '',
+      contractType: user.contractType || '',
+      hireDate: hireDateInput(user.hireDate),
+      qualification: user.qualification || '',
+      professionalExperience: user.professionalExperience || '',
+      accountStatus: user.accountStatus || (user.isActive ? 'ACTIVE' : 'INACTIVE'),
       role: user.role || 'TEACHER',
       gender: user.gender || '',
       teacherId: user.teacherId || user.teacher?.id || '',
@@ -268,6 +279,14 @@ export default function Users() {
         gender: userCategory(form.role) === 'staff' ? (form.gender || null) : null,
       };
       if (userCategory(form.role) === 'staff') {
+        payload.postName = form.postName.trim();
+        payload.bankName = form.bankName.trim();
+        payload.bankAccount = form.bankAccount.trim();
+        payload.contractType = form.contractType;
+        payload.hireDate = form.hireDate || null;
+        payload.qualification = form.qualification;
+        payload.professionalExperience = form.professionalExperience.trim();
+        payload.accountStatus = form.accountStatus || 'ACTIVE';
         payload.identityNumber = form.identityNumber.trim() || undefined;
         if (photoFile) {
           payload.photo = {
@@ -456,8 +475,12 @@ export default function Users() {
 
   const statusBadge = (u) => (
     <div className="flex flex-col gap-1 items-start">
-      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${u.isActive ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-600'}`}>
-        {u.isActive ? t('ui.active') : t('ui.inactive')}
+      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${(u.accountStatus || (u.isActive ? 'ACTIVE' : 'INACTIVE')) === 'ACTIVE' ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-600'}`}>
+        {(u.accountStatus || (u.isActive ? 'ACTIVE' : 'INACTIVE')) === 'SUSPENDED'
+          ? t('ui.suspended')
+          : (u.accountStatus || (u.isActive ? 'ACTIVE' : 'INACTIVE')) === 'INACTIVE'
+            ? t('ui.inactive')
+            : t('ui.active')}
       </span>
       {u.pendingReset && (
         <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
@@ -707,191 +730,133 @@ export default function Users() {
         submitLabel={modalMode === 'edit' ? t('ui.saveChanges') : t('ui.createUser')}
         submitting={submitting}
         error={error}
-        size="lg"
+        size="2xl"
       >
-        <FormSection title={t('ui.accountDetails')}>
-          {userCategory(form.role) === 'staff' && (
-            <div className="form-field-full md:col-span-2">
-              <label className="label">Profile photo</label>
-              <div className="flex items-start gap-4">
-                <div className="w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0">
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-semibold text-gray-400">
-                      {(form.firstName?.[0] || '?').toUpperCase()}{(form.lastName?.[0] || '').toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      {photoPreview ? 'Change' : 'Upload'}
-                    </button>
-                    {photoPreview && (
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1 py-1.5"
-                        onClick={handleRemovePhoto}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={handlePhotoPick}
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1.5">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
-                </div>
+        {userCategory(form.role) === 'staff' ? (
+          <StaffProfileForm
+            form={form}
+            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+            photoPreview={photoPreview}
+            onPhotoPick={handlePhotoPick}
+            onPhotoClear={handleRemovePhoto}
+            fileRef={fileInputRef}
+            phoneRequired={roleNeedsPhone(form.role)}
+            showStatus
+            showNote
+            access={(
+              <>
+                <label className="label">{t('ui.role')} *
+                  <select
+                    className="input"
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value, teacherId: '', studentId: '', parentId: '' })}
+                  >
+                    {(modalMode === 'edit' ? Object.entries(ROLE_LABELS) : roleOptions).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+                {modalMode === 'create' && (
+                  <label className="label">{t('ui.password')} *
+                    <input className="input" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                    <span className="text-xs font-normal text-gray-500">{t('pages.users.passwordPolicyHint')}</span>
+                  </label>
+                )}
+                {form.role === 'TEACHER' && (
+                  <label className="label staff-span">{t('ui.linkTeacherProfile')}
+                    <select className="input" value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
+                      <option value="">{t('ui.none')}</option>
+                      {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+                    </select>
+                  </label>
+                )}
+                {modalMode === 'edit' && (
+                  <p className="staff-span rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-normal text-amber-900">{t('pages.users.editPasswordHint')}</p>
+                )}
+              </>
+            )}
+          />
+        ) : (
+          <FormSection title={t('ui.accountDetails')}>
+            <div>
+              <label className="label">{t('ui.firstName')} *</label>
+              <input className="input" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">{t('ui.lastName')} *</label>
+              <input className="input" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">{t('ui.email')} *</label>
+              <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            {roleNeedsPhone(form.role) && (
+              <div>
+                <label className="label">{t('pages.users.phone')} *</label>
+                <input className="input" type="tel" required minLength={8} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="078XXXXXXX" />
               </div>
-            </div>
-          )}
-          <div>
-            <label className="label">{t('ui.firstName')} *</label>
-            <input className="input" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">{t('ui.lastName')} *</label>
-            <input className="input" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">{t('ui.email')} *</label>
-            <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          {userCategory(form.role) === 'staff' && (
-            <div>
-              <label className="label">{t('ui.gender')}</label>
-              <select
-                className="input"
-                value={form.gender}
-                onChange={(e) => setForm({ ...form, gender: e.target.value })}
-              >
-                <option value="">{t('ui.select')}</option>
-                <option value="MALE">{t('ui.male')}</option>
-                <option value="FEMALE">{t('ui.female')}</option>
-              </select>
-            </div>
-          )}
-          {userCategory(form.role) === 'staff' && (
-            <div>
-              <label className="label">PP / Numéro d’identité</label>
-              <input
-                className="input font-mono"
-                value={form.identityNumber}
-                onChange={(e) => setForm({ ...form, identityNumber: e.target.value })}
-                placeholder="Auto-assigned if left empty"
-              />
-              <p className="text-xs text-gray-500 mt-1">Must be unique for every staff member.</p>
-            </div>
-          )}
-          {roleNeedsPhone(form.role) && (
-            <div>
-              <label className="label">{t('pages.users.phone')} *</label>
-              <input
-                className="input"
-                type="tel"
-                required
-                minLength={8}
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="078XXXXXXX"
-              />
-              <p className="text-xs text-gray-500 mt-1">{t('pages.users.phoneHint')}</p>
-            </div>
-          )}
-          {modalMode === 'create' && (
-            <div>
-              <label className="label">{t('ui.password')} *</label>
-              <input className="input" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              <p className="text-xs text-gray-500 mt-1">{t('pages.users.passwordPolicyHint')}</p>
-            </div>
-          )}
-          {modalMode === 'edit' && (
-            <div className="form-field-full md:col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
-              {t('pages.users.editPasswordHint')}
-            </div>
-          )}
-          <div className="form-field-full md:col-span-2">
-            <label className="label">{t('ui.role')} *</label>
-            <select
-              className="input"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value, teacherId: '', studentId: '', parentId: '' })}
-            >
-              {(modalMode === 'edit' ? Object.entries(ROLE_LABELS) : roleOptions).map(([value, label]) => (
+            )}
+            {modalMode === 'create' && (
+              <div>
+                <label className="label">{t('ui.password')} *</label>
+                <input className="input" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              </div>
+            )}
+            <div className="form-field-full md:col-span-2">
+              <label className="label">{t('ui.role')} *</label>
+              <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, teacherId: '', studentId: '', parentId: '' })}>
+                {(modalMode === 'edit' ? Object.entries(ROLE_LABELS) : roleOptions).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
-            {form.role === 'TEACHER' && (
-            <div className="form-field-full md:col-span-2">
-              <label className="label">{t('ui.linkTeacherProfile')}</label>
-                <select className="input" value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
-                <option value="">{t('ui.none')}</option>
-                {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
-                </select>
+            {form.role === 'STUDENT' && (
+              <div className="form-field-full md:col-span-2">
+                <label className="label">{t('ui.linkStudentRecord')}</label>
+                <StudentSelect
+                  students={students}
+                  value={form.studentId}
+                  onChange={(studentId) => setForm({ ...form, studentId })}
+                  emptyLabel={t('ui.none')}
+                  getLabel={(s) => `${s.studentId} — ${studentFullName(s)}`}
+                />
               </div>
             )}
-            {form.role === 'STUDENT' && (
-            <div className="form-field-full md:col-span-2">
-              <label className="label">{t('ui.linkStudentRecord')}</label>
-              <StudentSelect
-                students={students}
-                value={form.studentId}
-                onChange={(studentId) => setForm({ ...form, studentId })}
-                emptyLabel={t('ui.none')}
-                getLabel={(s) => `${s.studentId} — ${studentFullName(s)}`}
-              />
-            </div>
-          )}
-          {form.role === 'PARENT' && (
-            <>
-              <div className="form-field-full md:col-span-2 rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-sm text-brand-900">
-                <p className="font-semibold mb-1">{t('pages.users.parentHelpTitle')}</p>
-                <ul className="list-disc list-inside space-y-1 text-brand-800">
-                  <li>{t('pages.users.parentHelp1')}</li>
-                  <li>{t('pages.users.parentHelp2')}</li>
-                  <li>{t('pages.users.parentHelp3')}</li>
-                </ul>
-              </div>
-              <div className="form-field-full md:col-span-2">
-                <label className="label">{t('ui.selectParentRecord')} *</label>
-              <select
-                className="input"
-                required
-                value={form.parentId || ''}
-                onChange={(e) => {
-                  const parentId = e.target.value;
-                  const selected = parents.find((p) => p.id === parentId);
-                  setForm({
-                    ...form,
-                    parentId,
-                    phone: form.phone || selected?.phone || '',
-                  });
-                }}
-              >
-                  <option value="">{t('ui.selectParentRecord')}</option>
-                  {parentOptions.map((p) => (
-                    <option key={p.id} value={p.id} disabled={Boolean(p.user) && p.user.id !== editingUser?.id}>
-                      {p.phone || p.id.slice(0, 8)} — {p.students.map((s) => studentFullName(s)).filter(Boolean).join(', ') || t('ui.none')}
-                      {p.user && p.user.id !== editingUser?.id ? ` (${p.user.email})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-        </FormSection>
+            {form.role === 'PARENT' && (
+              <>
+                <div className="form-field-full md:col-span-2 rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-sm text-brand-900">
+                  <p className="font-semibold mb-1">{t('pages.users.parentHelpTitle')}</p>
+                  <ul className="list-disc list-inside space-y-1 text-brand-800">
+                    <li>{t('pages.users.parentHelp1')}</li>
+                    <li>{t('pages.users.parentHelp2')}</li>
+                    <li>{t('pages.users.parentHelp3')}</li>
+                  </ul>
+                </div>
+                <div className="form-field-full md:col-span-2">
+                  <label className="label">{t('ui.selectParentRecord')} *</label>
+                  <select
+                    className="input"
+                    required
+                    value={form.parentId || ''}
+                    onChange={(e) => {
+                      const parentId = e.target.value;
+                      const selected = parents.find((p) => p.id === parentId);
+                      setForm({ ...form, parentId, phone: form.phone || selected?.phone || '' });
+                    }}
+                  >
+                    <option value="">{t('ui.selectParentRecord')}</option>
+                    {parentOptions.map((p) => (
+                      <option key={p.id} value={p.id} disabled={Boolean(p.user) && p.user.id !== editingUser?.id}>
+                        {p.phone || p.id.slice(0, 8)} — {p.students.map((s) => studentFullName(s)).filter(Boolean).join(', ') || t('ui.none')}
+                        {p.user && p.user.id !== editingUser?.id ? ` (${p.user.email})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </FormSection>
+        )}
       </FormModeModal>
 
       <FormModeModal

@@ -14,6 +14,7 @@ const ADMIN_ROLES = [
   'ACCOUNTANT',
   'ACTIVITIES_MANAGER',
   'LIBRARIAN',
+  'INVENTORY_MANAGER',
 ];
 
 function genderTally(groups) {

@@ -42,12 +42,13 @@ export function getClientBaseUrl() {
   return String(process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
 }
 
-export async function sendMail({ to, subject, text, html, replyTo }) {
+export async function sendMail({ to, bcc, subject, text, html, replyTo }) {
   const transporter = getMailTransporter();
   const from = String(process.env.SMTP_USER || '').trim();
   await transporter.sendMail({
     from: `"École La RACINE" <${from}>`,
     to,
+    bcc: bcc || undefined,
     replyTo: replyTo || undefined,
     subject,
     text,

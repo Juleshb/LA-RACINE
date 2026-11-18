@@ -7,6 +7,7 @@ import {
   backfillStaffIdentityNumbers,
   resolveStaffIdentityNumber,
 } from '../lib/staffIdentity.js';
+import { cleanText, displayName, parseHireDate, CONTRACT_TYPES } from '../lib/staffProfile.js';
 import {
   removeTeacherPhotoFile,
   resolveTeacherPhotoAbsPath,
@@ -24,15 +25,29 @@ function cleanGender(value) {
 function pickTeacherFields(body = {}) {
   const { name, email, phone, subject, address, qualifications, bankName, bankAccount, gender } = body;
   const clean = (value) => (value ? String(value).trim() : null);
+  const parts = {
+    lastName: clean(body.lastName),
+    postName: clean(body.postName),
+    firstName: clean(body.firstName),
+  };
+  const composed = displayName(parts);
+  const contract = cleanText(body.contractType);
   return {
-    ...(name !== undefined ? { name: String(name).trim() } : {}),
+    ...(body.lastName !== undefined || body.postName !== undefined || body.firstName !== undefined
+      ? { ...parts, name: composed || (name !== undefined ? String(name).trim() : '') }
+      : {}),
+    ...(name !== undefined && body.lastName === undefined ? { name: String(name).trim() } : {}),
     ...(email !== undefined ? { email: clean(email) } : {}),
     ...(phone !== undefined ? { phone: clean(phone) } : {}),
     ...(subject !== undefined ? { subject: clean(subject) } : {}),
     ...(address !== undefined ? { address: clean(address) } : {}),
     ...(qualifications !== undefined ? { qualifications: clean(qualifications) } : {}),
+    ...(body.qualification !== undefined ? { qualifications: clean(body.qualification) } : {}),
     ...(bankName !== undefined ? { bankName: clean(bankName) } : {}),
     ...(bankAccount !== undefined ? { bankAccount: clean(bankAccount) } : {}),
+    ...(body.contractType !== undefined ? { contractType: CONTRACT_TYPES.includes(contract) ? contract : null } : {}),
+    ...(body.hireDate !== undefined ? { hireDate: parseHireDate(body.hireDate) } : {}),
+    ...(body.professionalExperience !== undefined ? { professionalExperience: cleanText(body.professionalExperience) } : {}),
     ...(gender !== undefined ? { gender: cleanGender(gender) } : {}),
   };
 }
@@ -212,12 +227,23 @@ router.put('/:id', async (req, res) => {
     if (photoPayload || clearPhoto) {
       await syncLinkedUserPhoto(existing.id, photoPayload, { clear: clearPhoto && !photoPayload });
     }
-    if (teacher.identityNumber) {
-      await prisma.user.updateMany({
-        where: { teacherId: teacher.id },
-        data: { identityNumber: teacher.identityNumber },
-      }).catch(() => {});
-    }
+    await prisma.user.updateMany({
+      where: { teacherId: teacher.id },
+      data: {
+        ...(teacher.firstName ? { firstName: teacher.firstName } : {}),
+        ...(teacher.lastName ? { lastName: teacher.lastName } : {}),
+        postName: teacher.postName,
+        phone: teacher.phone,
+        gender: teacher.gender,
+        ...(teacher.identityNumber ? { identityNumber: teacher.identityNumber } : {}),
+        bankName: teacher.bankName,
+        bankAccount: teacher.bankAccount,
+        contractType: teacher.contractType,
+        hireDate: teacher.hireDate,
+        qualification: teacher.qualifications,
+        professionalExperience: teacher.professionalExperience,
+      },
+    }).catch(() => {});
     await syncTeacherGender(teacher);
 
     res.json(serializeTeacher(teacher, { includePhotoUrl: true }));

@@ -32,6 +32,8 @@ import teacherPortalRoutes from './routes/teacherPortal.js';
 import staffGuideRoutes from './routes/staffGuide.js';
 import studentPortalRoutes from './routes/studentPortal.js';
 import updateRoutes from './routes/updates.js';
+import accessRoutes from './routes/access.js';
+import inventoryRoutes from './routes/inventory.js';
 import { authenticate } from './middleware/auth.js';
 import { requireCampus } from './middleware/campus.js';
 import { enrichUserScope } from './middleware/userScope.js';
@@ -44,6 +46,8 @@ import settingsRoutes from './routes/settings.js';
 import { requireAcademicYear } from './middleware/academicYear.js';
 import { initRealtime } from './lib/realtime.js';
 import { ensureCalendarUploadsDir } from './lib/calendarFiles.js';
+import { startStatusMonitor } from './lib/statusMonitor.js';
+import searchRoutes from './routes/search.js';
 
 dotenv.config();
 
@@ -82,7 +86,10 @@ app.use(requireCampus);
 app.use(enrichUserScope);
 app.use('/api/academic-years', academicYearRoutes);
 app.use('/api/updates', updateRoutes);
+app.use('/api/access', accessRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use(requireAcademicYear);
+app.use('/api/search', searchRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/classes', classRoutes);
@@ -119,4 +126,5 @@ app.use((err, _req, res, _next) => {
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  startStatusMonitor();
 });

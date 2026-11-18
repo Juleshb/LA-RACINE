@@ -96,6 +96,7 @@ export function AuthProvider({ children }) {
         completeLogin,
         logout,
         refreshUser,
+        setCampusPermissions: setPermissions,
         hasPermission: (p) => permissions.includes(p),
         isManager: user?.role === 'SCHOOL_MANAGER' || user?.role === 'SCHOOL_ADMIN',
       }}

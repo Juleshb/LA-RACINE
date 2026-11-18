@@ -37,7 +37,7 @@
         "myLearning": "My learning",
         "aiTutor": "Ask AI",
         "ai": "AI",
-        "scienceQuiz": "Science quiz",
+        "scienceQuiz": "Online quiz",
         "quiz": "Quiz"
       },
       "school": {
@@ -306,7 +306,7 @@
         "quizHint": "Answer science questions by level"
       },
       "scienceQuiz": {
-        "title": "Science quiz",
+        "title": "Online quiz",
         "subtitle": "Answer one question at a time and see how many you get right.",
         "questionCount": "{{count}} questions",
         "progress": "Question {{current}} of {{total}}",
@@ -415,7 +415,7 @@
         "myLearning": "Mon apprentissage",
         "aiTutor": "Demander à l’IA",
         "ai": "IA",
-        "scienceQuiz": "Quiz de sciences",
+        "scienceQuiz": "Quiz en ligne",
         "quiz": "Quiz"
       },
       "school": {
@@ -684,7 +684,7 @@
         "quizHint": "Réponds aux questions de sciences par niveau"
       },
       "scienceQuiz": {
-        "title": "Quiz de sciences",
+        "title": "Quiz en ligne",
         "subtitle": "Réponds à une question à la fois et vois combien tu en trouves.",
         "questionCount": "{{count}} questions",
         "progress": "Question {{current}} sur {{total}}",
@@ -793,7 +793,7 @@
         "myLearning": "Kwiga kwanjye",
         "aiTutor": "Baza AI",
         "ai": "AI",
-        "scienceQuiz": "Ikibazo cya siyansi",
+        "scienceQuiz": "Ikibazo kuri interineti",
         "quiz": "Ikibazo"
       },
       "school": {
@@ -1062,7 +1062,7 @@
         "quizHint": "Subiza ibibazo bya siyansi ukurikije urwego"
       },
       "scienceQuiz": {
-        "title": "Ikibazo cya siyansi",
+        "title": "Ikibazo kuri interineti",
         "subtitle": "Subiza ikibazo kimwe icyo ari cyo cyose, urebe uko watsinze.",
         "questionCount": "Ibibazo {{count}}",
         "progress": "Ikibazo {{current}} cya {{total}}",
@@ -1171,7 +1171,7 @@
         "myLearning": "Kujifunza kwangu",
         "aiTutor": "Uliza AI",
         "ai": "AI",
-        "scienceQuiz": "Maswali ya sayansi",
+        "scienceQuiz": "Maswali mtandaoni",
         "quiz": "Maswali"
       },
       "school": {
@@ -1440,7 +1440,7 @@
         "quizHint": "Jibu maswali ya sayansi kwa kiwango"
       },
       "scienceQuiz": {
-        "title": "Maswali ya sayansi",
+        "title": "Maswali mtandaoni",
         "subtitle": "Jibu swali moja kwa wakati uone umepatwa mangapi.",
         "questionCount": "Maswali {{count}}",
         "progress": "Swali {{current}} kati ya {{total}}",

@@ -535,6 +535,7 @@ const ROLE_FR = {
   ACCOUNTANT: 'Comptable',
   ACTIVITIES_MANAGER: 'Responsable des activités',
   LIBRARIAN: 'Bibliothécaire',
+  INVENTORY_MANAGER: 'Responsable d’inventaire',
 };
 
 export function staffCardExportFields(staff, academicYear, roleLabel = 'Personnel', schoolName = 'LA RACINE') {

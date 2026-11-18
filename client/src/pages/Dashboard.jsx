@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCampus } from '../context/CampusContext';
 import ManagerDashboard from './ManagerDashboard';
@@ -131,6 +132,7 @@ function ActivitiesManagerDashboardPage() {
 
 export default function Dashboard() {
   const { isManager, user } = useAuth();
+  if (user?.role === 'INVENTORY_MANAGER') return <Navigate to="inventory/overview" replace />;
   if (isManager) return <ManagerDashboard />;
   if (user?.role === 'PARENT') return <ParentDashboardPage />;
   if (user?.role === 'TEACHER') return <TeacherDashboardPage />;

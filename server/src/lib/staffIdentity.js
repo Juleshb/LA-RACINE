@@ -8,6 +8,7 @@ const STAFF_ROLES = [
   'ACCOUNTANT',
   'ACTIVITIES_MANAGER',
   'LIBRARIAN',
+  'INVENTORY_MANAGER',
 ];
 
 export function normalizeIdentityNumber(value) {

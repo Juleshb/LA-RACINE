@@ -45,6 +45,18 @@ model Campus {
   aiConversations AiConversation[]
   feeStructures  FeeStructure[]
   scienceQuizzes ScienceQuiz[]
+  rolePermissions RolePermission[]
+  permissionAudits PermissionAudit[]
+  stockCategories StockCategory[]
+  stockStores     StockStore[]
+  stockSuppliers  StockSupplier[]
+  stockArticles   StockArticle[]
+  stockPurchases  StockPurchase[]
+  stockMovements  StockMovement[]
+  stockRequests   StockRequest[]
+  stockAssets     StockAsset[]
+  stockTransfersOut StockTransfer[] @relation("TransferSource")
+  stockTransfersIn  StockTransfer[] @relation("TransferDest")
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
@@ -104,6 +116,14 @@ model User {
   phone              String?
   identityNumber     String?             @unique
   gender             Gender?
+  postName           String?
+  bankName           String?
+  bankAccount        String?
+  contractType       String?
+  hireDate           DateTime?           @db.Date
+  qualification      String?
+  professionalExperience String?
+  accountStatus      String              @default("ACTIVE")
   photoPath          String?
   photoMimeType      String?
   passwordResetTokens PasswordResetToken[]
@@ -116,8 +136,206 @@ model User {
   midtermsPublished   MidtermWindow[] @relation("MidtermPublishedBy")
   feeDiscountsApplied FeePayment[] @relation("FeeDiscountedBy")
   changeRequests     ChangeRequest[]
+  stockRequests      StockRequest[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+}
+
+model RolePermission {
+  id        String   @id @default(uuid())
+  campusId  String
+  campus    Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  role      UserRole
+  module    String
+  action    String
+  allowed   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([campusId, role, module, action])
+  @@index([campusId, role])
+}
+
+model PermissionAudit {
+  id        String   @id @default(uuid())
+  campusId  String
+  campus    Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actorName String
+  title     String
+  detail    String
+  createdAt DateTime @default(now())
+
+  @@index([campusId, createdAt])
+}
+
+model StockCategory {
+  id        String         @id @default(uuid())
+  campusId  String
+  campus    Campus         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  articles  StockArticle[]
+  createdAt DateTime       @default(now())
+
+  @@unique([campusId, code])
+}
+
+model StockStore {
+  id        String         @id @default(uuid())
+  campusId  String
+  campus    Campus         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  manager   String?
+  location  String?
+  isActive  Boolean        @default(true)
+  articles  StockArticle[]
+  movements StockMovement[]
+  createdAt DateTime       @default(now())
+
+  @@unique([campusId, code])
+}
+
+model StockSupplier {
+  id        String          @id @default(uuid())
+  campusId  String
+  campus    Campus          @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  contact   String?
+  taxNumber String?
+  articles  StockArticle[]
+  purchases StockPurchase[]
+  createdAt DateTime        @default(now())
+}
+
+model StockArticle {
+  id          String         @id @default(uuid())
+  campusId    String
+  campus      Campus         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       StockStore     @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  categoryId  String?
+  category    StockCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplierId  String?
+  supplier    StockSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  code        String
+  name        String
+  type        String         @default("Consumable")
+  unit        String         @default("Piece")
+  price       Decimal        @default(0) @db.Decimal(14, 2)
+  minQty      Int            @default(0)
+  qty         Int            @default(0)
+  description String?
+  isActive    Boolean        @default(true)
+  movements   StockMovement[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([campusId, code])
+  @@index([campusId, storeId])
+}
+
+model StockPurchase {
+  id          String         @id @default(uuid())
+  campusId    String
+  campus      Campus         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  supplierId  String?
+  supplier    StockSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  ref         String
+  articleId   String?
+  articleName String
+  qty         Int
+  unitPrice   Decimal        @default(0) @db.Decimal(14, 2)
+  fees        Decimal        @default(0) @db.Decimal(14, 2)
+  total       Decimal        @default(0) @db.Decimal(14, 2)
+  status      String         @default("PENDING")
+  orderedAt   DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+
+  @@unique([campusId, ref])
+}
+
+model StockMovement {
+  id        String      @id @default(uuid())
+  campusId  String
+  campus    Campus      @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  storeId   String?
+  store     StockStore? @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  articleId String
+  article   StockArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  type      String
+  qty       Int
+  ref       String?
+  reason    String?
+  notes     String?
+  actorName String
+  createdAt DateTime    @default(now())
+
+  @@index([campusId, createdAt])
+}
+
+model StockRequest {
+  id          String   @id @default(uuid())
+  campusId    String
+  campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User     @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  ref         String
+  personName  String
+  service     String
+  articleId   String?
+  articleName String
+  qty         Int
+  approvedQty Int      @default(0)
+  servedQty   Int      @default(0)
+  priority    String   @default("Normal")
+  status      String   @default("PENDING")
+  reason      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([campusId, ref])
+  @@index([campusId, status])
+}
+
+model StockTransfer {
+  id             String   @id @default(uuid())
+  ref            String   @unique
+  sourceCampusId String
+  sourceCampus   Campus   @relation("TransferSource", fields: [sourceCampusId], references: [id], onDelete: Cascade)
+  destCampusId   String
+  destCampus     Campus   @relation("TransferDest", fields: [destCampusId], references: [id], onDelete: Cascade)
+  sourceStoreId  String
+  destStoreId    String
+  articleId      String
+  articleName    String
+  qty            Int
+  reason         String?
+  status         String   @default("SUBMITTED")
+  actorName      String
+  createdAt      DateTime @default(now())
+
+  @@index([sourceCampusId, createdAt])
+}
+
+model StockAsset {
+  id         String    @id @default(uuid())
+  campusId   String
+  campus     Campus    @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  code       String
+  name       String
+  serial     String?
+  location   String?
+  owner      String?
+  acquiredAt DateTime?
+  price      Decimal   @default(0) @db.Decimal(14, 2)
+  state      String    @default("New")
+  createdAt  DateTime  @default(now())
+
+  @@unique([campusId, code])
 }
 
 model ChangeRequest {
@@ -216,6 +434,9 @@ model Teacher {
   academicYearId String?
   academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   name           String
+  lastName       String?
+  postName       String?
+  firstName      String?
   gender         Gender?
   email          String?
   phone          String?
@@ -225,6 +446,9 @@ model Teacher {
   qualifications String?
   bankName       String?
   bankAccount    String?
+  contractType   String?
+  hireDate       DateTime?    @db.Date
+  professionalExperience String?
   photoPath      String?
   photoMimeType  String?
   user           User?
@@ -570,6 +794,37 @@ model FeeStructure {
   @@index([campusId, academicYearId])
   @@index([classId, feeType])
   @@index([feeType, term])
+}
+
+/// Fees collected for one calendar month. Expenses are stored separately and summed.
+model SchoolMonthSummary {
+  id             String   @id @default(uuid())
+  campusId       String
+  academicYearId String
+  month          Int
+  feesCollected  Float    @default(0)
+  notes          String?
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([campusId, academicYearId, month])
+  @@index([campusId, academicYearId])
+}
+
+model SchoolExpense {
+  id             String   @id @default(uuid())
+  campusId       String
+  academicYearId String
+  month          Int
+  spentOn        DateTime @db.Date
+  amount         Float
+  description    String
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([campusId, academicYearId, month])
 }
 
 model Book {
@@ -1195,6 +1450,7 @@ enum UserRole {
   ACCOUNTANT
   ACTIVITIES_MANAGER
   LIBRARIAN
+  INVENTORY_MANAGER
 }
 
 enum BorrowerType {
@@ -1415,6 +1671,32 @@ model ScienceQuizQuestion {
   createdAt DateTime    @default(now())
 
   @@index([quizId, sortOrder])
+}
+
+model StatusSample {
+  id        String   @id @default(uuid())
+  service   String
+  day       DateTime @db.Date
+  status    String
+  latencyMs Int      @default(0)
+  checkedAt DateTime @default(now())
+
+  @@unique([service, day])
+  @@index([service, day])
+}
+
+model StatusSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+/// Last observed status, and the last status subscribers were told about.
+model StatusServiceState {
+  service        String   @id
+  status         String
+  notifiedStatus String?
+  updatedAt      DateTime @updatedAt
 }
 
 model AiMessage {

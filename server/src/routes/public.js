@@ -4,6 +4,7 @@ import { getWebsitePagesForLocale } from '../lib/websiteCms.js';
 import { normalizeLocale, WEBSITE_LOCALES } from '../lib/websiteLocales.js';
 import { getFormOptions } from '../config/registration.js';
 import { createStudentRegistration } from '../lib/createRegistration.js';
+import { dayKey, emailStatusSubscription, isoDay, runStatusCheck } from '../lib/statusMonitor.js';
 
 const router = Router();
 
@@ -206,6 +207,108 @@ router.post('/registration', async (req, res) => {
     });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.get('/status', async (_req, res) => {
+  try {
+    const checks = await runStatusCheck();
+
+    const since = dayKey(new Date());
+    since.setDate(since.getDate() - 89);
+    const samples = await prisma.statusSample.findMany({
+      where: { day: { gte: since } },
+      select: { service: true, day: true, status: true },
+    });
+    const byService = new Map();
+    samples.forEach((sample) => {
+      const list = byService.get(sample.service) || [];
+      list.push(sample);
+      byService.set(sample.service, list);
+    });
+
+    const days = Array.from({ length: 90 }, (_, index) => {
+      const date = new Date(since);
+      date.setDate(since.getDate() + index);
+      return isoDay(date);
+    });
+
+    const groups = [
+      { id: 'website', en: 'School website', fr: 'Site de l’école' },
+      { id: 'portal', en: 'School portal', fr: 'Portail de l’école' },
+      { id: 'platform', en: 'Platform', fr: 'Plateforme' },
+    ].map((group) => ({
+      ...group,
+      components: checks.filter((item) => item.group === group.id).map((item) => {
+        const history = new Map((byService.get(item.id) || []).map((sample) => [isoDay(sample.day), sample.status]));
+        const recorded = days.filter((day) => history.has(day));
+        const healthy = recorded.filter((day) => history.get(day) === 'up').length;
+        return {
+          id: item.id,
+          en: item.en,
+          fr: item.fr,
+          status: item.status,
+          latencyMs: item.latencyMs,
+          uptime: recorded.length ? Math.round((healthy / recorded.length) * 1000) / 10 : null,
+          recordedDays: recorded.length,
+          days: days.map((day) => ({ day, status: history.get(day) || 'unknown' })),
+        };
+      }),
+    }));
+
+    const failing = checks.filter((item) => item.status !== 'up');
+    const overall = failing.some((item) => item.status === 'down')
+      ? 'outage'
+      : failing.length
+        ? 'degraded'
+        : 'operational';
+
+    res.json({
+      updatedAt: new Date().toISOString(),
+      overall,
+      incidents: failing.map((item) => ({
+        id: item.id,
+        en: item.status === 'down'
+          ? `${item.en} is unavailable`
+          : `${item.en} is slow`,
+        fr: item.status === 'down'
+          ? `${item.fr} est indisponible`
+          : `${item.fr} répond lentement`,
+        detailEn: item.status === 'down'
+          ? 'The latest check could not complete. The school team can see this on the status page.'
+          : `The latest check took ${item.latencyMs} ms.`,
+        detailFr: item.status === 'down'
+          ? 'La dernière vérification n’a pas abouti. L’équipe de l’école voit cette note sur la page d’état.'
+          : `La dernière vérification a pris ${item.latencyMs} ms.`,
+        state: item.status === 'down' ? 'identified' : 'monitoring',
+      })),
+      groups,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Status checks are unavailable right now.' });
+  }
+});
+
+router.post('/status/subscribe', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address.' });
+    }
+    await prisma.statusSubscriber.upsert({
+      where: { email },
+      update: {},
+      create: { email },
+    });
+    try {
+      await emailStatusSubscription(email);
+      res.json({ ok: true, mailed: true });
+    } catch (error) {
+      console.error(`Status subscription email was not sent: ${error.message}`);
+      res.json({ ok: true, mailed: false });
+    }
+  } catch {
+    res.status(500).json({ error: 'The subscription could not be saved.' });
   }
 });
 

@@ -363,6 +363,8 @@ function PublicShell() {
             <p><Link to="/contact">{contactLabel}</Link></p>
             <p style={{ marginTop: '0.75rem' }}>
               <Link to="/login">{nav.footerPortal || 'Open school portal'}</Link>
+              <span> · </span>
+              <Link to="/status">{nav.footerStatus || 'System status'}</Link>
             </p>
           </div>
         </div>

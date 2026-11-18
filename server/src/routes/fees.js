@@ -5,11 +5,13 @@ import { authorizePermission, PERMISSIONS } from '../config/permissions.js';
 import { generateFeeReceiptNumber } from '../lib/deliberation.js';
 import { isMailConfigured, sendMail } from '../lib/mailer.js';
 import feeFinanceRoutes from './feeFinance.js';
+import feeExpenseRoutes from './feeExpenses.js';
 
 const router = Router();
 
 router.use(authorizePermission(PERMISSIONS.FEES));
 router.use(feeFinanceRoutes);
+router.use(feeExpenseRoutes);
 
 function campusStudentFilter(req) {
   const scope = studentScopeWhere(req);

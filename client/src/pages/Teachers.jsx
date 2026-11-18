@@ -1,26 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Edit2, CreditCard, Camera, User, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, CreditCard, User } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
 import FormModeModal from '../components/form/FormModeModal';
-import FormSection from '../components/form/FormSection';
+import StaffProfileForm, { hireDateInput, splitPersonName } from '../components/StaffProfileForm';
 import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/registration';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 
 const EMPTY_FORM = {
-  name: '',
+  lastName: '',
+  postName: '',
+  firstName: '',
   email: '',
   phone: '',
   subject: '',
   identityNumber: '',
   address: '',
-  qualifications: '',
+  qualification: '',
+  professionalExperience: '',
   bankName: '',
   bankAccount: '',
+  contractType: '',
+  hireDate: '',
   gender: '',
 };
 
@@ -94,6 +99,8 @@ export default function Teachers() {
       teacher.identityNumber,
       teacher.address,
       teacher.qualifications,
+      teacher.professionalExperience,
+      teacher.contractType,
       teacher.bankName,
       teacher.bankAccount,
     )),
@@ -133,16 +140,22 @@ export default function Teachers() {
   };
 
   const openEdit = async (teacher) => {
+    const parts = (teacher.lastName || teacher.firstName)
+      ? { lastName: teacher.lastName || '', postName: teacher.postName || '', firstName: teacher.firstName || '' }
+      : splitPersonName(teacher.name);
     setForm({
-      name: teacher.name,
+      ...parts,
       email: teacher.email || '',
       phone: teacher.phone || '',
       subject: teacher.subject || '',
       identityNumber: teacher.identityNumber || '',
       address: teacher.address || '',
-      qualifications: teacher.qualifications || '',
+      qualification: teacher.qualifications || '',
+      professionalExperience: teacher.professionalExperience || '',
       bankName: teacher.bankName || '',
       bankAccount: teacher.bankAccount || '',
+      contractType: teacher.contractType || '',
+      hireDate: hireDateInput(teacher.hireDate),
       gender: teacher.gender || '',
     });
     setEditingId(teacher.id);
@@ -274,151 +287,19 @@ export default function Teachers() {
         submitLabel={isEditing ? t('ui.saveChanges') : t('pageBody.teachers.addSubmit')}
         submitting={submitting}
         error={error}
+        size="2xl"
       >
-        <FormSection title={t('ui.personalDetails')}>
-          <div className="flex flex-col sm:flex-row gap-4 items-start">
-            <div className="shrink-0">
-              <label className="label">Profile photo</label>
-              <div className="relative w-28 h-32 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
-                {photoPreview ? (
-                  <img src={photoPreview} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10 text-gray-300" />
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs inline-flex items-center gap-1 py-1.5 px-2.5"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  {photoPreview ? 'Change' : 'Upload'}
-                </button>
-                {photoPreview && (
-                  <button
-                    type="button"
-                    className="text-xs text-red-600 hover:text-red-700 inline-flex items-center gap-1 py-1.5"
-                    onClick={handleRemovePhoto}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Remove
-                  </button>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="hidden"
-                onChange={handlePhotoPick}
-              />
-              <p className="text-[11px] text-gray-400 mt-1.5">JPEG / PNG · max {MAX_FILE_SIZE_MB} MB</p>
-            </div>
-            <div className="flex-1 w-full space-y-4">
-              <div>
-                <label className="label">{t('ui.fullName')} *</label>
-                <input
-                  className="input"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="label">{t('ui.gender')}</label>
-                <select
-                  className="input"
-                  value={form.gender}
-                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                >
-                  <option value="">{t('ui.select')}</option>
-                  <option value="MALE">{t('ui.male')}</option>
-                  <option value="FEMALE">{t('ui.female')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">{t('ui.subjectSpecialty')}</label>
-                <input
-                  className="input"
-                  placeholder={t('pageBody.teachers.subjectPlaceholder')}
-                  value={form.subject}
-                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-        </FormSection>
-        <FormSection title={t('ui.contact')}>
-          <div>
-            <label className="label">{t('ui.email')}</label>
-            <input
-              className="input"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">PP / Numéro d’identité</label>
-            <input
-              className="input font-mono"
-              value={form.identityNumber}
-              onChange={(e) => setForm({ ...form, identityNumber: e.target.value })}
-              placeholder="Auto-assigned if left empty"
-            />
-          </div>
-          <div>
-            <label className="label">{t('ui.phone')}</label>
-            <input
-              className="input"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label">{t('ui.fullAddress')}</label>
-            <textarea
-              className="input min-h-[72px]"
-              rows={3}
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder={t('pageBody.teachers.addressPlaceholder')}
-            />
-          </div>
-        </FormSection>
-        <FormSection title={t('ui.qualifications')}>
-          <div>
-            <label className="label">{t('ui.qualifications')}</label>
-            <textarea
-              className="input min-h-[72px]"
-              rows={3}
-              value={form.qualifications}
-              onChange={(e) => setForm({ ...form, qualifications: e.target.value })}
-              placeholder={t('pageBody.teachers.qualificationsPlaceholder')}
-            />
-          </div>
-        </FormSection>
-        <FormSection title={t('ui.bankDetails')}>
-          <div>
-            <label className="label">{t('ui.bankName')}</label>
-            <input
-              className="input"
-              value={form.bankName}
-              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-              placeholder={t('pageBody.teachers.bankNamePlaceholder')}
-            />
-          </div>
-          <div>
-            <label className="label">{t('ui.bankAccount')}</label>
-            <input
-              className="input font-mono"
-              value={form.bankAccount}
-              onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
-              placeholder={t('pageBody.teachers.bankAccountPlaceholder')}
-            />
-          </div>
-        </FormSection>
+        <StaffProfileForm
+          form={form}
+          onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+          photoPreview={photoPreview}
+          onPhotoPick={handlePhotoPick}
+          onPhotoClear={handleRemovePhoto}
+          fileRef={fileInputRef}
+          showSubject
+          showAddress
+          showNote
+        />
       </FormModeModal>
 
       <div className="card p-0 overflow-hidden">

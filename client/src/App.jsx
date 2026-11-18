@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { ProtectedRoute, PublicRoute, RequirePermission } from './components/ProtectedRoute';
 import { CampusProvider } from './context/CampusContext';
@@ -19,6 +19,7 @@ import Attendance from './pages/Attendance';
 import Fees from './pages/Fees';
 import FinanceDesk from './pages/FinanceDesk';
 import TuitionLedger from './pages/TuitionLedger';
+import FeeExpenses from './pages/FeeExpenses';
 import CreateFee from './pages/CreateFee';
 import FeeReceipt from './pages/FeeReceipt';
 import AcademicYears from './pages/AcademicYears';
@@ -53,6 +54,8 @@ import Profile from './pages/Profile';
 import ProfileShell from './components/ProfileShell';
 import Reports from './pages/Reports';
 import Updates from './pages/Updates';
+import AccessControl from './pages/AccessControl';
+import Inventory from './pages/Inventory';
 import WebsiteCms from './pages/WebsiteCms';
 import PublicLayout from './pages/public/PublicLayout';
 import PublicHome from './pages/public/PublicHome';
@@ -69,11 +72,13 @@ import PublicAnnouncements from './pages/public/PublicAnnouncements';
 import PublicAdmissions from './pages/public/PublicAdmissions';
 import PublicOnlineRegistration from './pages/public/PublicOnlineRegistration';
 import PublicContact from './pages/public/PublicContact';
+import StatusPage from './pages/public/StatusPage';
 
 export default function App() {
   return (
     <div className="app-frame">
     <Routes>
+      <Route path="/status" element={<StatusPage />} />
       <Route path="/verify/bulletin/:token" element={<VerifyBulletin />} />
       <Route path="/bulletin/pdf/:token" element={<BulletinPdfLink />} />
 
@@ -127,6 +132,7 @@ export default function App() {
             <Route path="fees" element={<RequirePermission permission={PERMISSIONS.FEES}><Fees /></RequirePermission>} />
             <Route path="finance" element={<RequirePermission permission={PERMISSIONS.FEES}><FinanceDesk /></RequirePermission>} />
             <Route path="tuition-ledger" element={<RequirePermission permission={PERMISSIONS.FEES}><TuitionLedger /></RequirePermission>} />
+            <Route path="fee-expenses" element={<RequirePermission permission={PERMISSIONS.FEES}><FeeExpenses /></RequirePermission>} />
             <Route path="fees/new" element={<RequirePermission permission={PERMISSIONS.FEES}><CreateFee /></RequirePermission>} />
             <Route path="fees/:id" element={<RequirePermission permission={PERMISSIONS.FEES}><FeeReceipt /></RequirePermission>} />
             <Route path="library" element={<RequirePermission permission={PERMISSIONS.LIBRARY}><Library /></RequirePermission>} />
@@ -151,6 +157,9 @@ export default function App() {
             <Route path="academic-years" element={<RequirePermission permission={PERMISSIONS.ACADEMIC_YEAR}><AcademicYears /></RequirePermission>} />
             <Route path="academic-years/deliberation" element={<RequirePermission permission={PERMISSIONS.ACADEMIC_YEAR}><Deliberation /></RequirePermission>} />
             <Route path="users" element={<RequirePermission permission={PERMISSIONS.USERS}><Users /></RequirePermission>} />
+            <Route path="access" element={<RequirePermission permission={PERMISSIONS.CAMPUSES}><AccessControl /></RequirePermission>} />
+            <Route path="inventory" element={<Navigate to="overview" replace />} />
+            <Route path="inventory/:section" element={<RequirePermission permission={PERMISSIONS.INVENTORY}><Inventory /></RequirePermission>} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Route>

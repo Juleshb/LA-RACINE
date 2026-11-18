@@ -67,7 +67,7 @@ const FINANCE_ROLES = new Set(['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'A
 export default function FinanceDesk() {
   const { campusId } = useCampus();
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const canImport = FINANCE_ROLES.has(user?.role);
   const [tab, setTab] = useState('cash');
   const [loading, setLoading] = useState(false);
@@ -351,6 +351,9 @@ export default function FinanceDesk() {
         description={t('pages.finance.description')}
         action={(
           <div className="flex flex-wrap gap-2">
+            <Link to={`/campus/${campusId}/fee-expenses`} className="btn-secondary text-sm">
+              {language === 'fr' ? 'Frais et dépenses' : 'Fees & expenses'}
+            </Link>
             <Link to={`/campus/${campusId}/tuition-ledger`} className="btn-secondary text-sm">
               {t('pages.tuitionLedger.title')}
             </Link>

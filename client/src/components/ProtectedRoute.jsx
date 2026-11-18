@@ -1,6 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../config/permissions';
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
@@ -38,8 +37,8 @@ export function PublicRoute() {
 }
 
 export function RequirePermission({ permission, denyRoles = [], children }) {
-  const { user } = useAuth();
-  if (denyRoles.includes(user?.role) || !hasPermission(user.role, permission)) {
+  const { user, hasPermission: can } = useAuth();
+  if (denyRoles.includes(user?.role) || !can(permission)) {
     return <Navigate to="/app" replace />;
   }
   return children;

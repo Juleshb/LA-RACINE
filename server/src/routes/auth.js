@@ -2,6 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { signToken, userSelect } from '../lib/auth.js';
+import { displayName, pickStaffProfile } from '../lib/staffProfile.js';
+import { resolveStaffIdentityNumber } from '../lib/staffIdentity.js';
 import { authenticate } from '../middleware/auth.js';
 import { ROLE_LABELS, ROLE_PERMISSIONS, isManagerRole } from '../config/permissions.js';
 import { issuePasswordReset } from '../lib/passwordReset.js';
@@ -28,6 +30,7 @@ const STAFF_ROLES = new Set([
   'ACCOUNTANT',
   'ACTIVITIES_MANAGER',
   'LIBRARIAN',
+  'INVENTORY_MANAGER',
 ]);
 
 const router = Router();
@@ -54,7 +57,14 @@ const meUserSelect = {
   ...userSelect,
   photoPath: true,
   photoMimeType: true,
-  teacher: { select: { id: true, name: true, subject: true, email: true, phone: true, campusId: true } },
+  teacher: {
+    select: {
+      id: true, name: true, subject: true, email: true, phone: true, campusId: true,
+      lastName: true, postName: true, firstName: true, qualifications: true,
+      bankName: true, bankAccount: true, contractType: true, hireDate: true,
+      professionalExperience: true, identityNumber: true,
+    },
+  },
   student: {
     select: {
       id: true, studentId: true, firstName: true, lastName: true, postName: true, campusId: true,
@@ -372,6 +382,21 @@ router.patch('/me', authenticate, async (req, res) => {
       data.phone = value;
     }
 
+    if (STAFF_ROLES.has(user.role)) {
+      Object.assign(data, pickStaffProfile(req.body));
+      delete data.accountStatus;
+      delete data.isActive;
+      if (req.body.gender !== undefined) {
+        data.gender = req.body.gender === 'MALE' || req.body.gender === 'FEMALE' ? req.body.gender : null;
+      }
+      if (req.body.identityNumber !== undefined) {
+        data.identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber, {
+          userId: user.id,
+          teacherId: user.teacherId,
+        });
+      }
+    }
+
     if (Object.keys(data).length) {
       await prisma.user.update({ where: { id: user.id }, data });
     }
@@ -413,6 +438,24 @@ router.patch('/me', authenticate, async (req, res) => {
           await syncPhotoToLinkedTeacher(prisma, { teacherId: user.teacherId, ...saved });
         }
       }
+    }
+
+    if (user.teacherId) {
+      const saved = await prisma.user.findUnique({ where: { id: user.id } });
+      const name = displayName(saved || {});
+      await prisma.teacher.update({
+        where: { id: user.teacherId },
+        data: {
+          ...(name ? { name, lastName: saved.lastName, postName: saved.postName, firstName: saved.firstName } : {}),
+          phone: saved.phone,
+          bankName: saved.bankName,
+          bankAccount: saved.bankAccount,
+          contractType: saved.contractType,
+          hireDate: saved.hireDate,
+          qualifications: saved.qualification,
+          professionalExperience: saved.professionalExperience,
+        },
+      }).catch(() => {});
     }
 
     const response = await buildMeResponse(user.id);

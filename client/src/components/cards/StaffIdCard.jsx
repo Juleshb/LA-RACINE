@@ -11,6 +11,7 @@ const ROLE_FR = {
   ACCOUNTANT: 'Comptable',
   ACTIVITIES_MANAGER: 'Responsable des activités',
   LIBRARIAN: 'Bibliothécaire',
+  INVENTORY_MANAGER: 'Responsable d’inventaire',
 };
 
 function Field({ label, value, strong }) {

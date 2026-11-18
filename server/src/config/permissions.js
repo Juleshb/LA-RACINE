@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   WEBSITE: 'website',
   AI_TUTOR: 'ai_tutor',
   STAFF_GUIDE: 'staff_guide',
+  INVENTORY: 'inventory',
 };
 
 export const ROLE_LABELS = {
@@ -39,6 +40,7 @@ export const ROLE_LABELS = {
   ACCOUNTANT: 'Accountant',
   ACTIVITIES_MANAGER: 'Activities Manager',
   LIBRARIAN: 'Librarian',
+  INVENTORY_MANAGER: 'Inventory Manager',
 };
 
 /** Roles with full org-wide access (same permissions as School Manager). */
@@ -71,6 +73,7 @@ const CAMPUS_ADMIN = [
   PERMISSIONS.REPORTS,
   PERMISSIONS.WEBSITE,
   PERMISSIONS.STAFF_GUIDE,
+  PERMISSIONS.INVENTORY,
 ];
 
 // SCHOOL_MANAGER / SCHOOL_ADMIN keep exclusive control of users and campuses
@@ -98,6 +101,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPORTS,
     PERMISSIONS.WEBSITE,
     PERMISSIONS.STAFF_GUIDE,
+    PERMISSIONS.INVENTORY,
   ],
   HEAD_OF_DISCIPLINE: [
     PERMISSIONS.DASHBOARD,
@@ -137,6 +141,13 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPORTS,
     PERMISSIONS.STAFF_GUIDE,
   ],
+  INVENTORY_MANAGER: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.INVENTORY,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+    PERMISSIONS.STAFF_GUIDE,
+  ],
   TEACHER: [
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.STUDENTS,
@@ -153,6 +164,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.STAFF_GUIDE,
+    PERMISSIONS.INVENTORY,
   ],
   PARENT: [
     PERMISSIONS.DASHBOARD,
@@ -196,13 +208,19 @@ export function authorizeRoles(...roles) {
 }
 
 export function authorizePermission(permission) {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      const { allows, requestAction } = await import('../lib/accessControl.js');
+      const allowed = await allows(req.user.role, req.campusId, permission, requestAction(req));
+      if (!allowed) {
+        return res.status(403).json({ error: 'You do not have permission for this action' });
+      }
+      next();
+    } catch (error) {
+      next(error);
     }
-    if (!hasPermission(req.user.role, permission)) {
-      return res.status(403).json({ error: 'You do not have permission for this action' });
-    }
-    next();
   };
 }

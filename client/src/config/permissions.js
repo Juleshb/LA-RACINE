@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   WEBSITE: 'website',
   AI_TUTOR: 'ai_tutor',
   STAFF_GUIDE: 'staff_guide',
+  INVENTORY: 'inventory',
 };
 
 export const ROLE_LABELS = {
@@ -39,6 +40,7 @@ export const ROLE_LABELS = {
   ACCOUNTANT: 'Accountant',
   ACTIVITIES_MANAGER: 'Activities Manager',
   LIBRARIAN: 'Librarian',
+  INVENTORY_MANAGER: 'Inventory Manager',
 };
 
 /** Roles with full org-wide access (same permissions as School Manager). */
@@ -72,6 +74,7 @@ const CAMPUS_ADMIN = [
   PERMISSIONS.REPORTS,
   PERMISSIONS.WEBSITE,
   PERMISSIONS.STAFF_GUIDE,
+  PERMISSIONS.INVENTORY,
 ];
 
 export const ROLE_PERMISSIONS = {
@@ -98,6 +101,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPORTS,
     PERMISSIONS.WEBSITE,
     PERMISSIONS.STAFF_GUIDE,
+    PERMISSIONS.INVENTORY,
   ],
   HEAD_OF_DISCIPLINE: [
     PERMISSIONS.DASHBOARD,
@@ -137,6 +141,13 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.REPORTS,
     PERMISSIONS.STAFF_GUIDE,
   ],
+  INVENTORY_MANAGER: [
+    PERMISSIONS.DASHBOARD,
+    PERMISSIONS.INVENTORY,
+    PERMISSIONS.COMMUNICATION,
+    PERMISSIONS.REPORTS,
+    PERMISSIONS.STAFF_GUIDE,
+  ],
   TEACHER: [
     PERMISSIONS.DASHBOARD,
     PERMISSIONS.STUDENTS,
@@ -153,6 +164,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.TRANSPORT,
     PERMISSIONS.COMMUNICATION,
     PERMISSIONS.STAFF_GUIDE,
+    PERMISSIONS.INVENTORY,
   ],
   PARENT: [
     PERMISSIONS.DASHBOARD,
@@ -178,6 +190,32 @@ export const ROLE_PERMISSIONS = {
   ],
 };
 
+const STOCK_DESK = ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'INVENTORY_MANAGER'];
+const STOCK_VIEW = [...STOCK_DESK, 'HEAD_OF_STUDIES', 'SECRETARY'];
+const STOCK_REQUEST = [...STOCK_VIEW, 'TEACHER'];
+
+function stockNav(to, icon, label, navSlug, roles) {
+  return { to, permission: PERMISSIONS.INVENTORY, icon, label, navSlug, roles };
+}
+
+export const STOCK_NAV_ITEMS = [
+  stockNav('inventory/overview', 'LayoutDashboard', 'Overview', 'stock-overview', STOCK_VIEW),
+  stockNav('inventory/articles', 'Package', 'Articles', 'stock-articles', STOCK_DESK),
+  stockNav('inventory/categories', 'BookOpen', 'Categories', 'stock-categories', STOCK_DESK),
+  stockNav('inventory/stores', 'School', 'Stores', 'stock-stores', STOCK_DESK),
+  stockNav('inventory/suppliers', 'Users', 'Suppliers', 'stock-suppliers', STOCK_DESK),
+  stockNav('inventory/purchases', 'Wallet', 'Purchases', 'stock-purchases', STOCK_DESK),
+  stockNav('inventory/entries', 'ClipboardCheck', 'Stock in', 'stock-entries', STOCK_DESK),
+  stockNav('inventory/exits', 'ClipboardList', 'Stock out', 'stock-exits', STOCK_DESK),
+  stockNav('inventory/requests', 'FileText', 'Requests', 'stock-requests', STOCK_REQUEST),
+  stockNav('inventory/transfers', 'Bus', 'Transfers', 'stock-transfers', STOCK_DESK),
+  stockNav('inventory/count', 'Award', 'Stock count', 'stock-count', STOCK_DESK),
+  stockNav('inventory/assets', 'CreditCard', 'Equipment', 'stock-assets', STOCK_DESK),
+  stockNav('inventory/reports', 'BarChart3', 'Stock reports', 'stock-reports', STOCK_DESK),
+  stockNav('inventory/history', 'FileText', 'History', 'stock-history', STOCK_DESK),
+  stockNav('inventory/settings', 'Shield', 'Rules', 'stock-rules', STOCK_DESK),
+];
+
 export const NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Dashboard' },
   { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
@@ -196,10 +234,11 @@ export const NAV_ITEMS = [
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees' },
   { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
   { to: 'tuition-ledger', permission: PERMISSIONS.FEES, icon: 'ClipboardList', label: 'Tuition ledger' },
+  { to: 'fee-expenses', permission: PERMISSIONS.FEES, icon: 'Scale', label: 'Fees & expenses', navSlug: 'fee-expenses' },
   { to: 'library', permission: PERMISSIONS.LIBRARY, icon: 'Library', label: 'Library' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning' },
-  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Science quiz' },
+  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Online quiz' },
   { to: 'timetable', permission: PERMISSIONS.TIMETABLE, icon: 'Clock', label: 'Timetable' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'FileText', label: 'Homework' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Online classes' },
@@ -209,6 +248,8 @@ export const NAV_ITEMS = [
   { to: 'website', permission: PERMISSIONS.WEBSITE, icon: 'Globe', label: 'Website CMS' },
   { to: 'academic-years', permission: PERMISSIONS.ACADEMIC_YEAR, icon: 'Calendar', label: 'Academic Year' },
   { to: 'users', permission: PERMISSIONS.USERS, icon: 'Shield', label: 'Users' },
+  { to: 'access', permission: PERMISSIONS.CAMPUSES, icon: 'Shield', label: 'Access' },
+  ...STOCK_NAV_ITEMS,
 ];
 
 /** Parent-facing menu — labels and routes tuned for families */
@@ -254,6 +295,7 @@ export const TEACHER_NAV_ITEMS = [
   { to: 'timetable', permission: PERMISSIONS.TIMETABLE, icon: 'Clock', label: 'My timetable' },
   { to: 'extracurricular', permission: PERMISSIONS.EXTRACURRICULAR, icon: 'Sparkles', label: 'Activities' },
   { to: 'transport', permission: PERMISSIONS.TRANSPORT, icon: 'Bus', label: 'Transport' },
+  { to: 'inventory/requests', permission: PERMISSIONS.INVENTORY, icon: 'Package', label: 'Material requests', navSlug: 'stock-requests' },
 ];
 
 export const TEACHER_NAV_GROUPS = [
@@ -261,7 +303,7 @@ export const TEACHER_NAV_GROUPS = [
   { id: 'messages', title: 'Messages', permissions: [PERMISSIONS.COMMUNICATION] },
   { id: 'classroom', title: 'My classroom', permissions: [PERMISSIONS.CLASSES, PERMISSIONS.STUDENTS, PERMISSIONS.COURSES, PERMISSIONS.ATTENDANCE] },
   { id: 'teaching', title: 'Teaching', permissions: [PERMISSIONS.MARKS, PERMISSIONS.HOMEWORK, PERMISSIONS.ONLINE_CLASSES, PERMISSIONS.TIMETABLE] },
-  { id: 'school', title: 'School', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.TRANSPORT] },
+  { id: 'school', title: 'School', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.TRANSPORT, PERMISSIONS.INVENTORY] },
 ];
 
 /** Student-facing menu — learning resources only */
@@ -273,7 +315,7 @@ export const STUDENT_NAV_ITEMS = [
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes', shortLabel: 'Live' },
   { to: 'e-library', permission: PERMISSIONS.E_LIBRARY, icon: 'Library', label: 'E-Library', shortLabel: 'E-Library' },
   { to: 'e-learning', permission: PERMISSIONS.E_LEARNING, icon: 'GraduationCap', label: 'E-Learning', shortLabel: 'Learning' },
-  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Science quiz', shortLabel: 'Quiz' },
+  { to: 'science-quiz', permission: PERMISSIONS.E_LEARNING, icon: 'FlaskConical', label: 'Online quiz', shortLabel: 'Quiz' },
 ];
 
 export const STUDENT_NAV_GROUPS = [
@@ -294,6 +336,7 @@ export const ACCOUNTANT_NAV_ITEMS = [
   { to: 'fees', permission: PERMISSIONS.FEES, icon: 'Wallet', label: 'Fees & payments' },
   { to: 'finance', permission: PERMISSIONS.FEES, icon: 'BarChart3', label: 'Finance desk' },
   { to: 'tuition-ledger', permission: PERMISSIONS.FEES, icon: 'ClipboardList', label: 'Tuition ledger' },
+  { to: 'fee-expenses', permission: PERMISSIONS.FEES, icon: 'Scale', label: 'Fees & expenses', navSlug: 'fee-expenses' },
   { to: 'transport', permission: PERMISSIONS.TRANSPORT, icon: 'Bus', label: 'Transport' },
   { to: 'academic-years', permission: PERMISSIONS.ACADEMIC_YEAR, icon: 'Calendar', label: 'Academic year' },
   { to: 'school', permission: PERMISSIONS.SCHOOL, icon: 'School', label: 'School profile' },
@@ -321,6 +364,18 @@ export const ACTIVITIES_MANAGER_NAV_GROUPS = [
   { id: 'activities', title: 'Activities', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.REPORTS] },
 ];
 
+export const INVENTORY_MANAGER_NAV_ITEMS = [
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
+  { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
+  { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
+  ...STOCK_NAV_ITEMS,
+];
+
+export const INVENTORY_MANAGER_NAV_GROUPS = [
+  { id: 'overview', title: 'Overview', permissions: [PERMISSIONS.DASHBOARD, PERMISSIONS.STAFF_GUIDE, PERMISSIONS.COMMUNICATION] },
+  { id: 'stock', title: 'Stock & inventory', permissions: [PERMISSIONS.INVENTORY] },
+];
+
 const STAFF_ROLES = new Set([
   'SCHOOL_MANAGER',
   'SCHOOL_ADMIN',
@@ -342,13 +397,15 @@ export const ADMIN_NAV_GROUPS = [
   { id: 'library', title: 'Library', permissions: [PERMISSIONS.LIBRARY] },
   { id: 'activities', title: 'Activities & transport', permissions: [PERMISSIONS.EXTRACURRICULAR, PERMISSIONS.TRANSPORT] },
   { id: 'finance', title: 'Finance', permissions: [PERMISSIONS.FEES] },
-  { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.ACADEMIC_YEAR, PERMISSIONS.SCHOOL, PERMISSIONS.WEBSITE] },
+  { id: 'stock', title: 'Stock & inventory', permissions: [PERMISSIONS.INVENTORY] },
+  { id: 'administration', title: 'Administration', permissions: [PERMISSIONS.ACADEMIC_YEAR, PERMISSIONS.SCHOOL, PERMISSIONS.WEBSITE, PERMISSIONS.CAMPUSES] },
 ];
 
 /** @deprecated use ADMIN_NAV_GROUPS */
 export const MANAGER_NAV_GROUPS = ADMIN_NAV_GROUPS;
 
-export function hasPermission(role, permission) {
+export function hasPermission(role, permission, grants) {
+  if (Array.isArray(grants)) return grants.includes(permission);
   return (ROLE_PERMISSIONS[role] || []).includes(permission);
 }
 
@@ -356,7 +413,12 @@ function buildNavPath(campusId, to) {
   return campusId ? `/campus/${campusId}${to ? `/${to}` : ''}` : to;
 }
 
-export function getNavForRole(role, campusId) {
+function showNavItem(item, role, grants) {
+  if (item.roles && !item.roles.includes(role)) return false;
+  return hasPermission(role, item.permission, grants);
+}
+
+export function getNavForRole(role, campusId, grants) {
   const source = role === 'PARENT'
     ? PARENT_NAV_ITEMS
     : role === 'TEACHER'
@@ -367,18 +429,20 @@ export function getNavForRole(role, campusId) {
           ? ACCOUNTANT_NAV_ITEMS
           : role === 'ACTIVITIES_MANAGER'
             ? ACTIVITIES_MANAGER_NAV_ITEMS
-            : NAV_ITEMS;
-  const base = source.filter((item) => hasPermission(role, item.permission));
+            : role === 'INVENTORY_MANAGER'
+              ? INVENTORY_MANAGER_NAV_ITEMS
+              : NAV_ITEMS;
+  const base = source.filter((item) => showNavItem(item, role, grants));
   return base.map((item) => ({
     ...item,
     to: buildNavPath(campusId, item.to),
   }));
 }
 
-export function getNavGroupsForRole(role, campusId) {
+export function getNavGroupsForRole(role, campusId, grants) {
   if (role === 'ACCOUNTANT') {
     const items = ACCOUNTANT_NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -393,7 +457,7 @@ export function getNavGroupsForRole(role, campusId) {
 
   if (role === 'ACTIVITIES_MANAGER') {
     const items = ACTIVITIES_MANAGER_NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -406,9 +470,24 @@ export function getNavGroupsForRole(role, campusId) {
     })).filter((group) => group.items.length > 0);
   }
 
+  if (role === 'INVENTORY_MANAGER') {
+    const items = INVENTORY_MANAGER_NAV_ITEMS
+      .filter((item) => showNavItem(item, role, grants))
+      .map((item) => ({
+        ...item,
+        to: buildNavPath(campusId, item.to),
+      }));
+
+    return INVENTORY_MANAGER_NAV_GROUPS.map((group) => ({
+      id: group.id,
+      title: group.title,
+      items: items.filter((item) => group.permissions.includes(item.permission)),
+    })).filter((group) => group.items.length > 0);
+  }
+
   if (STAFF_ROLES.has(role)) {
     const items = NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -423,7 +502,7 @@ export function getNavGroupsForRole(role, campusId) {
 
   if (role === 'PARENT') {
     const items = PARENT_NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -438,7 +517,7 @@ export function getNavGroupsForRole(role, campusId) {
 
   if (role === 'TEACHER') {
     const items = TEACHER_NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -453,7 +532,7 @@ export function getNavGroupsForRole(role, campusId) {
 
   if (role === 'STUDENT') {
     const items = STUDENT_NAV_ITEMS
-      .filter((item) => hasPermission(role, item.permission))
+      .filter((item) => showNavItem(item, role, grants))
       .map((item) => ({
         ...item,
         to: buildNavPath(campusId, item.to),
@@ -471,6 +550,7 @@ export function getNavGroupsForRole(role, campusId) {
 
 export function getLoginRedirect(user, defaultCampusId) {
   if (isManagerRole(user.role)) return '/campuses';
+  if (user.role === 'INVENTORY_MANAGER' && defaultCampusId) return `/campus/${defaultCampusId}/inventory/overview`;
   if (defaultCampusId) return `/campus/${defaultCampusId}`;
   return '/campuses';
 }

@@ -16,6 +16,7 @@ const ROLES = {
     ACCOUNTANT: 'Accountant',
     ACTIVITIES_MANAGER: 'Activities Manager',
     LIBRARIAN: 'Librarian',
+    INVENTORY_MANAGER: 'Inventory Manager',
     default: 'staff member',
   },
   fr: {
@@ -28,6 +29,7 @@ const ROLES = {
     ACCOUNTANT: 'comptable',
     ACTIVITIES_MANAGER: 'responsable des activités',
     LIBRARIAN: 'bibliothécaire',
+    INVENTORY_MANAGER: 'responsable d’inventaire',
     default: 'membre du personnel',
   },
   rw: {
@@ -40,6 +42,7 @@ const ROLES = {
     ACCOUNTANT: 'umucungamari',
     ACTIVITIES_MANAGER: 'umuyobozi w’ibikorwa',
     LIBRARIAN: 'umukozi w’isomero',
+    INVENTORY_MANAGER: 'umuyobozi w’ububiko',
     default: 'umukozi',
   },
   sw: {
@@ -52,6 +55,7 @@ const ROLES = {
     ACCOUNTANT: 'muhasibu',
     ACTIVITIES_MANAGER: 'mkuu wa shughuli',
     LIBRARIAN: 'mkutubi',
+    INVENTORY_MANAGER: 'mkuu wa hifadhi',
     default: 'mfanyakazi',
   },
 };
