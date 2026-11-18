@@ -1,13 +1,13 @@
 /** Product updates shown on the Latest updates page.
  * School managers and school admins see every item.
  * Other roles see an item only when their role is listed.
- * commit is the git revision when the work was committed. Null means it is in the working copy and not committed yet.
+ * commit is the git revision when the work was committed.
  */
 export const PRODUCT_UPDATES = [
   {
     id: 'updates-page',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER'],
     en: {
       title: 'Latest updates and support requests',
@@ -31,7 +31,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'activities-roster',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['TEACHER', 'PARENT', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'ACTIVITIES_MANAGER'],
     en: {
       title: 'Activities roster',
@@ -55,7 +55,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'campus-statistics',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'ACCOUNTANT'],
     en: {
       title: 'Campus statistics by boys and girls',
@@ -79,7 +79,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'attendance-desk',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['TEACHER', 'PARENT', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE'],
     en: {
       title: 'Attendance desk',
@@ -103,7 +103,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'science-quiz',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['TEACHER', 'STUDENT', 'PARENT', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE'],
     en: {
       title: 'School science quizzes',
@@ -127,7 +127,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'library-desk',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['LIBRARIAN', 'SECRETARY', 'HEAD_OF_STUDIES'],
     en: {
       title: 'Library desk',
@@ -151,7 +151,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'tuition-template',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['ACCOUNTANT', 'SECRETARY', 'HEAD_OF_STUDIES'],
     en: {
       title: 'School tuition workings',
@@ -175,7 +175,7 @@ export const PRODUCT_UPDATES = [
   {
     id: 'message-delete',
     date: '2026-11-18',
-    commit: null,
+    commit: '464981d',
     roles: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'],
     en: {
       title: 'Delete a sent platform message',
