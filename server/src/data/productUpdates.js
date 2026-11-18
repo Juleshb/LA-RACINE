@@ -5,10 +5,174 @@
  */
 export const PRODUCT_UPDATES = [
   {
+    id: 'staff-dossier',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER', 'INVENTORY_MANAGER'],
+    en: {
+      title: 'Staff and teacher profile',
+      summary: 'Editing a user, registering staff or a teacher, and a staff profile now use the same dossier.',
+      points: [
+        'Identity and photo, bank details, contract and hire date, and qualifications and experience.',
+        'System access keeps the role, the status (active, inactive, or suspended), and the password.',
+        'Student enrollment keeps its own form.',
+      ],
+    },
+    fr: {
+      title: 'Profil du personnel et de l’enseignant',
+      summary: 'Modifier un utilisateur, inscrire le personnel ou un enseignant, et le profil du personnel utilisent le même dossier.',
+      points: [
+        'Identité et photo, informations bancaires, contrat et date d’embauche, qualifications et expériences.',
+        'L’accès au système garde le rôle, le statut (actif, inactif ou suspendu) et le mot de passe.',
+        'L’inscription d’un élève garde son propre formulaire.',
+      ],
+    },
+  },
+  {
+    id: 'portal-search',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER', 'INVENTORY_MANAGER'],
+    en: {
+      title: 'Search from the top bar',
+      summary: 'Search opens in the center of the screen, from the top bar or with ⌘K (Ctrl+K).',
+      points: [
+        'Find a person, student, parent, menu, or record by name, email, or code.',
+        'Results follow what your account is allowed to open.',
+      ],
+    },
+    fr: {
+      title: 'Recherche depuis la barre du haut',
+      summary: 'La recherche s’ouvre au centre de l’écran, depuis la barre du haut ou avec ⌘K (Ctrl+K).',
+      points: [
+        'Trouvez une personne, un élève, un parent, un menu ou une fiche par nom, e-mail ou code.',
+        'Les résultats suivent ce que votre compte a le droit d’ouvrir.',
+      ],
+    },
+  },
+  {
+    id: 'sidebar-rail',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER', 'INVENTORY_MANAGER'],
+    en: {
+      title: 'Collapsible sidebar',
+      summary: 'The sidebar starts collapsed to icons and opens when the pointer is over it.',
+      points: [
+        'Choosing a menu collapses it again so the page stays clear.',
+        'You can leave it open until the next menu choice.',
+      ],
+    },
+    fr: {
+      title: 'Menu latéral repliable',
+      summary: 'Le menu latéral commence replié sur les icônes et s’ouvre quand le pointeur est dessus.',
+      points: [
+        'Choisir un menu le replie à nouveau pour laisser la page visible.',
+        'Vous pouvez le laisser ouvert jusqu’au prochain choix de menu.',
+      ],
+    },
+  },
+  {
+    id: 'role-access',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'],
+    en: {
+      title: 'Permissions by role',
+      summary: 'Each campus can save which rights a role has. Accounts with that role inherit the saved profile.',
+      points: [
+        'The Access page shows the permission matrix, role profiles, and a change log.',
+        'Until a profile is saved, the official rights stay in place.',
+        'The school manager profile cannot be emptied.',
+      ],
+    },
+    fr: {
+      title: 'Permissions par rôle',
+      summary: 'Chaque campus peut enregistrer les droits d’un rôle. Les comptes de ce rôle héritent du profil enregistré.',
+      points: [
+        'La page Accès montre la matrice des permissions, les profils de rôle et le journal des changements.',
+        'Tant qu’un profil n’est pas enregistré, les droits officiels restent en place.',
+        'Le profil du directeur ne peut pas être vidé.',
+      ],
+    },
+  },
+  {
+    id: 'stock-inventory',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'TEACHER', 'INVENTORY_MANAGER'],
+    en: {
+      title: 'Stock and inventory',
+      summary: 'Stock covers articles, stores, purchases, requests, transfers, and a physical count.',
+      points: [
+        'The inventory manager runs the stock desk. Teachers can send a material request.',
+        'The secretary can view the overview and requests. The head of studies can approve a request.',
+        'Stock moves when a request is served or a transfer is received, not when it is only approved.',
+      ],
+    },
+    fr: {
+      title: 'Stock et inventaire',
+      summary: 'Le stock couvre les articles, les magasins, les achats, les demandes, les transferts et l’inventaire physique.',
+      points: [
+        'Le gestionnaire de stock tient le bureau. Les enseignants peuvent envoyer une demande de matériel.',
+        'Le secrétaire peut voir la vue d’ensemble et les demandes. Le responsable des études peut approuver une demande.',
+        'Le stock bouge quand une demande est servie ou un transfert reçu, pas seulement quand elle est approuvée.',
+      ],
+    },
+  },
+  {
+    id: 'fees-expenses',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'ACCOUNTANT'],
+    en: {
+      title: 'Fees and expenses',
+      summary: 'Finance has a monthly cash summary for the academic year.',
+      points: [
+        'Fees collected are filled from paid receipts in Rwandan francs for the open campus and year.',
+        'Expenses are entered by hand. The profit is fees collected minus those expenses.',
+        'Dollar payments stay out of this column.',
+      ],
+    },
+    fr: {
+      title: 'Frais et dépenses',
+      summary: 'La finance a un résumé de caisse mensuel pour l’année scolaire.',
+      points: [
+        'Les frais encaissés viennent des reçus payés en francs rwandais pour le campus et l’année ouverts.',
+        'Les dépenses se saisissent à la main. Le résultat est les frais encaissés moins ces dépenses.',
+        'Les paiements en dollars restent hors de cette colonne.',
+      ],
+    },
+  },
+  {
+    id: 'system-status',
+    date: '2026-11-18',
+    commit: '8f4462b',
+    roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER', 'INVENTORY_MANAGER'],
+    en: {
+      title: 'System status',
+      summary: 'A public status page shows whether the website, portal, students, fees, library, and database are up.',
+      points: [
+        'The page is linked from the website footer.',
+        'A day is recorded when the status is checked. Days with no check stay unmarked.',
+        'Someone can subscribe an email and receive a message when a service changes state.',
+      ],
+    },
+    fr: {
+      title: 'État du système',
+      summary: 'Une page publique indique si le site, le portail, les élèves, les frais, la bibliothèque et la base de données répondent.',
+      points: [
+        'La page est liée depuis le pied de page du site.',
+        'Un jour est enregistré quand l’état est vérifié. Les jours sans vérification restent sans marque.',
+        'Une personne peut inscrire un e-mail et recevoir un message quand un service change d’état.',
+      ],
+    },
+  },
+  {
     id: 'updates-page',
     date: '2026-11-18',
     commit: '464981d',
-    roles: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER'],
+    roles: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE', 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'LIBRARIAN', 'ACTIVITIES_MANAGER', 'INVENTORY_MANAGER'],
     en: {
       title: 'Latest updates and support requests',
       summary: 'This page lists what was added and when. You can also ask for a new change or contact support.',
@@ -106,8 +270,8 @@ export const PRODUCT_UPDATES = [
     commit: '464981d',
     roles: ['TEACHER', 'STUDENT', 'PARENT', 'SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE'],
     en: {
-      title: 'School science quizzes',
-      summary: 'Staff can create and publish a science quiz. Students and parents can play the published quizzes.',
+      title: 'Online quiz',
+      summary: 'Staff can create and publish an online quiz. Students and parents can play the published quizzes.',
       points: [
         'Add questions, four answers, the correct answer, and a short note.',
         'A quiz stays a draft until it is published.',
@@ -115,8 +279,8 @@ export const PRODUCT_UPDATES = [
       ],
     },
     fr: {
-      title: 'Quiz de sciences de l’école',
-      summary: 'Le personnel peut créer et publier un quiz de sciences. Les élèves et les parents jouent les quiz publiés.',
+      title: 'Quiz en ligne',
+      summary: 'Le personnel peut créer et publier un quiz en ligne. Les élèves et les parents jouent les quiz publiés.',
       points: [
         'Ajoutez des questions, quatre réponses, la bonne réponse et une courte note.',
         'Un quiz reste un brouillon tant qu’il n’est pas publié.',

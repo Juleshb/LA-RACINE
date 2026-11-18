@@ -13,6 +13,7 @@ const ROLE_FILTERS = [
   { id: 'accountant', roles: ['ACCOUNTANT'] },
   { id: 'librarian', roles: ['LIBRARIAN'] },
   { id: 'activities', roles: ['ACTIVITIES_MANAGER'] },
+  { id: 'inventory', roles: ['INVENTORY_MANAGER'] },
   { id: 'staff', roles: ['SECRETARY', 'HEAD_OF_STUDIES', 'HEAD_OF_DISCIPLINE'] },
 ];
 
