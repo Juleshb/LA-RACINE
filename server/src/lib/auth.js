@@ -26,6 +26,7 @@ export const userSelect = {
   mustChangePassword: true,
   phone: true,
   identityNumber: true,
+  gender: true,
   createdAt: true,
   campus: { select: { id: true, name: true, code: true, city: true } },
 };

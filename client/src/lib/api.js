@@ -119,6 +119,8 @@ export const api = {
     }),
   getRoles: () => request('/auth/roles'),
 
+  getProductUpdates: () => request('/updates'),
+  requestProductChange: (data) => request('/updates/requests', { method: 'POST', body: JSON.stringify(data) }),
   getCampuses: () => request('/campuses'),
   getCampus: (id) => request(`/campuses/${id}`),
   createCampus: (data) => request('/campuses', { method: 'POST', body: JSON.stringify(data) }),
@@ -421,7 +423,11 @@ export const api = {
   getTransportUnpaidFees: () => request('/fees/transport-unpaid'),
   getTuitionLedger: (level = 'nursery') => request(`/fees/tuition-ledger?level=${encodeURIComponent(level)}`),
   applyFeeDiscount: (id, data) => request(`/fees/${id}/discount`, { method: 'PATCH', body: JSON.stringify(data) }),
-  suggestFeeAmount: (studentId, feeType) => request(`/fees/suggest-amount?studentId=${encodeURIComponent(studentId)}&feeType=${encodeURIComponent(feeType)}`),
+  suggestFeeAmount: (studentId, feeType, { term = '', label = '' } = {}) => {
+    const params = new URLSearchParams({ studentId, feeType, term });
+    if (label) params.set('label', label);
+    return request(`/fees/suggest-amount?${params}`);
+  },
   createFee: (data) => request('/fees', { method: 'POST', body: JSON.stringify(data) }),
   importFees: (rows) => request('/fees/import', { method: 'POST', body: JSON.stringify({ rows }) }),
   updateFeeStatus: (id, status) => request(`/fees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
@@ -433,8 +439,15 @@ export const api = {
   deleteBook: (id) => request(`/library/books/${id}`, { method: 'DELETE' }),
   getLoans: () => request('/library/loans'),
   createLoan: (data) => request('/library/loans', { method: 'POST', body: JSON.stringify(data) }),
-  returnLoan: (id) => request(`/library/loans/${id}/return`, { method: 'PATCH' }),
+  returnLoan: (id, data = {}) => request(`/library/loans/${id}/return`, { method: 'PATCH', body: JSON.stringify(data) }),
+  importBooks: (rows, mode = 'merge') => request('/library/books/import', { method: 'POST', body: JSON.stringify({ rows, mode }) }),
   getLibraryStats: () => request('/library/stats'),
+
+  getScienceQuizzes: () => request('/science-quizzes'),
+  getScienceQuiz: (id) => request(`/science-quizzes/${id}`),
+  createScienceQuiz: (data) => request('/science-quizzes', { method: 'POST', body: JSON.stringify(data) }),
+  updateScienceQuiz: (id, data) => request(`/science-quizzes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteScienceQuiz: (id) => request(`/science-quizzes/${id}`, { method: 'DELETE' }),
 
   getELibraryItems: () => request('/e-library'),
   getELibraryItem: (id) => request(`/e-library/${id}`),
@@ -532,6 +545,7 @@ export const api = {
     return request(`/extracurricular${q}`);
   },
   getExtracurricularActivity: (id) => request(`/extracurricular/${id}`),
+  getExtracurricularRoster: () => request('/extracurricular/roster'),
   getExtracurricularPrimaryClasses: () => request('/extracurricular/primary-classes'),
   getExtracurricularEligibleStudents: (params = {}) => {
     const q = new URLSearchParams();
@@ -680,6 +694,8 @@ export const api = {
   getCommunicationThread: (id) => request(`/communication/threads/${id}`),
   createCommunicationThread: (data) => request('/communication/threads', { method: 'POST', body: JSON.stringify(data) }),
   replyCommunicationThread: (id, body) => request(`/communication/threads/${id}/messages`, { method: 'POST', body: JSON.stringify({ body }) }),
+  deleteCommunicationMessage: (threadId, messageId) => request(`/communication/threads/${threadId}/messages/${messageId}`, { method: 'DELETE' }),
+  deleteCommunicationThread: (id) => request(`/communication/threads/${id}`, { method: 'DELETE' }),
   updateThreadStatus: (id, status) => request(`/communication/threads/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   submitPublicContact: (data) => request('/contact', { method: 'POST', body: JSON.stringify(data) }),

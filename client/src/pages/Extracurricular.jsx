@@ -9,6 +9,7 @@ import FormModeModal from '../components/form/FormModeModal';
 import FormSection from '../components/form/FormSection';
 import { PRIMARY_GRADES, PRIMARY_GRADE_LABELS } from '../config/grades';
 import { useTranslation } from '../context/LanguageContext';
+import ActivitiesRoster from '../components/activities/ActivitiesRoster';
 
 const EMPTY_FORM = {
   name: '',
@@ -61,6 +62,7 @@ export default function Extracurricular() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [rosterVersion, setRosterVersion] = useState(0);
 
   const forStudentId = isChooser
     ? (user?.role === 'STUDENT' ? user?.studentId : selectedStudentId)
@@ -198,6 +200,7 @@ export default function Extracurricular() {
       }
       closeForm();
       load();
+      setRosterVersion((version) => version + 1);
       if (expandedId) loadDetail(expandedId);
     } catch (err) {
       setError(err.message);
@@ -215,6 +218,7 @@ export default function Extracurricular() {
         setDetail(null);
       }
       load();
+      setRosterVersion((version) => version + 1);
     } catch (err) {
       alert(err.message);
     }
@@ -224,6 +228,7 @@ export default function Extracurricular() {
     try {
       await api.enrollExtracurricular(activityId, studentId);
       load();
+      setRosterVersion((version) => version + 1);
       if (expandedId === activityId) loadDetail(activityId);
     } catch (err) {
       alert(err.message);
@@ -235,6 +240,7 @@ export default function Extracurricular() {
     try {
       await api.unenrollExtracurricular(activityId, studentId);
       load();
+      setRosterVersion((version) => version + 1);
       if (expandedId === activityId) loadDetail(activityId);
     } catch (err) {
       alert(err.message);
@@ -319,6 +325,8 @@ export default function Extracurricular() {
           <p className="field-hint mt-2">{t('pageBody.activities.primaryOnlyHint')}</p>
         </div>
       )}
+
+      {!isChooser && <ActivitiesRoster version={rosterVersion} />}
 
       {activities.length === 0 ? (
         <div className="card empty-state py-16">
@@ -416,11 +424,22 @@ export default function Extracurricular() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
                       {detail.enrollmentsByClass.map((group) => (
                         <div key={group.classId || group.className} className="rounded-lg border border-gray-200 bg-white p-3">
-                          <p className="font-semibold text-sm text-gray-900 mb-2">{group.className}</p>
+                          <p className="font-semibold text-sm text-gray-900">{group.className}</p>
+                          <p className="text-xs font-semibold text-sky-700 mb-2">
+                            {t('staffDash.genderSplit', { boys: group.boys || 0, girls: group.girls || 0 })}
+                          </p>
                           <ul className="space-y-1">
                             {group.students.map((s) => (
                               <li key={s.id} className="text-sm text-gray-600 flex items-center justify-between gap-2">
-                                <span>{s.name}</span>
+                                <span>
+                                  {s.name}
+                                  {' · '}
+                                  {s.gender === 'FEMALE'
+                                    ? t('pageBody.activities.girl')
+                                    : s.gender === 'MALE'
+                                      ? t('pageBody.activities.boy')
+                                      : '—'}
+                                </span>
                                 {canManage && (
                                   <button
                                     type="button"

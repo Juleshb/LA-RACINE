@@ -21,6 +21,7 @@ const EMPTY_FORM = {
   qualifications: '',
   bankName: '',
   bankAccount: '',
+  gender: '',
 };
 
 export default function Teachers() {
@@ -142,6 +143,7 @@ export default function Teachers() {
       qualifications: teacher.qualifications || '',
       bankName: teacher.bankName || '',
       bankAccount: teacher.bankAccount || '',
+      gender: teacher.gender || '',
     });
     setEditingId(teacher.id);
     setFormMode('edit');
@@ -322,6 +324,18 @@ export default function Teachers() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
+              </div>
+              <div>
+                <label className="label">{t('ui.gender')}</label>
+                <select
+                  className="input"
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                >
+                  <option value="">{t('ui.select')}</option>
+                  <option value="MALE">{t('ui.male')}</option>
+                  <option value="FEMALE">{t('ui.female')}</option>
+                </select>
               </div>
               <div>
                 <label className="label">{t('ui.subjectSpecialty')}</label>

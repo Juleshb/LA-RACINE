@@ -2,6 +2,7 @@
 
 const adminNav = {
   home: 'Dashboard',
+  updates: 'Latest updates',
   'ask-ai': 'Ask La Racine AI',
   reports: 'Reports',
   communication: 'Communication',
@@ -32,6 +33,7 @@ const adminNav = {
 
 const parentNav = {
   home: 'Home',
+  updates: 'Latest updates',
   'register-child': 'Register child',
   'child-accounts': 'Child accounts',
   'my-registrations': 'My applications',
@@ -49,6 +51,7 @@ const parentNav = {
 
 const teacherNav = {
   home: 'Home',
+  updates: 'Latest updates',
   'ask-ai': 'Ask La Racine AI',
   reports: 'Reports',
   communication: 'Messages',
@@ -67,6 +70,7 @@ const teacherNav = {
 
 const accountantNav = {
   home: 'Home',
+  updates: 'Latest updates',
   'ask-ai': 'Ask La Racine AI',
   reports: 'Reports',
   communication: 'Messages',
@@ -84,6 +88,7 @@ const accountantNav = {
 
 const activitiesManagerNav = {
   home: 'Home',
+  updates: 'Latest updates',
   'ask-ai': 'Ask La Racine AI',
   extracurricular: 'Activities',
   reports: 'Activity reports',
@@ -286,6 +291,7 @@ export const appFr = {
   nav: {
     admin: {
       home: 'Tableau de bord',
+      updates: 'Dernières mises à jour',
       'ask-ai': 'Demander à La Racine AI',
       reports: 'Rapports',
       communication: 'Communication',
@@ -315,6 +321,7 @@ export const appFr = {
     },
     parent: {
       home: 'Accueil',
+      updates: 'Dernières mises à jour',
       'register-child': 'Inscrire un enfant',
       'child-accounts': 'Comptes enfants',
       'my-registrations': 'Mes demandes',
@@ -331,6 +338,7 @@ export const appFr = {
     },
     teacher: {
       home: 'Accueil',
+      updates: 'Dernières mises à jour',
       'ask-ai': 'Demander à La Racine AI',
       reports: 'Rapports',
       communication: 'Messages',
@@ -348,6 +356,7 @@ export const appFr = {
     },
     accountant: {
       home: 'Accueil',
+      updates: 'Dernières mises à jour',
       'ask-ai': 'Demander à La Racine AI',
       reports: 'Rapports',
       communication: 'Messages',
@@ -364,6 +373,7 @@ export const appFr = {
     },
     activitiesManager: {
       home: 'Accueil',
+      updates: 'Dernières mises à jour',
       'ask-ai': 'Demander à La Racine AI',
       extracurricular: 'Activités',
       reports: 'Rapports d’activités',

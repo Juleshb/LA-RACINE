@@ -166,10 +166,11 @@ router.post('/reminders', async (req, res) => {
       });
     }
 
-    const formatAmount = (amount) => new Intl.NumberFormat('en-RW', {
+    const formatAmount = (amount, currency = 'RWF') => new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-RW', {
       style: 'currency',
-      currency: 'RWF',
-      maximumFractionDigits: 0,
+      currency: currency === 'USD' ? 'USD' : 'RWF',
+      minimumFractionDigits: currency === 'USD' ? 2 : 0,
+      maximumFractionDigits: currency === 'USD' ? 2 : 0,
     }).format(amount || 0);
 
     const defaultTitle = title?.trim() || 'Fee payment reminder';
@@ -182,7 +183,7 @@ router.post('/reminders', async (req, res) => {
         const name = `${fee.student.firstName} ${fee.student.lastName}`.trim();
         const cls = fee.student.class?.name ? ` (${fee.student.class.name})` : '';
         const due = fee.dueDate ? new Date(fee.dueDate).toLocaleDateString() : '—';
-        return `• ${name}${cls}: ${fee.feeType} — ${formatAmount(fee.amount)} (due ${due}, ${fee.status})`;
+        return `• ${name}${cls}: ${fee.feeType} — ${formatAmount(fee.amount, fee.currency)} (due ${due}, ${fee.status})`;
       });
 
       const messageBody = (body?.trim() || [
@@ -385,6 +386,9 @@ router.post('/import', async (req, res) => {
                 feeType,
                 term,
                 amount,
+                currency: String(row.currency || '').toUpperCase() === 'USD' || /paiement en dollars|dollar/i.test(row.notes || '')
+                  ? 'USD'
+                  : 'RWF',
                 originalAmount: amount,
                 dueDate: parsedDue,
                 paidDate: finalStatus === 'PAID' ? new Date() : null,
@@ -469,6 +473,7 @@ router.post('/', async (req, res) => {
       installmentIndex = null,
       installmentTotal = null,
       term = null,
+      currency = null,
     } = req.body;
 
     const scope = await studentScopeWhere(req);
@@ -497,6 +502,9 @@ router.post('/', async (req, res) => {
           ? normalizedTerm
           : null,
         amount: finalAmount,
+        currency: String(currency || '').toUpperCase() === 'USD' || /paiement en dollars|dollar/i.test(notes || '')
+          ? 'USD'
+          : 'RWF',
         originalAmount,
         discountAmount: discount,
         discountReason: discountReason?.trim() || null,

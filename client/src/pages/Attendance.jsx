@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
+import { Save, Users } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
@@ -9,15 +9,15 @@ import ParentChildFilter from '../components/parent/ParentChildFilter';
 import AppIcon from '../components/icons/AppIcon';
 import ListSearch, { matchesSearch } from '../components/ListSearch';
 import { useTranslation } from '../context/LanguageContext';
-import { SortableTh, useTableSort } from '../hooks/useTableSort';
+import { useTableSort } from '../hooks/useTableSort';
 import { studentFullName } from '../lib/studentName';
 
 const statusOptions = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
-const statusColors = {
-  PRESENT: 'bg-brand-50 text-brand-700 border-brand-600',
-  ABSENT: 'bg-red-50 text-red-600 border-red-300',
-  LATE: 'bg-gray-100 text-gray-700 border-gray-300',
-  EXCUSED: 'bg-gray-100 text-gray-600 border-gray-300',
+const statusTone = {
+  PRESENT: 'is-present',
+  ABSENT: 'is-absent',
+  LATE: 'is-late',
+  EXCUSED: 'is-excused',
 };
 
 const STUDENT_STATUS = {
@@ -55,6 +55,8 @@ export default function Attendance() {
   const [records, setRecords] = useState({});
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [markAllValue, setMarkAllValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageSuccess, setMessageSuccess] = useState(false);
@@ -116,7 +118,16 @@ export default function Attendance() {
   const studentRecord = isStudent && students[0] ? records[students[0].id] : null;
   const studentStatus = studentRecord ? STUDENT_STATUS[studentRecord] : null;
 
-  const filteredStudents = useMemo(() => students.filter((s) => {
+  const counts = useMemo(() => {
+    const tally = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
+    students.forEach((student) => {
+      const status = records[student.id];
+      if (tally[status] != null) tally[status] += 1;
+    });
+    return tally;
+  }, [students, records]);
+
+  const searchedStudents = useMemo(() => students.filter((s) => {
     const status = records[s.id];
     const statusLabel = status ? t(ATTENDANCE_STATUS_I18N[status] || 'ui.notRecorded') : '';
     return matchesSearch(
@@ -131,6 +142,22 @@ export default function Attendance() {
     );
   }), [students, search, records, t]);
 
+  const filteredStudents = useMemo(() => (
+    statusFilter === 'ALL'
+      ? searchedStudents
+      : searchedStudents.filter((student) => records[student.id] === statusFilter)
+  ), [searchedStudents, statusFilter, records]);
+
+  const markVisible = (status) => {
+    if (!status) return;
+    setRecords((prev) => {
+      const next = { ...prev };
+      searchedStudents.forEach((student) => { next[student.id] = status; });
+      return next;
+    });
+    setMarkAllValue('');
+  };
+
   const getAttendanceSortValue = useCallback((row, key) => {
     switch (key) {
       case 'studentId': return row.studentId || '';
@@ -141,7 +168,7 @@ export default function Attendance() {
     }
   }, [records]);
 
-  const { sorted, sortKey, sortDir, toggleSort } = useTableSort(
+  const { sorted, sortKey, sortDir, setSortKey, setSortDir } = useTableSort(
     filteredStudents,
     getAttendanceSortValue,
     { initialKey: 'name' },
@@ -224,86 +251,128 @@ export default function Attendance() {
           )}
         </>
       ) : (
-        <>
-      <div className="flex flex-wrap gap-4 mb-6 items-end">
-        <div>
-          <label className="label">{t('ui.date')}</label>
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        {!isFamily && (
-          <div>
-            <label className="label">{t('ui.class')}</label>
-            <select className="input min-w-[200px]" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              <option value="">{t('ui.allClasses')}</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <ListSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={t('ui.searchStudent')}
-          className="min-w-[220px] flex-1 max-w-md"
-        />
-      </div>
-
-      <div className="card">
-        {filteredStudents.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            {students.length > 0 && search.trim()
-              ? t('ui.noSearchResults')
-              : t('pageBody.attendance.noStudentsForFilters')}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-                  <SortableTh label={t('ui.studentId')} columnKey="studentId" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
-                  <SortableTh label={t('ui.name')} columnKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
-                  <SortableTh label={t('ui.class')} columnKey="class" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
-                  <SortableTh label={t('ui.status')} columnKey="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="pb-3 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-100 last:border-0">
-                    <td className="py-3 text-brand-600">{s.studentId}</td>
-                    <td className="py-3 font-medium">{studentFullName(s)}</td>
-                    <td className="py-3 text-gray-400">{s.class?.name || '—'}</td>
-                    <td className="py-3">
-                      {isFamily ? (
-                        <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${statusColors[records[s.id]] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                          {records[s.id] ? t(ATTENDANCE_STATUS_I18N[records[s.id]] || 'ui.notRecorded') : t('ui.notRecorded')}
-                        </span>
-                      ) : (
-                        <div className="flex gap-2">
-                          {statusOptions.map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => setStatus(s.id, status)}
-                              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                                records[s.id] === status
-                                  ? statusColors[status]
-                                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                              }`}
-                            >
-                              {t(ATTENDANCE_STATUS_I18N[status])}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+        <div className="att-desk">
+          <div className="card att-toolbar">
+            <label className="att-field">
+              <span className="label">{t('ui.date')}</span>
+              <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            {!isFamily && (
+              <label className="att-field">
+                <span className="label">{t('ui.class')}</span>
+                <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+                  <option value="">{t('ui.allClasses')}</option>
+                  {[...classes].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="att-field">
+              <span className="label">{t('pageBody.attendance.filterStatus')}</span>
+              <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="ALL">{t('pageBody.attendance.allStatuses')}</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>{t(ATTENDANCE_STATUS_I18N[status])}</option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </label>
+            <label className="att-field">
+              <span className="label">{t('pageBody.attendance.sortBy')}</span>
+              <select
+                className="input"
+                value={`${sortKey}:${sortDir}`}
+                onChange={(e) => {
+                  const [key, dir] = e.target.value.split(':');
+                  setSortKey(key);
+                  setSortDir(dir);
+                }}
+              >
+                <option value="name:asc">{t('pageBody.attendance.sortName')}</option>
+                <option value="name:desc">{t('pageBody.attendance.sortNameDesc')}</option>
+                <option value="class:asc">{t('pageBody.attendance.sortClass')}</option>
+                <option value="status:asc">{t('pageBody.attendance.sortStatus')}</option>
+              </select>
+            </label>
+            {!isFamily && (
+              <label className="att-field">
+                <span className="label">{t('pageBody.attendance.markAll')}</span>
+                <select className="input" value={markAllValue} onChange={(e) => markVisible(e.target.value)}>
+                  <option value="">{t('pageBody.attendance.markAll')}</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>{t(ATTENDANCE_STATUS_I18N[status])}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <ListSearch
+              value={search}
+              onChange={setSearch}
+              placeholder={t('ui.searchStudent')}
+              className="att-search"
+            />
           </div>
-        )}
-      </div>
-        </>
+
+          <div className="att-stats">
+            {statusOptions.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`att-stat ${statusTone[status]} ${statusFilter === status ? 'is-on' : ''}`}
+                onClick={() => setStatusFilter((current) => (current === status ? 'ALL' : status))}
+              >
+                <span className="att-stat-value">{counts[status]}</span>
+                <span className="att-stat-label">{t(ATTENDANCE_STATUS_I18N[status])}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="card att-list">
+            <p className="att-list-meta">
+              <Users className="w-4 h-4" />
+              {filteredStudents.length}
+            </p>
+            {filteredStudents.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">
+                {students.length > 0 && (search.trim() || statusFilter !== 'ALL')
+                  ? t('ui.noSearchResults')
+                  : t('pageBody.attendance.noStudentsForFilters')}
+              </p>
+            ) : (
+              <div className="att-table">
+                <div className="att-head">
+                  <span>{t('ui.studentId')}</span>
+                  <span>{t('ui.name')}</span>
+                  <span>{t('ui.class')}</span>
+                  <span>{t('ui.status')}</span>
+                </div>
+                {sorted.map((s) => (
+                  <div key={s.id} className="att-row">
+                    <span className="att-id">{s.studentId || '—'}</span>
+                    <span className="att-name">{studentFullName(s)}</span>
+                    <span className="att-class">{s.class?.name || '—'}</span>
+                    {isFamily ? (
+                      <span className={`att-badge ${statusTone[records[s.id]] || ''}`}>
+                        {records[s.id] ? t(ATTENDANCE_STATUS_I18N[records[s.id]]) : t('ui.notRecorded')}
+                      </span>
+                    ) : (
+                      <select
+                        className={`input att-status ${statusTone[records[s.id]] || ''}`}
+                        value={records[s.id] || 'PRESENT'}
+                        aria-label={t('ui.status')}
+                        onChange={(e) => setStatus(s.id, e.target.value)}
+                      >
+                        {statusOptions.map((status) => (
+                          <option key={status} value={status}>{t(ATTENDANCE_STATUS_I18N[status])}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

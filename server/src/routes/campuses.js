@@ -5,10 +5,9 @@ import { authorizeRoles, isManagerRole } from '../config/permissions.js';
 
 const router = Router();
 
-const STAFF_ROLES = [
+const ADMIN_ROLES = [
   'SCHOOL_MANAGER',
   'SCHOOL_ADMIN',
-  'TEACHER',
   'HEAD_OF_STUDIES',
   'HEAD_OF_DISCIPLINE',
   'SECRETARY',
@@ -16,6 +15,17 @@ const STAFF_ROLES = [
   'ACTIVITIES_MANAGER',
   'LIBRARIAN',
 ];
+
+function genderTally(groups) {
+  const tally = { total: 0, boys: 0, girls: 0 };
+  groups.forEach((row) => {
+    const count = row._count?._all || 0;
+    tally.total += count;
+    if (row.gender === 'MALE') tally.boys += count;
+    if (row.gender === 'FEMALE') tally.girls += count;
+  });
+  return tally;
+}
 
 router.use(authenticate);
 
@@ -27,13 +37,15 @@ async function campusStats(campusId) {
 
   const yearFilter = activeYear ? { academicYearId: activeYear.id } : {};
 
-  const [students, pending, teachers, classes, staffUsers] = await Promise.all([
-    prisma.student.count({
+  const [studentGenders, pending, teacherGenders, classes, staffUsers, adminGenders] = await Promise.all([
+    prisma.student.groupBy({
+      by: ['gender'],
       where: {
         campusId,
         registrationStatus: 'APPROVED',
         ...yearFilter,
       },
+      _count: { _all: true },
     }),
     prisma.student.count({
       where: {
@@ -43,7 +55,11 @@ async function campusStats(campusId) {
       },
     }),
     // Teachers may be copied per year; hub shows all staff linked to the campus
-    prisma.teacher.count({ where: { campusId } }),
+    prisma.teacher.groupBy({
+      by: ['gender'],
+      where: { campusId },
+      _count: { _all: true },
+    }),
     prisma.class.count({
       where: {
         campusId,
@@ -54,17 +70,40 @@ async function campusStats(campusId) {
       where: {
         campusId,
         isActive: true,
-        role: { in: STAFF_ROLES },
+        role: { in: [...ADMIN_ROLES, 'TEACHER'] },
       },
+    }),
+    prisma.user.groupBy({
+      by: ['gender'],
+      where: {
+        isActive: true,
+        role: { in: ADMIN_ROLES },
+        OR: [
+          { campusId },
+          { campusId: null, role: { in: ['SCHOOL_MANAGER', 'SCHOOL_ADMIN'] } },
+        ],
+      },
+      _count: { _all: true },
     }),
   ]);
 
+  const studentSplit = genderTally(studentGenders);
+  const teacherSplit = genderTally(teacherGenders);
+  const adminSplit = genderTally(adminGenders);
+
   return {
-    students,
+    students: studentSplit.total,
+    studentBoys: studentSplit.boys,
+    studentGirls: studentSplit.girls,
     pending,
-    teachers,
+    teachers: teacherSplit.total,
+    teacherBoys: teacherSplit.boys,
+    teacherGirls: teacherSplit.girls,
     classes,
     staffUsers,
+    admin: adminSplit.total,
+    adminBoys: adminSplit.boys,
+    adminGirls: adminSplit.girls,
     activeYear: activeYear?.name || null,
     activeYearId: activeYear?.id || null,
   };

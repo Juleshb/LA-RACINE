@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import fileSaver from 'file-saver';
 import { studentFullName } from './studentName.js';
+import { sortTuitionPeople } from './tuitionSort.js';
 
 const saveAs = fileSaver.saveAs || fileSaver;
 
@@ -55,90 +56,34 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildMaternelleSheet(workbook, students, yearLabel, priorLabel) {
-  const sheet = workbook.addWorksheet('MATERNELLE', {
-    views: [{ state: 'frozen', ySplit: 6, xSplit: 3 }],
+function buildTuitionSheet(workbook, sheetName, students, yearLabel, priorLabel) {
+  const sheet = workbook.addWorksheet(sheetName, {
+    views: [{ state: 'frozen', ySplit: 4, xSplit: 2 }],
   });
-  sheet.columns = [
-    { width: 16 }, { width: 8 }, { width: 28 }, { width: 16 },
-    { width: 16 }, { width: 22 },
-    { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 },
-    { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 },
-    { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 },
-  ];
-  sheet.getColumn(1).hidden = true;
-
-  writeMerged(sheet, 'A4:A6', 'Student ID', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'B4:B6', 'S/N', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'C4:C6', 'Names', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'D4:D6', 'Branche', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'E4:E6', 'Inscription', { fill: FILL.money, bold: true });
-  writeMerged(sheet, 'F4:F6', `Balance of Third Trimester ${priorLabel}`.trim(), { fill: FILL.prior, bold: true });
-
-  const groups = [
-    ['G', 'J', 'FIRST TRIMESTER', `Balance of first trimester ${yearLabel}`.trim()],
-    ['K', 'N', 'SECOND TRIMESTER', `Balance of Second Trimester ${yearLabel}`.trim()],
-    ['O', 'R', 'THIRD TRIMESTER', `Balance of Third Trimester ${yearLabel}`.trim()],
-  ];
-  groups.forEach(([start, end, title, balance]) => {
-    writeMerged(sheet, `${start}4:${end}4`, title, { fill: FILL.group, bold: true, color: 'FFFFFFFF' });
-    writeMerged(sheet, `${start}5:${end}5`, 'SCHOOL FEES', { fill: FILL.sub, bold: true, color: 'FFFFFFFF' });
-    const leaves = ['Amount to be paid', 'First Installment', 'Second Installment', balance];
-    leaves.forEach((label, index) => {
-      const col = start.charCodeAt(0) + index;
-      const cell = sheet.getCell(6, col - 64);
-      cell.value = label;
-      paint(cell, { fill: index === 3 ? FILL.prior : FILL.t1, bold: true });
-    });
-  });
-  // Recolor trimester leaf groups
-  [11, 12, 13, 14].forEach((col) => paint(sheet.getCell(6, col), { fill: col === 14 ? FILL.prior : FILL.t2, bold: true }));
-  [15, 16, 17, 18].forEach((col) => paint(sheet.getCell(6, col), { fill: col === 18 ? FILL.prior : FILL.t3, bold: true }));
-
-  sheet.getRow(4).height = 22;
-  sheet.getRow(5).height = 20;
-  sheet.getRow(6).height = 36;
-
-  students.forEach((student, index) => {
-    const row = sheet.getRow(7 + index);
-    row.getCell(1).value = student.studentId || '';
-    row.getCell(2).value = index + 1;
-    row.getCell(3).value = studentFullName(student);
-    row.getCell(4).value = student.class?.name || '';
-    for (let col = 1; col <= 18; col += 1) {
-      paint(row.getCell(col), { align: col === 3 ? 'left' : 'center' });
-    }
-  });
-}
-
-function buildPrimaireSheet(workbook, students, yearLabel, priorLabel) {
-  const sheet = workbook.addWorksheet('PRIMAIRE', {
-    views: [{ state: 'frozen', ySplit: 5, xSplit: 2 }],
-  });
-  const widths = [8, 28, 16, 14, 16, 14, 14, 14, 22];
-  for (let i = 0; i < 3; i += 1) widths.push(16, 16, 16, 18);
-  widths.push(16);
+  const widths = [8, 28, 16, 18, 16, 16, 28, 16, 16, 16, 22, 16, 16, 16, 22, 16, 16, 16, 22, 16];
   sheet.columns = widths.map((width) => ({ width }));
-  sheet.getColumn(22).hidden = true;
+  sheet.getColumn(20).hidden = true;
 
-  writeMerged(sheet, 'A2:A5', 'S/N', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'B2:B5', 'Names', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'C2:C5', 'Branche', { fill: FILL.id, bold: true });
-  writeMerged(sheet, 'D2:D5', 'Uniforms', { fill: FILL.money, bold: true });
-  writeMerged(sheet, 'E2:E5', 'Inscription', { fill: FILL.money, bold: true });
-  writeMerged(sheet, 'F2:H2', 'Activites Parascolaire', { fill: FILL.money, bold: true });
-  writeMerged(sheet, 'F3:H4', 'Activites Parascolaire', { fill: FILL.money, bold: true });
-  ['First trim', 'Second Trim', 'Third Trim'].forEach((label, index) => {
-    const cell = sheet.getCell(5, 6 + index);
+  const fixed = [
+    [1, 'S/N', FILL.id],
+    [2, 'Names', FILL.id],
+    [3, 'Classes', FILL.id],
+    [4, 'Paiement en Dollars', FILL.money],
+    [5, 'Inscription', FILL.money],
+    [6, 'Confirmation', FILL.money],
+    [7, `Balance of Third Trimester ${priorLabel}`.trim(), FILL.prior],
+  ];
+  fixed.forEach(([col, label, fill]) => {
+    sheet.mergeCells(2, col, 4, col);
+    const cell = sheet.getCell(2, col);
     cell.value = label;
-    paint(cell, { fill: FILL.money, bold: true });
+    paint(cell, { fill, bold: true });
   });
-  writeMerged(sheet, 'I2:I5', `Balance of Third Trimester ${priorLabel}`.trim(), { fill: FILL.prior, bold: true });
 
   const groups = [
-    [10, 'FIRST TRIMESTER', FILL.t1, `Balance of First Trimester ${yearLabel}`.trim()],
-    [14, 'SECOND TRIMESTER', FILL.t2, `Balance of Second Trimester ${yearLabel}`.trim()],
-    [18, 'THIRD TRIMESTER', FILL.t3, `Balance of Third Trimester ${yearLabel}`.trim()],
+    [8, 'FIRST TRIMESTER', FILL.t1, `Balance of first trimester ${yearLabel}`.trim()],
+    [12, 'SECOND TRIMESTER', FILL.t2, `Balance of Second Trimester ${yearLabel}`.trim()],
+    [16, 'THIRD TRIMESTER', FILL.t3, `Balance of Third Trimester ${yearLabel}`.trim()],
   ];
   groups.forEach(([start, title, fill, balance]) => {
     const end = start + 3;
@@ -147,25 +92,25 @@ function buildPrimaireSheet(workbook, students, yearLabel, priorLabel) {
     ['Amount to be paid', 'First Installment', 'Second Installment', balance].forEach((label, index) => {
       const cell = sheet.getCell(4, start + index);
       cell.value = label;
-      sheet.mergeCells(4, start + index, 5, start + index);
       paint(cell, { fill: index === 3 ? FILL.prior : fill, bold: true });
     });
   });
 
-  writeMerged(sheet, 'V2:V5', 'Student ID', { fill: FILL.id, bold: true });
+  const idCell = sheet.getCell(2, 20);
+  idCell.value = 'Student ID';
+  paint(idCell, { fill: FILL.id, bold: true });
 
   sheet.getRow(2).height = 22;
   sheet.getRow(3).height = 20;
-  sheet.getRow(4).height = 32;
-  sheet.getRow(5).height = 22;
+  sheet.getRow(4).height = 36;
 
   students.forEach((student, index) => {
-    const row = sheet.getRow(6 + index);
+    const row = sheet.getRow(5 + index);
     row.getCell(1).value = index + 1;
     row.getCell(2).value = studentFullName(student);
     row.getCell(3).value = student.class?.name || '';
-    row.getCell(22).value = student.studentId || '';
-    for (let col = 1; col <= 22; col += 1) {
+    row.getCell(20).value = student.studentId || '';
+    for (let col = 1; col <= 20; col += 1) {
       paint(row.getCell(col), { align: col === 2 ? 'left' : 'center' });
     }
   });
@@ -182,20 +127,20 @@ function colLetter(index) {
   return letters;
 }
 
-export async function createFinanceWorkbook({ students = [], academicYearName = '' } = {}) {
+export async function createFinanceWorkbook({ students = [], academicYearName = '', sort = 'class' } = {}) {
   const yearLabel = String(academicYearName || '').trim();
   const priorLabel = shiftYearLabel(yearLabel, -1);
   const nursery = [];
   const primary = [];
-  students.forEach((student) => {
+  sortTuitionPeople(students, sort === 'name' ? 'name' : 'class').forEach((student) => {
     if (levelOf(student) === 'primary') primary.push(student);
     else nursery.push(student);
   });
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'École La RACINE';
-  buildMaternelleSheet(workbook, nursery, yearLabel, priorLabel);
-  buildPrimaireSheet(workbook, primary, yearLabel, priorLabel);
+  buildTuitionSheet(workbook, 'MATERNELLE', nursery, yearLabel, priorLabel);
+  buildTuitionSheet(workbook, 'PRIMAIRE', primary, yearLabel, priorLabel);
   return workbook;
 }
 
@@ -287,7 +232,9 @@ function columnRole(label, index, columns) {
   if (has('student id', 'matricule')) return 'studentCode';
   if (tokens.includes('s/n') || tokens.includes('sn')) return 'sn';
   if (tokens.includes('names') || tokens.includes('noms')) return 'name';
-  if (tokens.includes('branche') || tokens.includes('classe')) return 'branche';
+  if (tokens.includes('branche') || tokens.includes('classe') || tokens.includes('classes')) return 'branche';
+  if (has('paiement en dollars', 'dollar')) return 'dollar';
+  if (has('confirmation')) return 'confirmation';
   if (has('uniform')) return 'uniforms';
   if (has('inscription', 'registration')) return 'inscription';
   if (tokens.includes('first trim')) return 'activity1';
@@ -337,6 +284,12 @@ function feesFromTuitionRow(base, values, roles) {
     const amount = money(values[index]);
     if (role === 'inscription') {
       pushFee(rows, base, { feeType: 'REGISTRATION', term: null, amount, status: 'PENDING', label: 'Inscription' });
+    } else if (role === 'confirmation') {
+      pushFee(rows, base, { feeType: 'CONFIRMATION', term: null, amount, status: 'PENDING', label: 'Confirmation' });
+    } else if (role === 'dollar') {
+      pushFee(rows, base, {
+        feeType: 'OTHER', term: null, amount, currency: 'USD', status: 'PENDING', notes: 'Paiement en Dollars', label: 'Paiement en Dollars',
+      });
     } else if (role === 'uniforms') {
       pushFee(rows, base, { feeType: 'UNIFORM', term: null, amount, status: 'PENDING', label: 'Uniforms' });
     } else if (role === 'carryOver') {

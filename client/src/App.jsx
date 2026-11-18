@@ -52,6 +52,7 @@ import BulletinPdfLink from './pages/BulletinPdfLink';
 import Profile from './pages/Profile';
 import ProfileShell from './components/ProfileShell';
 import Reports from './pages/Reports';
+import Updates from './pages/Updates';
 import WebsiteCms from './pages/WebsiteCms';
 import PublicLayout from './pages/public/PublicLayout';
 import PublicHome from './pages/public/PublicHome';
@@ -108,6 +109,7 @@ export default function App() {
         <Route path="campus/:campusId" element={<CampusProvider />}>
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="updates" element={<Updates />} />
             <Route path="reports" element={<RequirePermission permission={PERMISSIONS.REPORTS}><Reports /></RequirePermission>} />
             <Route path="website" element={<RequirePermission permission={PERMISSIONS.WEBSITE}><WebsiteCms /></RequirePermission>} />
             <Route path="school" element={<RequirePermission permission={PERMISSIONS.SCHOOL}><SchoolProfile /></RequirePermission>} />

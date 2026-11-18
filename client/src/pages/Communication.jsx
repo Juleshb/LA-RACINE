@@ -69,6 +69,7 @@ export default function Communication() {
   const isTeacher = user?.role === 'TEACHER';
   const isSchool = !['PARENT', 'STUDENT'].includes(user?.role);
   const canCompose = isSchool && !isTeacher;
+  const canDeleteMessages = user?.role === 'SCHOOL_MANAGER' || user?.role === 'SCHOOL_ADMIN';
   const isFamily = isParent || isStudent;
 
   const [inbox, setInbox] = useState([]);
@@ -329,6 +330,31 @@ export default function Communication() {
         isMine: false,
       }],
     });
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    if (!canDeleteMessages || !thread?.id || thread.isAnnouncement || !messageId) return;
+    if (!window.confirm(t('pages.communication.deleteMessageConfirm'))) return;
+    try {
+      const result = await api.deleteCommunicationMessage(thread.id, messageId);
+      if (result?.threadDeleted) setThread(null);
+      else setThread(await api.getCommunicationThread(thread.id));
+      loadInbox();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!canDeleteMessages || !thread?.id || thread.isAnnouncement) return;
+    if (!window.confirm(t('pages.communication.deleteConversationConfirm'))) return;
+    try {
+      await api.deleteCommunicationThread(thread.id);
+      setThread(null);
+      loadInbox();
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleDeleteAnnouncement = async () => {
@@ -736,6 +762,17 @@ export default function Communication() {
                       {t('pages.communication.resolve')}
                     </button>
                   )}
+                  {canDeleteMessages && thread.id && !thread.isAnnouncement && (
+                    <button
+                      type="button"
+                      className="comm-btn comm-btn-sm text-red-600"
+                      onClick={handleDeleteConversation}
+                      title={t('pages.communication.deleteConversation')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {t('pages.communication.deleteConversation')}
+                    </button>
+                  )}
                   {canCompose && thread.isAnnouncement && thread.id && (
                     <button
                       type="button"
@@ -760,6 +797,17 @@ export default function Communication() {
                       )}
                       <p className="comm-bubble-body">{m.body}</p>
                       <time className="comm-bubble-time">{formatWhen(m.createdAt)}</time>
+                      {canDeleteMessages && m.id && !thread.isAnnouncement && (
+                        <button
+                          type="button"
+                          className="comm-bubble-delete"
+                          onClick={() => handleDeleteMessage(m.id)}
+                          title={t('pages.communication.deleteMessage')}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {t('pages.communication.deleteMessage')}
+                        </button>
+                      )}
                     </div>
                   ))}
                   {thread.isAnnouncement && thread.delivery && (

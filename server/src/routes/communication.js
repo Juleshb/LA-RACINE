@@ -26,6 +26,10 @@ function canSendSchoolMessages(role) {
   return isSchoolStaff(role) && role !== 'TEACHER';
 }
 
+function canDeleteMessages(role) {
+  return role === 'SCHOOL_MANAGER' || role === 'SCHOOL_ADMIN';
+}
+
 function senderLabel(user) {
   if (!user) return 'Unknown';
   if (user.role === 'PARENT') return `${user.firstName} ${user.lastName} (Parent)`;
@@ -943,6 +947,68 @@ router.post('/threads/:id/messages', async (req, res) => {
       isMine: true,
       email,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/threads/:threadId/messages/:messageId', async (req, res) => {
+  try {
+    if (!canDeleteMessages(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school admin can delete a sent message' });
+    }
+
+    const thread = await prisma.communicationThread.findFirst({
+      where: { id: req.params.threadId, ...campusYearWhere(req) },
+      select: { id: true },
+    });
+    if (!thread) return res.status(404).json({ error: 'Thread not found' });
+
+    const message = await prisma.communicationMessage.findFirst({
+      where: { id: req.params.messageId, threadId: thread.id },
+      select: { id: true },
+    });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const remaining = await prisma.communicationMessage.count({
+      where: { threadId: thread.id, id: { not: message.id } },
+    });
+
+    if (remaining === 0) {
+      await prisma.communicationThread.delete({ where: { id: thread.id } });
+      return res.json({ message: 'Message deleted', threadDeleted: true });
+    }
+
+    await prisma.communicationMessage.delete({ where: { id: message.id } });
+    const latest = await prisma.communicationMessage.findFirst({
+      where: { threadId: thread.id },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    await prisma.communicationThread.update({
+      where: { id: thread.id },
+      data: { lastMessageAt: latest?.createdAt || new Date() },
+    });
+    res.json({ message: 'Message deleted', threadDeleted: false });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/threads/:id', async (req, res) => {
+  try {
+    if (!canDeleteMessages(req.user.role)) {
+      return res.status(403).json({ error: 'Only a school admin can delete a conversation' });
+    }
+
+    const thread = await prisma.communicationThread.findFirst({
+      where: { id: req.params.id, ...campusYearWhere(req) },
+      select: { id: true },
+    });
+    if (!thread) return res.status(404).json({ error: 'Thread not found' });
+
+    await prisma.communicationThread.delete({ where: { id: thread.id } });
+    res.json({ message: 'Conversation deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

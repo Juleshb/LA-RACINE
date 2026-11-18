@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  Users, GraduationCap, BookOpen, Wallet, UserCheck, TrendingUp, Award, CalendarDays,
+  Users, GraduationCap, BookOpen, Wallet, UserCheck, TrendingUp, Award, CalendarDays, Briefcase,
 } from 'lucide-react';
 import ModernStatCard from './ModernStatCard';
 import DashboardShell from './DashboardShell';
@@ -23,6 +23,14 @@ import {
 } from '../../hooks/useDashboardData';
 import { useTranslation } from '../../context/LanguageContext';
 import { studentFullName } from '../../lib/studentName';
+
+function genderCounts(rows) {
+  return (rows || []).reduce((counts, row) => {
+    if (row.gender === 'MALE') counts.boys += 1;
+    else if (row.gender === 'FEMALE') counts.girls += 1;
+    return counts;
+  }, { boys: 0, girls: 0 });
+}
 
 export default function DashboardOverview({ campusId, data, shellProps, lead }) {
   const { t, language } = useTranslation();
@@ -69,7 +77,7 @@ export default function DashboardOverview({ campusId, data, shellProps, lead }) 
           icon={Users}
           label={t('staffDash.totalStudents')}
           value={stats.totalStudents}
-          sub={t('staffDash.nClasses', { count: classes.length })}
+          sub={t('staffDash.genderSplit', genderCounts(students))}
           accent="green"
         />
         <ModernStatCard
@@ -77,11 +85,22 @@ export default function DashboardOverview({ campusId, data, shellProps, lead }) 
           icon={GraduationCap}
           label={t('staffDash.teachers')}
           value={teachers.length}
-          sub={t('staffDash.activeStaff')}
+          sub={t('staffDash.genderSplit', genderCounts(teachers))}
           accent="blue"
         />
         <ModernStatCard
           index={2}
+          icon={Briefcase}
+          label={t('staffDash.administration')}
+          value={data.campusStats?.admin || 0}
+          sub={t('staffDash.genderSplit', {
+            boys: data.campusStats?.adminBoys || 0,
+            girls: data.campusStats?.adminGirls || 0,
+          })}
+          accent="teal"
+        />
+        <ModernStatCard
+          index={3}
           icon={BookOpen}
           label={t('staffDash.classes')}
           value={classes.length}
@@ -89,7 +108,7 @@ export default function DashboardOverview({ campusId, data, shellProps, lead }) 
           accent="teal"
         />
         <ModernStatCard
-          index={3}
+          index={4}
           icon={Wallet}
           label={t('staffDash.feesCollected')}
           value={formatCurrency(stats.totalCollected)}

@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import StudentPageHeader from '../components/student/StudentPageHeader';
 import AppIcon from '../components/icons/AppIcon';
+import ScienceQuizDesk from '../components/quiz/ScienceQuizDesk';
+import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
 import {
   detectSpeechLang,
@@ -114,7 +117,13 @@ function scoreTone(score, total) {
 
 export default function ScienceQuiz() {
   const { campusId } = useParams();
+  const { user } = useAuth();
   const { t, language } = useTranslation();
+  const canManage = Boolean(user && !['STUDENT', 'PARENT'].includes(user.role));
+  const [managing, setManaging] = useState(false);
+  const [schoolQuizzes, setSchoolQuizzes] = useState([]);
+  const [customQuiz, setCustomQuiz] = useState(null);
+  const [playError, setPlayError] = useState('');
   const [level, setLevel] = useState(null);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState(null);
@@ -130,10 +139,18 @@ export default function ScienceQuiz() {
   voiceOnRef.current = voiceOn;
   const speechReady = isSpeechSupported();
 
-  const questions = useMemo(
-    () => (level ? questionsForLevel(level) : []),
-    [level],
-  );
+  const questions = useMemo(() => {
+    if (customQuiz) return customQuiz.questions;
+    return level ? questionsForLevel(level) : [];
+  }, [level, customQuiz]);
+
+  const loadSchoolQuizzes = () => {
+    api.getScienceQuizzes()
+      .then((rows) => setSchoolQuizzes(Array.isArray(rows) ? rows : []))
+      .catch(() => setSchoolQuizzes([]));
+  };
+
+  useEffect(() => { loadSchoolQuizzes(); }, []);
   const question = questions[index];
   const revealed = picked !== null;
   const progress = questions.length ? Math.round(((index + (revealed ? 1 : 0)) / questions.length) * 100) : 0;
@@ -146,17 +163,58 @@ export default function ScienceQuiz() {
     }
   };
 
-  const start = (nextLevel) => {
-    playClick();
-    unlockQuizAudio();
-    warmSpeechVoices();
+  const resetRound = () => {
     clearAdvance();
     answeredRef.current = false;
-    setLevel(nextLevel);
     setIndex(0);
     setPicked(null);
     setScore(0);
     setFinished(false);
+  };
+
+  const leaveToMenu = () => {
+    playClick();
+    stopSpeaking();
+    clearAdvance();
+    setCustomQuiz(null);
+    setLevel(null);
+  };
+
+  const start = (nextLevel) => {
+    playClick();
+    unlockQuizAudio();
+    warmSpeechVoices();
+    setCustomQuiz(null);
+    setLevel(nextLevel);
+    resetRound();
+  };
+
+  const startCustom = async (quiz) => {
+    playClick();
+    unlockQuizAudio();
+    warmSpeechVoices();
+    try {
+      const detail = await api.getScienceQuiz(quiz.id);
+      const mapped = (detail.questions || []).map((question) => ({
+        id: question.id,
+        level: detail.level || 'easy',
+        prompt: question.prompt,
+        options: Array.isArray(question.options) ? question.options : [],
+        answer: question.answer,
+        note: question.note || '',
+      }));
+      setCustomQuiz({ title: detail.title, questions: mapped });
+      setLevel(detail.level || 'easy');
+      resetRound();
+    } catch (err) {
+      setPlayError(err.message);
+    }
+  };
+
+  const playAgain = () => {
+    playClick();
+    unlockQuizAudio();
+    resetRound();
   };
 
   const toggleVoice = () => {
@@ -279,8 +337,23 @@ export default function ScienceQuiz() {
         backTo={level ? undefined : `/campus/${campusId}`}
       />
 
-      {!level && (
+      {managing && canManage && (
+        <ScienceQuizDesk
+          onClose={() => setManaging(false)}
+          onChanged={loadSchoolQuizzes}
+        />
+      )}
+
+      {!level && !managing && (
         <div className="quiz-pick">
+          {playError && <p className="quiz-manage-note is-bad">{playError}</p>}
+          {canManage && (
+            <div className="quiz-manage-launch">
+              <button type="button" className="btn-primary" onClick={() => { playClick(); setManaging(true); }}>
+                {t('scienceQuiz.manageQuizzes')}
+              </button>
+            </div>
+          )}
           <div className="quiz-time-bar">
             <p className="quiz-kicker">{t('scienceQuiz.timeEach')}</p>
             <div className="quiz-time-choices">
@@ -337,6 +410,28 @@ export default function ScienceQuiz() {
               </span>
             </button>
           </div>
+          {schoolQuizzes.some((quiz) => quiz.isPublished && quiz.questionCount > 0) && (
+            <div className="quiz-school">
+              <h2 className="quiz-school-title">{t('scienceQuiz.schoolQuizzes')}</h2>
+              <div className="quiz-level-grid">
+                {schoolQuizzes.filter((quiz) => quiz.isPublished && quiz.questionCount > 0).map((quiz) => (
+                  <button
+                    key={quiz.id}
+                    type="button"
+                    onClick={() => startCustom(quiz)}
+                    className={`quiz-tile ${LEVEL_META[quiz.level]?.tone || LEVEL_META.easy.tone}`}
+                  >
+                    <span className="quiz-tile-mark">{LEVEL_META[quiz.level]?.mark || 'A'}</span>
+                    <span className="quiz-tile-copy">
+                      <span className="quiz-tile-name">{quiz.title}</span>
+                      <span className="quiz-tile-hint">{quiz.description || t(`scienceQuiz.hints.${quiz.level}`)}</span>
+                      <span className="quiz-tile-count">{t('scienceQuiz.questionCount', { count: quiz.questionCount })}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -356,10 +451,10 @@ export default function ScienceQuiz() {
             {t(`scienceQuiz.results.${scoreTone(score, questions.length)}`)}
           </p>
           <div className="quiz-score-actions">
-            <button type="button" className="quiz-next" onClick={() => start(level)}>
+            <button type="button" className="quiz-next" onClick={playAgain}>
               {t('scienceQuiz.playAgain')}
             </button>
-            <button type="button" className="quiz-ghost" onClick={() => { playClick(); setLevel(null); }}>
+            <button type="button" className="quiz-ghost" onClick={leaveToMenu}>
               {t('scienceQuiz.chooseLevel')}
             </button>
           </div>
@@ -370,9 +465,9 @@ export default function ScienceQuiz() {
         <section key={question.id} className={`quiz-board quiz-board-${question.level}`}>
           <div className="quiz-board-top">
             <span className={`quiz-level-pill quiz-tile-${question.level === 'impossible' ? 'challenge' : question.level}`}>
-              {t(`scienceQuiz.levels.${question.level}`)}
+              {customQuiz?.title || t(`scienceQuiz.levels.${question.level}`)}
             </span>
-            <button type="button" className="quiz-ghost" onClick={() => { playClick(); setLevel(null); }}>
+            <button type="button" className="quiz-ghost" onClick={leaveToMenu}>
               {t('scienceQuiz.chooseLevel')}
             </button>
           </div>

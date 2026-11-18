@@ -13,6 +13,7 @@ const studentInclude = {
     firstName: true,
     lastName: true,
     postName: true,
+    gender: true,
     classId: true,
     class: { select: { id: true, name: true, grade: true, section: true } },
   },
@@ -34,6 +35,37 @@ function parseAllowedGrades(value) {
   return [...PRIMARY_GRADES];
 }
 
+function displayName(student) {
+  return [student?.lastName, student?.postName, student?.firstName]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+function countGender(people) {
+  let boys = 0;
+  let girls = 0;
+  people.forEach((person) => {
+    if (person.gender === 'MALE') boys += 1;
+    else if (person.gender === 'FEMALE') girls += 1;
+  });
+  return { total: people.length, boys, girls };
+}
+
+function compareClass(a, b) {
+  const left = PRIMARY_GRADES.indexOf(a.grade);
+  const right = PRIMARY_GRADES.indexOf(b.grade);
+  const gradeOrder = (left === -1 ? 99 : left) - (right === -1 ? 99 : right);
+  if (gradeOrder) return gradeOrder;
+  const section = String(a.section || '').localeCompare(String(b.section || ''), 'fr', { numeric: true });
+  if (section) return section;
+  return String(a.className || '').localeCompare(String(b.className || ''), 'fr', { numeric: true });
+}
+
+function compareName(a, b) {
+  return String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' });
+}
+
 function groupEnrollmentsByClass(enrollments) {
   const map = new Map();
   for (const row of enrollments) {
@@ -52,16 +84,138 @@ function groupEnrollmentsByClass(enrollments) {
       enrollmentId: row.id,
       id: row.student.id,
       studentId: row.student.studentId,
-      name: `${row.student.firstName} ${row.student.lastName}`.trim(),
+      name: displayName(row.student),
+      gender: row.student.gender,
       enrolledAt: row.enrolledAt,
     });
   }
-  return [...map.values()].sort((a, b) => {
-    const ga = PRIMARY_GRADES.indexOf(a.grade) ?? 99;
-    const gb = PRIMARY_GRADES.indexOf(b.grade) ?? 99;
-    if (ga !== gb) return ga - gb;
-    return (a.section || '').localeCompare(b.section || '');
+  return [...map.values()]
+    .map((group) => {
+      group.students.sort(compareName);
+      return { ...group, ...countGender(group.students) };
+    })
+    .sort(compareClass);
+}
+
+function buildRoster(activities) {
+  const people = [];
+  activities.forEach((activity) => {
+    (activity.enrollments || []).forEach((row) => {
+      const student = row.student;
+      const cls = student?.class;
+      people.push({
+        enrollmentId: row.id,
+        id: student.id,
+        studentId: student.studentId,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        postName: student.postName,
+        name: displayName(student),
+        gender: student.gender,
+        classId: cls?.id || null,
+        className: cls?.name || 'No class',
+        grade: cls?.grade || null,
+        section: cls?.section || null,
+        activityId: activity.id,
+        activityName: activity.name,
+        category: activity.category,
+        schedule: activity.schedule,
+        instructor: instructorDisplayName(activity),
+      });
+    });
   });
+
+  const byActivity = activities.map((activity) => {
+    const joined = people.filter((person) => person.activityId === activity.id);
+    const classMap = new Map();
+    joined.forEach((person) => {
+      const key = person.classId || 'unknown';
+      if (!classMap.has(key)) {
+        classMap.set(key, {
+          classId: person.classId,
+          className: person.className,
+          grade: person.grade,
+          section: person.section,
+          students: [],
+        });
+      }
+      classMap.get(key).students.push(person);
+    });
+    const classes = [...classMap.values()]
+      .map((group) => {
+        group.students.sort(compareName);
+        return { ...group, ...countGender(group.students) };
+      })
+      .sort(compareClass);
+    return {
+      id: activity.id,
+      name: activity.name,
+      category: activity.category,
+      schedule: activity.schedule,
+      instructor: instructorDisplayName(activity),
+      classes,
+      ...countGender(joined),
+    };
+  });
+
+  const classMap = new Map();
+  people.forEach((person) => {
+    const key = person.classId || 'unknown';
+    if (!classMap.has(key)) {
+      classMap.set(key, {
+        classId: person.classId,
+        className: person.className,
+        grade: person.grade,
+        section: person.section,
+        students: [],
+      });
+    }
+    classMap.get(key).students.push(person);
+  });
+  const byClass = [...classMap.values()]
+    .map((group) => {
+      const activityMap = new Map();
+      group.students.forEach((person) => {
+        if (!activityMap.has(person.activityId)) {
+          activityMap.set(person.activityId, {
+            activityId: person.activityId,
+            name: person.activityName,
+            category: person.category,
+            students: [],
+          });
+        }
+        activityMap.get(person.activityId).students.push(person);
+      });
+      const activityGroups = [...activityMap.values()]
+        .map((activity) => {
+          activity.students.sort(compareName);
+          return { ...activity, ...countGender(activity.students) };
+        })
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' }));
+      const unique = new Map(group.students.map((person) => [person.id, person]));
+      return {
+        classId: group.classId,
+        className: group.className,
+        grade: group.grade,
+        section: group.section,
+        activities: activityGroups,
+        ...countGender([...unique.values()]),
+        joins: group.students.length,
+      };
+    })
+    .sort(compareClass);
+
+  const uniquePeople = [...new Map(people.map((person) => [person.id, person])).values()];
+  return {
+    summary: {
+      ...countGender(uniquePeople),
+      joins: people.length,
+      activities: byActivity.filter((activity) => activity.total > 0).length,
+      classes: byClass.length,
+    },
+    byActivity,
+    byClass,
+  };
 }
 
 async function getPrimaryClasses(req) {
@@ -392,6 +546,28 @@ router.get('/', async (req, res) => {
       payload.externalInstructors = await listExternalInstructors(req);
     }
     res.json(payload);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/roster', async (req, res) => {
+  try {
+    if (req.user.role === 'PARENT' || req.user.role === 'STUDENT') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const activities = await prisma.extracurricularActivity.findMany({
+      where: campusYearWhere(req),
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      include: {
+        enrollments: {
+          include: { student: studentInclude },
+          orderBy: { enrolledAt: 'asc' },
+        },
+        ...instructorInclude,
+      },
+    });
+    res.json(buildRoster(activities));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

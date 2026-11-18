@@ -93,13 +93,23 @@ export default function Campuses() {
         return {
           campuses: acc.campuses + 1,
           students: acc.students + (s.students || 0),
+          studentBoys: acc.studentBoys + (s.studentBoys || 0),
+          studentGirls: acc.studentGirls + (s.studentGirls || 0),
           teachers: acc.teachers + (s.teachers || 0),
+          teacherBoys: acc.teacherBoys + (s.teacherBoys || 0),
+          teacherGirls: acc.teacherGirls + (s.teacherGirls || 0),
+          admin: acc.admin + (s.admin || 0),
+          adminBoys: acc.adminBoys + (s.adminBoys || 0),
+          adminGirls: acc.adminGirls + (s.adminGirls || 0),
           classes: acc.classes + (s.classes || 0),
           pending: acc.pending + (s.pending || 0),
           staffUsers: acc.staffUsers + (s.staffUsers || 0),
         };
       },
-      { campuses: 0, students: 0, teachers: 0, classes: 0, pending: 0, staffUsers: 0 },
+      {
+        campuses: 0, students: 0, studentBoys: 0, studentGirls: 0, teachers: 0, teacherBoys: 0, teacherGirls: 0,
+        admin: 0, adminBoys: 0, adminGirls: 0, classes: 0, pending: 0, staffUsers: 0,
+      },
     );
   }, [campuses]);
 
@@ -214,12 +224,22 @@ export default function Campuses() {
               {isManager ? t('staffDash.campuses.managerDesc') : t('staffDash.campuses.selectDesc')}
             </p>
           </div>
-          {isManager && (
-            <button type="button" onClick={openCreate} className="campuses-create">
-              <Plus className="w-4 h-4" />
-              {t('staffDash.campuses.newCampus')}
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {campuses.length > 0 && (
+              <Link
+                to={`/campus/${(campuses.find((campus) => campus.isActive !== false) || campuses[0]).id}/updates`}
+                className="btn-secondary"
+              >
+                {t('pageBody.updates.title')}
+              </Link>
+            )}
+            {isManager && (
+              <button type="button" onClick={openCreate} className="campuses-create">
+                <Plus className="w-4 h-4" />
+                {t('staffDash.campuses.newCampus')}
+              </button>
+            )}
+          </div>
         </section>
 
         {isManager && campuses.length > 0 && (
@@ -236,6 +256,7 @@ export default function Campuses() {
               <div>
                 <p className="campuses-stat-value">{totals.students}</p>
                 <p className="campuses-stat-label">{t('staffDash.campuses.enrolledStudents')}</p>
+                <p className="campuses-stat-split">{t('staffDash.genderSplit', { boys: totals.studentBoys, girls: totals.studentGirls })}</p>
               </div>
             </div>
             <div className="campuses-stat">
@@ -243,6 +264,15 @@ export default function Campuses() {
               <div>
                 <p className="campuses-stat-value">{totals.teachers}</p>
                 <p className="campuses-stat-label">{t('staffDash.campuses.totalTeachers')}</p>
+                <p className="campuses-stat-split">{t('staffDash.genderSplit', { boys: totals.teacherBoys, girls: totals.teacherGirls })}</p>
+              </div>
+            </div>
+            <div className="campuses-stat">
+              <Users className="campuses-stat-icon" />
+              <div>
+                <p className="campuses-stat-value">{totals.admin}</p>
+                <p className="campuses-stat-label">{t('staffDash.campuses.totalAdmin')}</p>
+                <p className="campuses-stat-split">{t('staffDash.genderSplit', { boys: totals.adminBoys, girls: totals.adminGirls })}</p>
               </div>
             </div>
             <div className="campuses-stat">
@@ -403,10 +433,17 @@ export default function Campuses() {
                     <div className="campus-metric">
                       <span className="campus-metric-value">{s.students}</span>
                       <span className="campus-metric-label">{t('staffDash.campuses.metricStudents')}</span>
+                      <span className="campus-metric-split">{t('staffDash.genderSplit', { boys: s.studentBoys || 0, girls: s.studentGirls || 0 })}</span>
                     </div>
                     <div className="campus-metric">
                       <span className="campus-metric-value">{s.teachers}</span>
                       <span className="campus-metric-label">{t('staffDash.campuses.metricTeachers')}</span>
+                      <span className="campus-metric-split">{t('staffDash.genderSplit', { boys: s.teacherBoys || 0, girls: s.teacherGirls || 0 })}</span>
+                    </div>
+                    <div className="campus-metric">
+                      <span className="campus-metric-value">{s.admin || 0}</span>
+                      <span className="campus-metric-label">{t('staffDash.campuses.metricAdmin')}</span>
+                      <span className="campus-metric-split">{t('staffDash.genderSplit', { boys: s.adminBoys || 0, girls: s.adminGirls || 0 })}</span>
                     </div>
                     <div className="campus-metric">
                       <span className="campus-metric-value">{s.classes}</span>

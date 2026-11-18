@@ -16,7 +16,7 @@ import { fileToBase64, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB } from '../config/r
 import { studentFullName } from '../lib/studentName';
 
 const EMPTY_FORM = {
-  email: '', password: '', firstName: '', lastName: '', phone: '', identityNumber: '', role: 'TEACHER',
+  email: '', password: '', firstName: '', lastName: '', phone: '', identityNumber: '', gender: '', role: 'TEACHER',
   teacherId: '', studentId: '', parentId: '',
 };
 
@@ -229,6 +229,7 @@ export default function Users() {
       phone: displayPhone(user),
       identityNumber: user.identityNumber || '',
       role: user.role || 'TEACHER',
+      gender: user.gender || '',
       teacherId: user.teacherId || user.teacher?.id || '',
       studentId: user.studentId || user.student?.id || '',
       parentId: user.parentId || user.parent?.id || '',
@@ -264,6 +265,7 @@ export default function Users() {
         teacherId: form.role === 'TEACHER' ? (form.teacherId || null) : null,
         studentId: form.role === 'STUDENT' ? (form.studentId || null) : null,
         parentId: form.role === 'PARENT' ? (form.parentId || null) : null,
+        gender: userCategory(form.role) === 'staff' ? (form.gender || null) : null,
       };
       if (userCategory(form.role) === 'staff') {
         payload.identityNumber = form.identityNumber.trim() || undefined;
@@ -766,6 +768,20 @@ export default function Users() {
             <label className="label">{t('ui.email')} *</label>
             <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
+          {userCategory(form.role) === 'staff' && (
+            <div>
+              <label className="label">{t('ui.gender')}</label>
+              <select
+                className="input"
+                value={form.gender}
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              >
+                <option value="">{t('ui.select')}</option>
+                <option value="MALE">{t('ui.male')}</option>
+                <option value="FEMALE">{t('ui.female')}</option>
+              </select>
+            </div>
+          )}
           {userCategory(form.role) === 'staff' && (
             <div>
               <label className="label">PP / Numéro d’identité</label>

@@ -39,6 +39,9 @@ export function useDashboardData({ campusId, includeUsers = false } = {}) {
     if (includeUsers && campusId) {
       requests.push(api.getUsers(campusId));
     }
+    if (campusId) {
+      requests.push(api.getCampus(campusId).catch(() => null));
+    }
 
     Promise.all(requests)
       .then((results) => {
@@ -50,8 +53,13 @@ export function useDashboardData({ campusId, includeUsers = false } = {}) {
           teachers,
           fees,
           marksStats,
-          users,
+          ...rest
         ] = results;
+
+        let users = [];
+        let campus = null;
+        if (includeUsers && campusId) users = rest.shift() || [];
+        if (campusId) campus = rest.shift() || null;
 
         setData({
           stats: { ...attendance, ...feeStats },
@@ -60,7 +68,8 @@ export function useDashboardData({ campusId, includeUsers = false } = {}) {
           teachers,
           fees: fees || [],
           marksStats: marksStats || EMPTY_MARKS_STATS,
-          users: users || [],
+          users,
+          campusStats: campus?.stats || null,
         });
       })
       .catch((err) => setError(err.message || 'Failed to load dashboard'))

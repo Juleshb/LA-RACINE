@@ -39,6 +39,10 @@ function roleRequiresPhone(role) {
   return role === 'PARENT' || STAFF_ROLES.has(role);
 }
 
+function cleanGender(value) {
+  return value === 'MALE' || value === 'FEMALE' ? value : null;
+}
+
 function normalizePhone(value) {
   return String(value || '').trim();
 }
@@ -198,7 +202,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       email, password, firstName, lastName, role, campusId,
-      teacherId, studentId, parentId, phone,
+      teacherId, studentId, parentId, phone, gender,
     } = req.body;
 
     if (!email || !password || !firstName || !lastName || !role) {
@@ -253,6 +257,7 @@ router.post('/', async (req, res) => {
         teacherId: teacherId || null,
         studentId: studentId || null,
         parentId: parentId || null,
+        gender: cleanGender(gender),
         mustChangePassword: false,
       },
       select: { ...userSelect, photoPath: true, photoMimeType: true },
@@ -296,6 +301,7 @@ router.post('/', async (req, res) => {
         data: {
           ...(phoneValue ? { phone: phoneValue } : {}),
           ...(identityNumber ? { identityNumber } : {}),
+          ...(user.gender ? { gender: user.gender } : {}),
         },
       }).catch(() => {});
     }
@@ -334,6 +340,7 @@ router.put('/:id', async (req, res) => {
       isActive,
       password,
       phone,
+      gender,
     } = req.body;
 
     if (firstName !== undefined && !String(firstName).trim()) {
@@ -390,6 +397,7 @@ router.put('/:id', async (req, res) => {
     if (role !== undefined) data.role = role;
     if (typeof isActive === 'boolean') data.isActive = isActive;
     if (phoneValue !== undefined) data.phone = phoneValue;
+    if (gender !== undefined) data.gender = cleanGender(gender);
 
     if (STAFF_ROLES.has(nextRole)) {
       data.identityNumber = await resolveStaffIdentityNumber(prisma, req.body.identityNumber ?? target.identityNumber, {
@@ -507,6 +515,7 @@ router.put('/:id', async (req, res) => {
         data: {
           ...(phoneValue ? { phone: phoneValue } : {}),
           ...(result.identityNumber ? { identityNumber: result.identityNumber } : {}),
+          ...(result.gender ? { gender: result.gender } : {}),
         },
       }).catch(() => {});
     }

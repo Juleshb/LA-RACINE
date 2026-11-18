@@ -157,6 +157,7 @@ router.post('/structures', async (req, res) => {
       installments,
       dueDate = null,
       isActive = true,
+      currency = null,
     } = req.body || {};
 
     if (!feeType || amount == null || Number(amount) < 0) {
@@ -179,6 +180,9 @@ router.post('/structures', async (req, res) => {
         feeType,
         term: normalizedTerm,
         amount: Number(amount),
+        currency: String(currency || '').toUpperCase() === 'USD' || /paiement en dollars|dollar/i.test(label || '')
+          ? 'USD'
+          : 'RWF',
         label: label?.trim() || null,
         installments: defaultInstallments(feeType, normalizedTerm, installments),
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -322,6 +326,9 @@ router.post('/structures/:id/generate', async (req, res) => {
             feeType: structure.feeType,
             term: structure.term || null,
             amount: parts[i],
+            currency: structure.currency === 'USD' || /paiement en dollars|dollar/i.test(structure.label || '')
+              ? 'USD'
+              : 'RWF',
             originalAmount: parts[i],
             dueDate: addDays(baseDue, i * 30),
             status: 'PENDING',
@@ -404,15 +411,9 @@ router.get('/tuition-ledger', async (req, res) => {
           class: student.class,
         },
         branche: student.class?.name || '',
+        dollar: summarizeSimple(list.filter((fee) => fee.feeType === 'OTHER' && (fee.currency === 'USD' || /dollar|paiement en dollars/i.test(fee.notes || '')))),
         inscription: summarizeSimple(filterFees(list, 'REGISTRATION')),
-        uniforms: level === 'primary' ? summarizeSimple(filterFees(list, 'UNIFORM')) : null,
-        activities: level === 'primary'
-          ? {
-            t1: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_1')),
-            t2: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_2')),
-            t3: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_3')),
-          }
-          : null,
+        confirmation: summarizeSimple(filterFees(list, 'CONFIRMATION')),
         carryOver: summarizeSimple([
           ...filterFees(list, 'CARRY_OVER', 'PRIOR_YEAR'),
           ...filterFees(list, 'CARRY_OVER'),
@@ -469,15 +470,20 @@ router.get('/cash-report', async (req, res) => {
 
     const byType = {};
     let total = 0;
+    let dollarsCollected = 0;
     for (const fee of fees) {
-      total += fee.amount || 0;
-      if (!byType[fee.feeType]) byType[fee.feeType] = { feeType: fee.feeType, count: 0, amount: 0 };
-      byType[fee.feeType].count += 1;
-      byType[fee.feeType].amount += fee.amount || 0;
+      const currency = fee.currency === 'USD' ? 'USD' : 'RWF';
+      if (currency === 'USD') dollarsCollected += fee.amount || 0;
+      else total += fee.amount || 0;
+      const key = `${fee.feeType}:${currency}`;
+      if (!byType[key]) byType[key] = { feeType: fee.feeType, currency, count: 0, amount: 0 };
+      byType[key].count += 1;
+      byType[key].amount += fee.amount || 0;
     }
 
     const byDay = {};
     for (const fee of fees) {
+      if (fee.currency === 'USD') continue;
       const key = fee.paidDate ? new Date(fee.paidDate).toISOString().slice(0, 10) : 'unknown';
       if (!byDay[key]) byDay[key] = { date: key, count: 0, amount: 0 };
       byDay[key].count += 1;
@@ -488,6 +494,7 @@ router.get('/cash-report', async (req, res) => {
       from: from.toISOString(),
       to: to.toISOString(),
       totalCollected: total,
+      dollarsCollected,
       receiptCount: fees.length,
       byType: Object.values(byType).sort((a, b) => b.amount - a.amount),
       byDay: Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date)),
@@ -533,33 +540,40 @@ router.get('/debtors', async (req, res) => {
 
     const buckets = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90plus: 0 };
     const byStudent = new Map();
+    let dollarsOutstanding = 0;
 
     for (const fee of fees) {
+      const currency = fee.currency === 'USD' ? 'USD' : 'RWF';
       const overdueDays = Math.max(0, daysBetween(fee.dueDate, today));
       let bucket = 'current';
       if (overdueDays >= 1 && overdueDays <= 30) bucket = 'd1_30';
       else if (overdueDays <= 60 && overdueDays > 30) bucket = 'd31_60';
       else if (overdueDays <= 90 && overdueDays > 60) bucket = 'd61_90';
       else if (overdueDays > 90) bucket = 'd90plus';
-      buckets[bucket] += fee.amount || 0;
+      if (currency === 'USD') dollarsOutstanding += fee.amount || 0;
+      else buckets[bucket] += fee.amount || 0;
 
       const sid = fee.studentId;
       if (!byStudent.has(sid)) {
         byStudent.set(sid, {
           student: fee.student,
           totalDue: 0,
+          dollarsDue: 0,
           oldestOverdueDays: 0,
           fees: [],
         });
       }
       const row = byStudent.get(sid);
-      row.totalDue += fee.amount || 0;
+      if (currency === 'USD') row.dollarsDue += fee.amount || 0;
+      else row.totalDue += fee.amount || 0;
       row.oldestOverdueDays = Math.max(row.oldestOverdueDays, overdueDays);
       row.fees.push({
         id: fee.id,
         receiptNumber: fee.receiptNumber,
         feeType: fee.feeType,
         amount: fee.amount,
+        currency,
+        notes: fee.notes,
         dueDate: fee.dueDate,
         status: fee.status,
         overdueDays,
@@ -572,6 +586,7 @@ router.get('/debtors', async (req, res) => {
     res.json({
       asOf: today.toISOString(),
       totalOutstanding: debtors.reduce((s, d) => s + d.totalDue, 0),
+      dollarsOutstanding,
       debtorCount: debtors.length,
       feeCount: fees.length,
       buckets,
@@ -690,6 +705,8 @@ router.get('/suggest-amount', async (req, res) => {
     if (!studentId || !feeType) {
       return res.status(400).json({ error: 'studentId and feeType are required' });
     }
+    const term = req.query.term != null ? String(req.query.term) : null;
+    const label = String(req.query.label || '').trim().toLowerCase();
     const scope = await studentScopeWhere(req);
     const student = await prisma.student.findFirst({
       where: { id: studentId, ...scope },
@@ -711,7 +728,19 @@ router.get('/suggest-amount', async (req, res) => {
       include: { class: { select: { name: true } } },
     });
 
-    const match = structures.find((s) => s.classId === student.classId) || structures.find((s) => !s.classId) || null;
+    let candidates = structures;
+    if (term != null) {
+      const exactTerm = candidates.filter((item) => (item.term || '') === term);
+      if (exactTerm.length) candidates = exactTerm;
+    }
+    if (label) {
+      const exactLabel = candidates.filter((item) => (item.label || '').toLowerCase().includes(label));
+      if (exactLabel.length) candidates = exactLabel;
+    } else if (String(feeType) === 'OTHER') {
+      const withoutDollar = candidates.filter((item) => !/dollar|paiement en dollars/i.test(item.label || ''));
+      if (withoutDollar.length) candidates = withoutDollar;
+    }
+    const match = candidates.find((s) => s.classId === student.classId) || candidates.find((s) => !s.classId) || null;
     res.json({
       suggested: match,
       structures,

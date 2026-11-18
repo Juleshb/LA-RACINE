@@ -44,6 +44,7 @@ model Campus {
   midtermWindows MidtermWindow[]
   aiConversations AiConversation[]
   feeStructures  FeeStructure[]
+  scienceQuizzes ScienceQuiz[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 }
@@ -102,6 +103,7 @@ model User {
   mustChangePassword Boolean             @default(false)
   phone              String?
   identityNumber     String?             @unique
+  gender             Gender?
   photoPath          String?
   photoMimeType      String?
   passwordResetTokens PasswordResetToken[]
@@ -113,8 +115,24 @@ model User {
   broadcastReads      CommunicationBroadcastRead[]
   midtermsPublished   MidtermWindow[] @relation("MidtermPublishedBy")
   feeDiscountsApplied FeePayment[] @relation("FeeDiscountedBy")
+  changeRequests     ChangeRequest[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+}
+
+model ChangeRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campusId  String?
+  /// change or support
+  kind      String
+  subject   String
+  message   String
+  emailed   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model AuthOtpChallenge {
@@ -198,6 +216,7 @@ model Teacher {
   academicYearId String?
   academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   name           String
+  gender         Gender?
   email          String?
   phone          String?
   identityNumber String?      @unique
@@ -501,6 +520,8 @@ model FeePayment {
   feeType          FeeType
   term             FeeTerm?
   amount           Float
+  /// RWF for school fees. USD for Paiement en Dollars.
+  currency         String        @default("RWF")
   originalAmount   Float?
   discountAmount   Float         @default(0)
   discountReason   String?
@@ -536,6 +557,8 @@ model FeeStructure {
   feeType        FeeType
   term           FeeTerm?
   amount         Float
+  /// RWF for school fees. USD for Paiement en Dollars.
+  currency       String       @default("RWF")
   label          String?
   installments   Int          @default(1)
   dueDate        DateTime?
@@ -557,6 +580,7 @@ model Book {
   author      String?
   isbn        String?
   category    String?
+  publisher   String?
   copies      Int        @default(1)
   available   Int        @default(1)
   loans       BookLoan[]
@@ -575,6 +599,7 @@ model BookLoan {
   loanedAt   DateTime   @default(now())
   dueDate    DateTime
   returnedAt DateTime?
+  condition  String?
   status     LoanStatus @default(ACTIVE)
   notes      String?
   createdAt  DateTime   @default(now())
@@ -1176,6 +1201,7 @@ enum BorrowerType {
   STUDENT
   TEACHER
   STAFF
+  PARENT
 }
 
 enum LoanStatus {
@@ -1357,6 +1383,38 @@ model AiConversation {
   updatedAt      DateTime    @updatedAt
 
   @@index([studentId, campusId, updatedAt])
+}
+
+model ScienceQuiz {
+  id          String                @id @default(uuid())
+  campusId    String
+  campus      Campus                @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  /// easy, medium, hard, or impossible. Sets the play-screen colour.
+  level       String                @default("easy")
+  isPublished Boolean               @default(false)
+  questions   ScienceQuizQuestion[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([campusId, isPublished])
+}
+
+model ScienceQuizQuestion {
+  id        String      @id @default(uuid())
+  quizId    String
+  quiz      ScienceQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  sortOrder Int         @default(0)
+  prompt    String
+  /// Four answer texts, in order.
+  options   Json
+  /// Index of the correct option, 0 to 3.
+  answer    Int
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([quizId, sortOrder])
 }
 
 model AiMessage {

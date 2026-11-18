@@ -15,6 +15,7 @@ export default function FinanceExcelImportModal({ open, onClose, onImported }) {
   const [rows, setRows] = useState([]);
   const [parseErrors, setParseErrors] = useState([]);
   const [result, setResult] = useState(null);
+  const [sortMode, setSortMode] = useState('class');
 
   const reset = () => {
     setStep('upload');
@@ -46,6 +47,7 @@ export default function FinanceExcelImportModal({ open, onClose, onImported }) {
       await downloadFinanceImportTemplate({
         students: Array.isArray(students) ? students : [],
         academicYearName: activeYear?.name || '',
+        sort: sortMode,
       });
     } catch (err) {
       setError(err.message || t('pageBody.fees.importFailed'));
@@ -113,6 +115,17 @@ export default function FinanceExcelImportModal({ open, onClose, onImported }) {
               <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-4 space-y-3">
                 <p className="text-sm text-brand-900 font-medium">{t('pageBody.fees.importStepTemplate')}</p>
                 <p className="text-xs text-gray-600">{t('pageBody.fees.importTemplateHint')}</p>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <span>{t('pageBody.tuition.sortLabel')}</span>
+                  <select
+                    value={sortMode}
+                    onChange={(event) => setSortMode(event.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="name">{t('pageBody.tuition.sortAz')}</option>
+                    <option value="class">{t('pageBody.tuition.sortClass')}</option>
+                  </select>
+                </label>
                 <button
                   type="button"
                   className="btn-secondary text-sm inline-flex items-center gap-2"

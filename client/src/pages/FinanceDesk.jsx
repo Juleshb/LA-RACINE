@@ -12,6 +12,14 @@ import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { studentFullName } from '../lib/studentName';
 import FinanceExcelImportModal from '../components/fees/FinanceExcelImportModal';
+import {
+  OTHER_FEE_LINES,
+  TUITION_FEE_LINES,
+  matchTuitionFeeLine,
+  structureFromLine,
+  tuitionFeeLine,
+} from '../lib/tuitionFeeLines';
+import { feeCurrency, formatMoney } from '../lib/money';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-RW', {
@@ -20,11 +28,6 @@ function formatCurrency(amount) {
     maximumFractionDigits: 0,
   }).format(amount || 0);
 }
-
-const FEE_TYPES = [
-  'TUITION', 'REGISTRATION', 'CONFIRMATION', 'EXAM', 'TRANSPORT', 'UNIFORM',
-  'EXTRACURRICULAR', 'CARRY_OVER', 'OTHER',
-];
 
 const FEE_TERMS = [
   { value: '', labelKey: 'pageBody.finance.termNone' },
@@ -79,15 +82,12 @@ export default function FinanceDesk() {
   const [classes, setClasses] = useState([]);
   const [structureFormOpen, setStructureFormOpen] = useState(false);
   const [structureSubmitting, setStructureSubmitting] = useState(false);
-  const [structureForm, setStructureForm] = useState({
-    feeType: 'TUITION',
-    term: 'TRIMESTRE_1',
+  const [structureForm, setStructureForm] = useState(() => ({
+    ...structureFromLine(tuitionFeeLine('t1')),
     amount: '',
     classId: '',
-    label: '',
-    installments: '2',
     dueDate: '',
-  });
+  }));
   const [generatingId, setGeneratingId] = useState(null);
 
   const [debtors, setDebtors] = useState(null);
@@ -175,7 +175,9 @@ export default function FinanceDesk() {
     else if (tab === 'banks') loadBanks();
   }, [tab, loadCash, loadStructures, loadDebtors, loadTransport, loadBanks]);
 
-  const feeTypeLabel = (type) => {
+  const feeTypeLabel = (type, fee) => {
+    const line = matchTuitionFeeLine(fee || { feeType: type });
+    if (line) return t(line.labelKey);
     const key = `pageBody.fees.types.${type}`;
     const translated = t(key);
     return translated === key ? type : translated;
@@ -198,13 +200,19 @@ export default function FinanceDesk() {
     setStructureSubmitting(true);
     setError('');
     try {
+      const line = tuitionFeeLine(structureForm.lineId);
+      let label = structureForm.label || line.storedLabel || null;
+      if (line.id === 'dollar' && !/paiement en dollars/i.test(label || '')) {
+        label = 'Paiement en Dollars';
+      }
       await api.createFeeStructure({
-        feeType: structureForm.feeType,
-        term: structureForm.term || null,
+        feeType: line.feeType,
+        term: structureForm.term || line.term || null,
         amount: Number(structureForm.amount),
         classId: structureForm.classId || null,
-        label: structureForm.label || null,
-        installments: Number(structureForm.installments) || 1,
+        label,
+        currency: line.currency === 'USD' ? 'USD' : 'RWF',
+        installments: Number(structureForm.installments) || line.installments || 1,
         dueDate: structureForm.dueDate || null,
       });
       setStructureFormOpen(false);
@@ -219,7 +227,7 @@ export default function FinanceDesk() {
 
   const generateBills = async (structure) => {
     if (!confirm(t('pageBody.finance.generateConfirm', {
-      type: feeTypeLabel(structure.feeType),
+      type: feeTypeLabel(structure.feeType, structure),
       class: structure.class?.name || t('pageBody.finance.allClasses'),
     }))) return;
     setGeneratingId(structure.id);
@@ -422,6 +430,9 @@ export default function FinanceDesk() {
             <div className="card">
               <p className="text-sm text-gray-500">{t('pageBody.finance.collected')}</p>
               <p className="text-2xl font-semibold mt-1">{formatCurrency(cashReport.totalCollected)}</p>
+              {cashReport.dollarsCollected > 0 && (
+                <p className="text-sm text-gray-600 mt-1">{formatMoney(cashReport.dollarsCollected, 'USD')} {t('pageBody.finance.dollarsCollected')}</p>
+              )}
             </div>
             <div className="card">
               <p className="text-sm text-gray-500">{t('pageBody.finance.receipts')}</p>
@@ -441,9 +452,9 @@ export default function FinanceDesk() {
               ) : (
                 <ul className="space-y-2">
                   {cashReport.byType.map((row) => (
-                    <li key={row.feeType} className="flex justify-between text-sm">
-                      <span>{feeTypeLabel(row.feeType)} · {row.count}</span>
-                      <span className="font-medium">{formatCurrency(row.amount)}</span>
+                    <li key={`${row.feeType}-${row.currency || 'RWF'}`} className="flex justify-between text-sm">
+                      <span>{feeTypeLabel(row.feeType, row)} · {row.count}</span>
+                      <span className="font-medium">{formatMoney(row.amount, row.currency)}</span>
                     </li>
                   ))}
                 </ul>
@@ -487,8 +498,8 @@ export default function FinanceDesk() {
                       </Link>
                     </td>
                     <td className="py-2">{studentFullName(fee.student)}</td>
-                    <td className="py-2">{feeTypeLabel(fee.feeType)}</td>
-                    <td className="py-2 font-medium">{formatCurrency(fee.amount)}</td>
+                    <td className="py-2">{feeTypeLabel(fee.feeType, fee)}</td>
+                    <td className="py-2 font-medium">{formatMoney(fee.amount, feeCurrency(fee))}</td>
                     <td className="py-2 text-gray-500">
                       {fee.paidDate ? new Date(fee.paidDate).toLocaleDateString() : '—'}
                     </td>
@@ -508,12 +519,9 @@ export default function FinanceDesk() {
               className="btn-primary flex items-center gap-1.5"
               onClick={() => {
                 setStructureForm({
-                  feeType: 'TUITION',
-                  term: 'TRIMESTRE_1',
+                  ...structureFromLine(tuitionFeeLine('t1')),
                   amount: '',
                   classId: '',
-                  label: '',
-                  installments: '2',
                   dueDate: '',
                 });
                 setStructureFormOpen(true);
@@ -545,11 +553,11 @@ export default function FinanceDesk() {
                 <tbody>
                   {structures.map((s) => (
                     <tr key={s.id} className="border-b border-gray-50">
-                      <td className="py-2.5">{feeTypeLabel(s.feeType)}</td>
+                      <td className="py-2.5">{feeTypeLabel(s.feeType, s)}</td>
                       <td className="py-2.5 text-gray-500">{termLabel(s.term)}</td>
                       <td className="py-2.5">{s.class?.name || t('pageBody.finance.allClasses')}</td>
                       <td className="py-2.5 text-gray-500">{s.label || '—'}</td>
-                      <td className="py-2.5 font-medium">{formatCurrency(s.amount)}</td>
+                      <td className="py-2.5 font-medium">{formatMoney(s.amount, s.currency)}</td>
                       <td className="py-2.5">{s.installments}</td>
                       <td className="py-2.5">
                         <div className="flex items-center gap-2">
@@ -627,13 +635,16 @@ export default function FinanceDesk() {
                       <p className="text-xs text-gray-500">{d.student.studentId}</p>
                     </td>
                     <td className="py-2.5">{d.student.class?.name || '—'}</td>
-                    <td className="py-2.5 font-medium">{formatCurrency(d.totalDue)}</td>
+                    <td className="py-2.5 font-medium">
+                      {formatCurrency(d.totalDue)}
+                      {d.dollarsDue > 0 && <span className="block text-xs text-gray-500">{formatMoney(d.dollarsDue, 'USD')}</span>}
+                    </td>
                     <td className="py-2.5">{d.oldestOverdueDays}</td>
                     <td className="py-2.5 space-y-1">
                       {d.fees.slice(0, 4).map((fee) => (
                         <div key={fee.id} className="flex flex-wrap items-center gap-2 text-xs">
                           <Link to={`/campus/${campusId}/fees/${fee.id}`} className="text-brand-600 hover:underline">
-                            {feeTypeLabel(fee.feeType)} · {formatCurrency(fee.amount)}
+                            {feeTypeLabel(fee.feeType, fee)} · {formatMoney(fee.amount, fee.currency)}
                           </Link>
                           <button type="button" className="text-amber-700 hover:underline" onClick={() => openDiscount(fee)}>
                             {t('pageBody.finance.discount')}
@@ -684,7 +695,7 @@ export default function FinanceDesk() {
                       </Link>
                     </td>
                     <td className="py-2">{fee.routeName || '—'}</td>
-                    <td className="py-2 font-medium">{formatCurrency(fee.amount)}</td>
+                    <td className="py-2 font-medium">{formatMoney(fee.amount, feeCurrency(fee))}</td>
                     <td className="py-2">{new Date(fee.dueDate).toLocaleDateString()}</td>
                     <td className="py-2">{fee.status}</td>
                   </tr>
@@ -739,23 +750,28 @@ export default function FinanceDesk() {
         <FormSection title={t('pageBody.finance.structureDetails')}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('ui.feeType')}</label>
+              <label className="label">{t('pageBody.fees.templateLine')}</label>
               <select
                 className="input"
-                value={structureForm.feeType}
+                value={structureForm.lineId || 't1'}
                 onChange={(e) => {
-                  const feeType = e.target.value;
-                  const term = structureForm.term;
+                  const next = tuitionFeeLine(e.target.value);
                   setStructureForm({
                     ...structureForm,
-                    feeType,
-                    installments: defaultInstallmentsFor(feeType, term),
+                    ...structureFromLine(next),
                   });
                 }}
               >
-                {FEE_TYPES.map((type) => (
-                  <option key={type} value={type}>{feeTypeLabel(type)}</option>
-                ))}
+                <optgroup label={t('pageBody.fees.templateGroup')}>
+                  {TUITION_FEE_LINES.map((item) => (
+                    <option key={item.id} value={item.id}>{t(item.labelKey)}</option>
+                  ))}
+                </optgroup>
+                <optgroup label={t('pageBody.fees.otherGroup')}>
+                  {OTHER_FEE_LINES.map((item) => (
+                    <option key={item.id} value={item.id}>{t(item.labelKey)}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
             <div>
@@ -778,8 +794,8 @@ export default function FinanceDesk() {
               </select>
             </div>
             <div>
-              <label className="label">{t('ui.amount')} (RWF)</label>
-              <input className="input" type="number" min="0" required value={structureForm.amount} onChange={(e) => setStructureForm({ ...structureForm, amount: e.target.value })} />
+              <label className="label">{t('ui.amount')} ({structureForm.currency === 'USD' ? 'USD' : 'RWF'})</label>
+              <input className="input" type="number" min="0" step={structureForm.currency === 'USD' ? '0.01' : '1'} required value={structureForm.amount} onChange={(e) => setStructureForm({ ...structureForm, amount: e.target.value })} />
             </div>
             <div>
               <label className="label">{t('ui.class')}</label>
@@ -810,7 +826,7 @@ export default function FinanceDesk() {
         open={discountOpen}
         mode="edit"
         title={t('pageBody.finance.discountTitle')}
-        subtitle={discountFee ? `${feeTypeLabel(discountFee.feeType)} · ${formatCurrency(discountFee.amount)}` : ''}
+        subtitle={discountFee ? `${feeTypeLabel(discountFee.feeType, discountFee)} · ${formatMoney(discountFee.amount, feeCurrency(discountFee))}` : ''}
         onClose={() => setDiscountOpen(false)}
         onSubmit={applyDiscount}
         formId="fee-discount-form"

@@ -126,6 +126,7 @@ export function translateStudentNavItem(item, t) {
     'e-library': { label: 'nav.elibrary', shortLabel: 'nav.elibrary' },
     'e-learning': { label: 'nav.elearning', shortLabel: 'nav.elearning' },
     'science-quiz': { label: 'nav.scienceQuiz', shortLabel: 'nav.quiz' },
+    updates: { label: 'nav.updates', shortLabel: 'nav.updatesShort' },
   };
   const keys = keyMap[item.to];
   if (!keys) return item;

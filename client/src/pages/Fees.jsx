@@ -11,6 +11,8 @@ import FormSection from '../components/form/FormSection';
 import { useTranslation } from '../context/LanguageContext';
 import { SortableTh, useTableSort } from '../hooks/useTableSort';
 import { studentFullName } from '../lib/studentName';
+import { matchTuitionFeeLine } from '../lib/tuitionFeeLines';
+import { feeCurrency, formatMoney } from '../lib/money';
 import FinanceExcelImportModal from '../components/fees/FinanceExcelImportModal';
 
 function formatCurrency(amount) {
@@ -275,7 +277,7 @@ export default function Fees() {
                       <p className="text-xs text-gray-500">{fee.student.studentId}</p>
                     </td>
                     <td className="py-2.5 text-gray-600">{fee.student.class?.name || '—'}</td>
-                    <td className="py-2.5 font-medium">{formatCurrency(fee.amount)}</td>
+                    <td className="py-2.5 font-medium">{formatMoney(fee.amount, feeCurrency(fee))}</td>
                     <td className="py-2.5 text-gray-500">{new Date(fee.dueDate).toLocaleDateString()}</td>
                     <td className="py-2.5">
                       <button
@@ -351,8 +353,12 @@ export default function Fees() {
                       </Link>
                     </td>
                     <td className="py-3">{studentFullName(fee.student)}</td>
-                    <td className="py-3 text-gray-400">{FEE_TYPE_KEYS[fee.feeType] ? t(FEE_TYPE_KEYS[fee.feeType]) : fee.feeType}</td>
-                    <td className="py-3 font-medium">{formatCurrency(fee.amount)}</td>
+                    <td className="py-3 text-gray-400">{(() => {
+                      const line = matchTuitionFeeLine(fee);
+                      if (line) return t(line.labelKey);
+                      return FEE_TYPE_KEYS[fee.feeType] ? t(FEE_TYPE_KEYS[fee.feeType]) : fee.feeType;
+                    })()}</td>
+                    <td className="py-3 font-medium">{formatMoney(fee.amount, feeCurrency(fee))}</td>
                     <td className="py-3 text-gray-400">{new Date(fee.dueDate).toLocaleDateString()}</td>
                     <td className="py-3">
                       {isParent ? (

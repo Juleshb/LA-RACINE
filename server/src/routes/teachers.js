@@ -17,8 +17,12 @@ import {
 
 const router = Router();
 
+function cleanGender(value) {
+  return value === 'MALE' || value === 'FEMALE' ? value : null;
+}
+
 function pickTeacherFields(body = {}) {
-  const { name, email, phone, subject, address, qualifications, bankName, bankAccount } = body;
+  const { name, email, phone, subject, address, qualifications, bankName, bankAccount, gender } = body;
   const clean = (value) => (value ? String(value).trim() : null);
   return {
     ...(name !== undefined ? { name: String(name).trim() } : {}),
@@ -29,7 +33,16 @@ function pickTeacherFields(body = {}) {
     ...(qualifications !== undefined ? { qualifications: clean(qualifications) } : {}),
     ...(bankName !== undefined ? { bankName: clean(bankName) } : {}),
     ...(bankAccount !== undefined ? { bankAccount: clean(bankAccount) } : {}),
+    ...(gender !== undefined ? { gender: cleanGender(gender) } : {}),
   };
+}
+
+async function syncTeacherGender(teacher) {
+  if (!teacher?.id || teacher.gender === undefined) return;
+  await prisma.user.updateMany({
+    where: { teacherId: teacher.id },
+    data: { gender: teacher.gender },
+  }).catch(() => {});
 }
 
 function extractPhotoPayload(body = {}) {
@@ -154,6 +167,7 @@ router.post('/', async (req, res) => {
       }
     }
 
+    await syncTeacherGender(teacher);
     res.status(201).json(serializeTeacher(teacher, { includePhotoUrl: true }));
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
@@ -204,6 +218,7 @@ router.put('/:id', async (req, res) => {
         data: { identityNumber: teacher.identityNumber },
       }).catch(() => {});
     }
+    await syncTeacherGender(teacher);
 
     res.json(serializeTeacher(teacher, { includePhotoUrl: true }));
   } catch (error) {

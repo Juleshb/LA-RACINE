@@ -4,26 +4,32 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import { api } from '../lib/api';
 import { useCampus } from '../context/CampusContext';
 import { studentFullName } from '../lib/studentName';
+import { useTranslation } from '../context/LanguageContext';
+import { matchTuitionFeeLine } from '../lib/tuitionFeeLines';
+import { feeCurrency, formatMoney } from '../lib/money';
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
-}
-
-const feeTypeLabels = {
-  TUITION: 'Tuition Fee',
-  REGISTRATION: 'Registration Fee',
-  EXAM: 'Exam Fee',
-  TRANSPORT: 'Transport Fee',
-  UNIFORM: 'Uniform Fee',
-  OTHER: 'Other Fee',
-  CONFIRMATION: 'Confirmation fee',
+const feeTypeKeys = {
+  TUITION: 'pageBody.fees.types.TUITION',
+  REGISTRATION: 'pageBody.fees.types.REGISTRATION',
+  EXAM: 'pageBody.fees.types.EXAM',
+  TRANSPORT: 'pageBody.fees.types.TRANSPORT',
+  UNIFORM: 'pageBody.fees.types.UNIFORM',
+  OTHER: 'pageBody.fees.types.OTHER',
+  CARRY_OVER: 'pageBody.fees.types.CARRY_OVER',
+  EXTRACURRICULAR: 'pageBody.fees.types.EXTRACURRICULAR',
+  CONFIRMATION: 'pageBody.fees.types.CONFIRMATION',
 };
 
 export default function FeeReceipt() {
   const { id } = useParams();
   const { campusId } = useCampus();
+  const { t } = useTranslation();
   const [fee, setFee] = useState(null);
   const [school, setSchool] = useState(null);
+  const line = matchTuitionFeeLine(fee);
+  const feeName = line
+    ? t(line.labelKey)
+    : (feeTypeKeys[fee?.feeType] ? t(feeTypeKeys[fee.feeType]) : fee?.feeType);
 
   useEffect(() => {
     Promise.all([api.getFee(id), api.getSchool()])
@@ -89,18 +95,18 @@ export default function FeeReceipt() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-gray-400 print:text-gray-600 text-sm">Fee Type</p>
-              <p className="font-semibold text-lg">{feeTypeLabels[fee.feeType]}</p>
+              <p className="font-semibold text-lg">{feeName}</p>
               {fee.installmentIndex && fee.installmentTotal && (
                 <p className="text-sm text-gray-500 mt-1">Installment {fee.installmentIndex} of {fee.installmentTotal}</p>
               )}
             </div>
             <div className="text-right">
               <p className="text-gray-400 print:text-gray-600 text-sm">Amount</p>
-              <p className="font-bold text-2xl text-brand-600 print:text-green-700">{formatCurrency(fee.amount)}</p>
+              <p className="font-bold text-2xl text-brand-600 print:text-green-700">{formatMoney(fee.amount, feeCurrency(fee))}</p>
               {fee.discountAmount > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Original {formatCurrency(fee.originalAmount ?? (fee.amount + fee.discountAmount))}
-                  {' · '}Discount {formatCurrency(fee.discountAmount)}
+                  Original {formatMoney(fee.originalAmount ?? (fee.amount + fee.discountAmount), feeCurrency(fee))}
+                  {' · '}Discount {formatMoney(fee.discountAmount, feeCurrency(fee))}
                 </p>
               )}
             </div>

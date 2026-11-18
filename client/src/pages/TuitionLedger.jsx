@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Download, Loader2, RefreshCw } from 'lucide-react';
 import { api } from '../lib/api';
@@ -6,6 +6,8 @@ import { useCampus } from '../context/CampusContext';
 import PageHeader from '../components/PageHeader';
 import { useTranslation } from '../context/LanguageContext';
 import { studentFullName } from '../lib/studentName';
+import { compareTuitionClass, sortTuitionPeople } from '../lib/tuitionSort';
+import { formatMoney } from '../lib/money';
 
 function formatCurrency(amount) {
   if (amount == null || amount === '') return '—';
@@ -16,10 +18,10 @@ function formatCurrency(amount) {
   }).format(amount || 0);
 }
 
-function MoneyCell({ value, muted }) {
+function MoneyCell({ value, muted, currency = 'RWF' }) {
   return (
     <td className={`px-2 py-1.5 text-right text-xs whitespace-nowrap ${muted ? 'text-gray-400' : 'text-gray-800'}`}>
-      {value == null || value === 0 ? '—' : formatCurrency(value)}
+      {value == null || value === 0 ? '—' : (currency === 'USD' ? formatMoney(value, 'USD') : formatCurrency(value))}
     </td>
   );
 }
@@ -62,6 +64,8 @@ export default function TuitionLedger() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [markingId, setMarkingId] = useState(null);
+  const [sortMode, setSortMode] = useState('class');
+  const [classId, setClassId] = useState('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +81,7 @@ export default function TuitionLedger() {
   }, [level]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setClassId('all'); }, [level]);
 
   const markPaid = async (feeId) => {
     setMarkingId(feeId);
@@ -94,31 +99,23 @@ export default function TuitionLedger() {
 
   const exportCsv = () => {
     if (!data?.rows?.length) return;
-    const isPrimary = level === 'primary';
     const headers = [
-      'S/N', 'Names', 'Branche', 'Inscription',
-      ...(isPrimary ? ['Uniforms', 'Activities T1', 'Activities T2', 'Activities T3'] : []),
+      'S/N', 'Names', 'Classes', 'Paiement en Dollars', 'Inscription', 'Confirmation',
       'Carry-over',
       'T1 Amount', 'T1 Inst1', 'T1 Inst2', 'T1 Balance',
       'T2 Amount', 'T2 Inst1', 'T2 Inst2', 'T2 Balance',
       'T3 Amount', 'T3 Inst1', 'T3 Inst2', 'T3 Balance',
     ];
     const lines = [headers.join(',')];
-    for (const row of data.rows) {
+    for (const row of visibleRows) {
       const name = studentFullName(row.student);
       const cells = [
         row.sn,
         `"${name}"`,
         `"${row.branche || ''}"`,
+        row.dollar?.due || 0,
         row.inscription?.due || 0,
-        ...(isPrimary
-          ? [
-            row.uniforms?.due || 0,
-            row.activities?.t1?.due || 0,
-            row.activities?.t2?.due || 0,
-            row.activities?.t3?.due || 0,
-          ]
-          : []),
+        row.confirmation?.due || 0,
         row.carryOver?.due || 0,
         row.trimesters.t1.due,
         row.trimesters.t1.inst1.paid ? row.trimesters.t1.inst1.amount : '',
@@ -144,8 +141,23 @@ export default function TuitionLedger() {
     URL.revokeObjectURL(url);
   };
 
-  const isPrimary = level === 'primary';
   const rows = data?.rows || [];
+  const classOptions = useMemo(() => {
+    const map = new Map();
+    rows.forEach((row) => {
+      const cls = row.student?.class;
+      const id = cls?.id || row.branche || '';
+      if (!id || map.has(id)) return;
+      map.set(id, { id, name: row.branche || cls?.name || '—', class: cls });
+    });
+    return [...map.values()].sort((a, b) => compareTuitionClass(a, b));
+  }, [rows]);
+  const visibleRows = useMemo(() => {
+    const filtered = classId === 'all'
+      ? rows
+      : rows.filter((row) => (row.student?.class?.id || row.branche) === classId);
+    return sortTuitionPeople(filtered, sortMode).map((row, index) => ({ ...row, sn: index + 1 }));
+  }, [rows, classId, sortMode]);
 
   return (
     <div>
@@ -157,7 +169,7 @@ export default function TuitionLedger() {
             <Link to={`/campus/${campusId}/finance`} className="btn-secondary text-sm">
               {t('pages.finance.title')}
             </Link>
-            <button type="button" onClick={exportCsv} className="btn-secondary text-sm flex items-center gap-1.5" disabled={!rows.length}>
+            <button type="button" onClick={exportCsv} className="btn-secondary text-sm flex items-center gap-1.5" disabled={!visibleRows.length}>
               <Download className="w-4 h-4" />
               {t('pageBody.finance.exportCsv')}
             </button>
@@ -187,6 +199,27 @@ export default function TuitionLedger() {
             {tab.label}
           </button>
         ))}
+        <label className="ml-auto flex items-center gap-2 text-sm text-gray-600">
+          <span>{t('pageBody.tuition.sortLabel')}</span>
+          <select
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
+          >
+            <option value="name">{t('pageBody.tuition.sortAz')}</option>
+            <option value="class">{t('pageBody.tuition.sortClass')}</option>
+          </select>
+        </label>
+        <select
+          value={classId}
+          onChange={(event) => setClassId(event.target.value)}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
+        >
+          <option value="all">{t('pageBody.tuition.allClasses')}</option>
+          {classOptions.map((option) => (
+            <option key={option.id} value={option.id}>{option.name}</option>
+          ))}
+        </select>
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
@@ -218,27 +251,16 @@ export default function TuitionLedger() {
                 <th rowSpan={3} className="sticky left-10 z-20 bg-gray-50 px-3 py-2 border-b border-r text-left min-w-[160px]">
                   {t('pageBody.tuition.names')}
                 </th>
-                <th rowSpan={3} className="px-3 py-2 border-b border-r text-left">{t('pageBody.tuition.branche')}</th>
+                <th rowSpan={3} className="px-3 py-2 border-b border-r text-left">{t('pageBody.tuition.classes')}</th>
+                <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.dollar')}</th>
                 <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.inscription')}</th>
-                {isPrimary && (
-                  <>
-                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.uniforms')}</th>
-                    <th colSpan={3} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.activities')}</th>
-                  </>
-                )}
+                <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.confirmation')}</th>
                 <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.carryOver')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.firstTrimester')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.secondTrimester')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b text-center">{t('pageBody.tuition.thirdTrimester')}</th>
               </tr>
               <tr className="bg-gray-50 text-gray-500 text-xs">
-                {isPrimary && (
-                  <>
-                    <th rowSpan={2} className="px-2 py-1 border-b border-r align-bottom">T1</th>
-                    <th rowSpan={2} className="px-2 py-1 border-b border-r align-bottom">T2</th>
-                    <th rowSpan={2} className="px-2 py-1 border-b border-r align-bottom">T3</th>
-                  </>
-                )}
                 {[1, 2, 3].map((n) => (
                   <th key={`sf-${n}`} colSpan={4} className="px-2 py-1 border-b border-r text-center">
                     {t('pageBody.tuition.schoolFees')}
@@ -254,13 +276,13 @@ export default function TuitionLedger() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={isPrimary ? 20 : 16} className="text-center text-gray-500 py-12">
+                  <td colSpan={19} className="text-center text-gray-500 py-12">
                     {t('pageBody.tuition.empty')}
                   </td>
                 </tr>
-              ) : rows.map((row) => (
+              ) : visibleRows.map((row) => (
                 <tr key={row.student.id} className="border-b border-gray-100 hover:bg-gray-50/80">
                   <td className="sticky left-0 z-10 bg-white px-3 py-1.5 border-r text-xs text-gray-500">{row.sn}</td>
                   <td className="sticky left-10 z-10 bg-white px-3 py-1.5 border-r">
@@ -270,15 +292,9 @@ export default function TuitionLedger() {
                     <p className="text-[10px] text-gray-400">{row.student.studentId}</p>
                   </td>
                   <td className="px-3 py-1.5 border-r text-xs">{row.branche || '—'}</td>
+                  <MoneyCell value={row.dollar?.due} currency="USD" />
                   <MoneyCell value={row.inscription?.due} />
-                  {isPrimary && (
-                    <>
-                      <MoneyCell value={row.uniforms?.due} />
-                      <MoneyCell value={row.activities?.t1?.due} />
-                      <MoneyCell value={row.activities?.t2?.due} />
-                      <MoneyCell value={row.activities?.t3?.due} />
-                    </>
-                  )}
+                  <MoneyCell value={row.confirmation?.due} />
                   <MoneyCell value={row.carryOver?.due} />
                   {['t1', 't2', 't3'].map((key) => {
                     const tri = row.trimesters[key];

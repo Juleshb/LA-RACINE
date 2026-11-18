@@ -180,6 +180,7 @@ export const ROLE_PERMISSIONS = {
 
 export const NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Dashboard' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
   { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Communication' },
@@ -213,6 +214,7 @@ export const NAV_ITEMS = [
 /** Parent-facing menu — labels and routes tuned for families */
 export const PARENT_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
   { to: 'register-child', permission: PERMISSIONS.REGISTRATION, icon: 'FileText', label: 'Register child' },
   { to: 'child-accounts', permission: PERMISSIONS.REGISTRATION, icon: 'Shield', label: 'Child accounts' },
   { to: 'my-registrations', permission: PERMISSIONS.REGISTRATION, icon: 'ClipboardList', label: 'My applications' },
@@ -239,6 +241,7 @@ export const PARENT_NAV_GROUPS = [
 /** Teacher-facing menu — daily classroom tools */
 export const TEACHER_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
   { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
   { to: 'classes', permission: PERMISSIONS.CLASSES, icon: 'BookOpen', label: 'My classes' },
@@ -264,6 +267,7 @@ export const TEACHER_NAV_GROUPS = [
 /** Student-facing menu — learning resources only */
 export const STUDENT_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home', shortLabel: 'Home' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates', shortLabel: 'Updates' },
   { to: 'homework', permission: PERMISSIONS.HOMEWORK, icon: 'BookOpen', label: 'My homework', shortLabel: 'Homework' },
   { to: 'ai-tutor', permission: PERMISSIONS.AI_TUTOR, icon: 'Bot', label: 'Ask AI', shortLabel: 'AI' },
   { to: 'online-classes', permission: PERMISSIONS.ONLINE_CLASSES, icon: 'Video', label: 'Live classes', shortLabel: 'Live' },
@@ -279,6 +283,7 @@ export const STUDENT_NAV_GROUPS = [
 /** Accountant-facing menu — finance, students, and school services */
 export const ACCOUNTANT_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
   { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Reports' },
   { to: 'communication', permission: PERMISSIONS.COMMUNICATION, icon: 'MessageSquare', label: 'Messages' },
@@ -305,6 +310,7 @@ export const ACCOUNTANT_NAV_GROUPS = [
 /** Activities Manager — activities only (list, add, enroll, assign coach, reports) */
 export const ACTIVITIES_MANAGER_NAV_ITEMS = [
   { to: '', permission: PERMISSIONS.DASHBOARD, icon: 'LayoutDashboard', label: 'Home' },
+  { to: 'updates', permission: PERMISSIONS.DASHBOARD, icon: 'Megaphone', label: 'Latest updates' },
   { to: 'ask-ai', permission: PERMISSIONS.STAFF_GUIDE, icon: 'Bot', label: 'Ask La Racine AI' },
   { to: 'extracurricular', permission: PERMISSIONS.EXTRACURRICULAR, icon: 'Sparkles', label: 'Activities' },
   { to: 'reports', permission: PERMISSIONS.REPORTS, icon: 'BarChart3', label: 'Activity reports' },
