@@ -228,8 +228,13 @@ router.post('/', async (req, res) => {
       teacherId, studentId, parentId, phone, gender,
     } = req.body;
 
-    if (!email || !password || !firstName || !lastName || !role) {
+    const first = String(firstName || '').trim();
+    const last = String(lastName || '').trim();
+    if (!email || !password || !last || !role) {
       return res.status(400).json({ error: 'All required fields must be provided' });
+    }
+    if (!STAFF_ROLES.has(role) && !first) {
+      return res.status(400).json({ error: 'First name is required' });
     }
 
     if (!isManagerRole(role) && !campusId) {
@@ -271,8 +276,8 @@ router.post('/', async (req, res) => {
       data: {
         email: email.toLowerCase(),
         password: hashed,
-        firstName,
-        lastName,
+        firstName: first,
+        lastName: last,
         role,
         phone: phoneValue,
         identityNumber,
@@ -360,7 +365,7 @@ router.put('/:id', async (req, res) => {
       gender,
     } = req.body;
 
-    if (firstName !== undefined && !String(firstName).trim()) {
+    if (firstName !== undefined && !String(firstName).trim() && !STAFF_ROLES.has(role || target.role)) {
       return res.status(400).json({ error: 'First name is required' });
     }
     if (lastName !== undefined && !String(lastName).trim()) {

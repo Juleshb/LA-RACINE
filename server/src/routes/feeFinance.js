@@ -414,6 +414,12 @@ router.get('/tuition-ledger', async (req, res) => {
         dollar: summarizeSimple(list.filter((fee) => fee.feeType === 'OTHER' && (fee.currency === 'USD' || /dollar|paiement en dollars/i.test(fee.notes || '')))),
         inscription: summarizeSimple(filterFees(list, 'REGISTRATION')),
         confirmation: summarizeSimple(filterFees(list, 'CONFIRMATION')),
+        uniform: summarizeSimple(filterFees(list, 'UNIFORM')),
+        activities: {
+          t1: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_1')),
+          t2: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_2')),
+          t3: summarizeSimple(filterFees(list, 'EXTRACURRICULAR', 'TRIMESTRE_3')),
+        },
         carryOver: summarizeSimple([
           ...filterFees(list, 'CARRY_OVER', 'PRIOR_YEAR'),
           ...filterFees(list, 'CARRY_OVER'),

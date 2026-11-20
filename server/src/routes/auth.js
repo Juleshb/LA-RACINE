@@ -358,7 +358,9 @@ router.patch('/me', authenticate, async (req, res) => {
     const data = {};
     if (firstName !== undefined) {
       const value = String(firstName).trim();
-      if (!value) return res.status(400).json({ error: 'First name is required' });
+      if (!value && !STAFF_ROLES.has(user.role)) {
+        return res.status(400).json({ error: 'First name is required' });
+      }
       data.firstName = value;
     }
     if (lastName !== undefined) {

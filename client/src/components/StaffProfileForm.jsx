@@ -28,6 +28,23 @@ export const QUALIFICATIONS = [
   'Doctorat / PhD',
 ];
 
+export const RWANDA_BANKS = [
+  'AB Bank Rwanda',
+  'Access Bank Rwanda',
+  'Bank of Africa Rwanda',
+  'Bank of Kigali',
+  'BPR Bank Rwanda',
+  'Development Bank of Rwanda (BRD)',
+  'Ecobank Rwanda',
+  'Equity Bank Rwanda',
+  'GTBank Rwanda',
+  'I&M Bank Rwanda',
+  'LOLC UNGUKA Finance',
+  'NCBA Bank Rwanda',
+  'Urwego Bank',
+  'Zigama CSS',
+];
+
 const COPY = {
   en: {
     identity: 'Identity and photo',
@@ -206,11 +223,11 @@ export default function StaffProfileForm({
             <label className="label">{label('lastName')} *
               <input className="input" required value={form.lastName || ''} onChange={set('lastName')} placeholder={label('lastName')} />
             </label>
-            <label className="label">{label('postName')} *
-              <input className="input" required value={form.postName || ''} onChange={set('postName')} placeholder={label('postName')} />
+            <label className="label">{label('postName')}
+              <input className="input" value={form.postName || ''} onChange={set('postName')} placeholder={label('postName')} />
             </label>
-            <label className="label">{label('firstName')} *
-              <input className="input" required value={form.firstName || ''} onChange={set('firstName')} placeholder={label('firstName')} />
+            <label className="label">{label('firstName')}
+              <input className="input" value={form.firstName || ''} onChange={set('firstName')} placeholder={label('firstName')} />
             </label>
             <label className="label">{label('phone')}{phoneRequired ? ' *' : ''}
               <input className="input" type="tel" required={phoneRequired} minLength={phoneRequired ? 8 : undefined} value={form.phone || ''} onChange={set('phone')} placeholder="+250 7XX XXX XXX" />
@@ -240,7 +257,15 @@ export default function StaffProfileForm({
             <input className="input font-mono" value={form.bankAccount || ''} onChange={set('bankAccount')} placeholder={label('bankAccount')} />
           </label>
           <label className="label">{label('bankName')}
-            <input className="input" value={form.bankName || ''} onChange={set('bankName')} placeholder={label('bankPlaceholder')} />
+            <select className="input" value={form.bankName || ''} onChange={set('bankName')}>
+              <option value="">{label('select')}</option>
+              {form.bankName && !RWANDA_BANKS.includes(form.bankName) && (
+                <option value={form.bankName}>{form.bankName}</option>
+              )}
+              {RWANDA_BANKS.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </label>
         </div>
       </Section>

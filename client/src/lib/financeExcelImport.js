@@ -56,6 +56,74 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildPrimaryTuitionSheet(workbook, sheetName, students, yearLabel, priorLabel) {
+  const sheet = workbook.addWorksheet(sheetName, {
+    views: [{ state: 'frozen', ySplit: 4, xSplit: 2 }],
+  });
+  const widths = [8, 28, 16, 16, 16, 18, 14, 14, 14, 28, 16, 16, 16, 22, 16, 16, 16, 22, 16, 16, 16, 22, 16];
+  sheet.columns = widths.map((width) => ({ width }));
+  sheet.getColumn(23).hidden = true;
+
+  const fixed = [
+    [1, 'S/N', FILL.id],
+    [2, 'Names', FILL.id],
+    [3, 'Classes', FILL.id],
+    [4, 'Uniforms', FILL.money],
+    [5, 'Inscription', FILL.money],
+    [6, 'Paiement en Dollars', FILL.money],
+    [10, `Balance of Third Trimester ${priorLabel}`.trim(), FILL.prior],
+  ];
+  fixed.forEach(([col, label, fill]) => {
+    sheet.mergeCells(2, col, 4, col);
+    const cell = sheet.getCell(2, col);
+    cell.value = label;
+    paint(cell, { fill, bold: true });
+  });
+
+  writeMerged(sheet, 'G2:I2', 'Activites Parascolaire', { fill: FILL.money, bold: true });
+  ['First trim', 'Second Trim', 'Third Trim'].forEach((label, index) => {
+    sheet.mergeCells(3, 7 + index, 4, 7 + index);
+    const cell = sheet.getCell(3, 7 + index);
+    cell.value = label;
+    paint(cell, { fill: FILL.money, bold: true });
+  });
+
+  const groups = [
+    [11, 'FIRST TRIMESTER', FILL.t1, `Balance of First Trimester ${yearLabel}`.trim()],
+    [15, 'SECOND TRIMESTER', FILL.t2, `Balance of Second Trimester ${yearLabel}`.trim()],
+    [19, 'THIRD TRIMESTER', FILL.t3, `Balance of Third Trimester ${yearLabel}`.trim()],
+  ];
+  groups.forEach(([start, title, fill, balance]) => {
+    const end = start + 3;
+    writeMerged(sheet, `${colLetter(start)}2:${colLetter(end)}2`, title, { fill: FILL.group, bold: true, color: 'FFFFFFFF' });
+    writeMerged(sheet, `${colLetter(start)}3:${colLetter(end)}3`, 'SCHOOL FEES', { fill: FILL.sub, bold: true, color: 'FFFFFFFF' });
+    ['Amount to be paid', 'First Installment', 'Second Installment', balance].forEach((label, index) => {
+      const cell = sheet.getCell(4, start + index);
+      cell.value = label;
+      paint(cell, { fill: index === 3 ? FILL.prior : fill, bold: true });
+    });
+  });
+
+  const idCell = sheet.getCell(2, 23);
+  idCell.value = 'Student ID';
+  paint(idCell, { fill: FILL.id, bold: true });
+
+  sheet.getRow(2).height = 22;
+  sheet.getRow(3).height = 20;
+  sheet.getRow(4).height = 36;
+
+  students.forEach((student, index) => {
+    const row = sheet.getRow(5 + index);
+    row.getCell(1).value = index + 1;
+    row.getCell(2).value = studentFullName(student);
+    row.getCell(3).value = student.class?.name || '';
+    row.getCell(23).value = student.studentId || '';
+    for (let col = 1; col <= 23; col += 1) {
+      paint(row.getCell(col), { align: col === 2 ? 'left' : 'center' });
+    }
+  });
+}
+
 function buildTuitionSheet(workbook, sheetName, students, yearLabel, priorLabel) {
   const sheet = workbook.addWorksheet(sheetName, {
     views: [{ state: 'frozen', ySplit: 4, xSplit: 2 }],
@@ -140,7 +208,7 @@ export async function createFinanceWorkbook({ students = [], academicYearName = 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'École La RACINE';
   buildTuitionSheet(workbook, 'MATERNELLE', nursery, yearLabel, priorLabel);
-  buildTuitionSheet(workbook, 'PRIMAIRE', primary, yearLabel, priorLabel);
+  buildPrimaryTuitionSheet(workbook, 'PRIMAIRE', primary, yearLabel, priorLabel);
   return workbook;
 }
 

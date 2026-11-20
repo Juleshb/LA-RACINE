@@ -29,6 +29,42 @@ export const TUITION_FEE_LINES = [
     labelKey: 'pageBody.tuition.confirmation',
   },
   {
+    id: 'uniform',
+    feeType: 'UNIFORM',
+    term: '',
+    installments: 1,
+    storedLabel: 'Uniforms',
+    notes: '',
+    labelKey: 'pageBody.tuition.uniforms',
+  },
+  {
+    id: 'activity1',
+    feeType: 'EXTRACURRICULAR',
+    term: 'TRIMESTRE_1',
+    installments: 1,
+    storedLabel: 'Activités parascolaires — 1er trimestre',
+    notes: 'Activites Parascolaire',
+    labelKey: 'pageBody.tuition.activity1',
+  },
+  {
+    id: 'activity2',
+    feeType: 'EXTRACURRICULAR',
+    term: 'TRIMESTRE_2',
+    installments: 1,
+    storedLabel: 'Activités parascolaires — 2e trimestre',
+    notes: 'Activites Parascolaire',
+    labelKey: 'pageBody.tuition.activity2',
+  },
+  {
+    id: 'activity3',
+    feeType: 'EXTRACURRICULAR',
+    term: 'TRIMESTRE_3',
+    installments: 1,
+    storedLabel: 'Activités parascolaires — 3e trimestre',
+    notes: 'Activites Parascolaire',
+    labelKey: 'pageBody.tuition.activity3',
+  },
+  {
     id: 'carry',
     feeType: 'CARRY_OVER',
     term: 'PRIOR_YEAR',
@@ -69,8 +105,6 @@ export const TUITION_FEE_LINES = [
 export const OTHER_FEE_LINES = [
   { id: 'exam', feeType: 'EXAM', term: '', installments: 1, storedLabel: '', notes: '', labelKey: 'pageBody.fees.types.EXAM' },
   { id: 'transport', feeType: 'TRANSPORT', term: '', installments: 1, storedLabel: '', notes: '', labelKey: 'pageBody.fees.types.TRANSPORT' },
-  { id: 'uniform', feeType: 'UNIFORM', term: '', installments: 1, storedLabel: '', notes: '', labelKey: 'pageBody.fees.types.UNIFORM' },
-  { id: 'activities', feeType: 'EXTRACURRICULAR', term: '', installments: 1, storedLabel: '', notes: '', labelKey: 'pageBody.fees.types.EXTRACURRICULAR' },
   { id: 'other', feeType: 'OTHER', term: '', installments: 1, storedLabel: '', notes: '', labelKey: 'pageBody.fees.types.OTHER' },
 ];
 
@@ -97,6 +131,10 @@ export function matchTuitionFeeLine(fee) {
   }
   if (fee.feeType === 'REGISTRATION') return TUITION_FEE_LINES.find((line) => line.id === 'inscription');
   if (fee.feeType === 'CONFIRMATION') return TUITION_FEE_LINES.find((line) => line.id === 'confirmation');
+  if (fee.feeType === 'UNIFORM') return TUITION_FEE_LINES.find((line) => line.id === 'uniform');
+  if (fee.feeType === 'EXTRACURRICULAR' && fee.term) {
+    return TUITION_FEE_LINES.find((line) => line.feeType === 'EXTRACURRICULAR' && line.term === fee.term) || null;
+  }
   if (fee.feeType === 'CARRY_OVER' && (!fee.term || fee.term === 'PRIOR_YEAR')) {
     return TUITION_FEE_LINES.find((line) => line.id === 'carry');
   }

@@ -57,6 +57,37 @@ export function courseUsesBulletinScale(course) {
   );
 }
 
+function periodNumberOf(step) {
+  if (!step) return 0;
+  if (step.key === 'TEST1') return 1;
+  if (step.key === 'TEST2') return 2;
+  const parsed = parseAssessmentStepId(step.key);
+  if (parsed.assessment === 'TEST1') return 1;
+  if (parsed.assessment === 'TEST2') return 2;
+  if (parsed.assessment === 'TEST' && parsed.catNumber > 0 && parsed.catNumber < 100) return parsed.catNumber;
+  return 0;
+}
+
+function withPeriod2(steps, course) {
+  if (!steps.length || steps.every((step) => step.key === 'SCORE')) return steps;
+  const hasPeriod1 = steps.some((step) => periodNumberOf(step) === 1);
+  const hasPeriod2 = steps.some((step) => periodNumberOf(step) === 2);
+  if (!hasPeriod1 || hasPeriod2) return steps;
+  const period2 = {
+    key: 'TEST:2',
+    assessment: 'TEST',
+    catNumber: 2,
+    label: 'Period 2',
+    maxScore: Number(course?.test2Max) > 0 ? Number(course.test2Max) : undefined,
+    maxField: 'test2Max',
+    fallbackMax: 10,
+    sortOrder: 2,
+  };
+  const examIndex = steps.findIndex((step) => step.key === 'EX' || step.assessment === 'EX');
+  if (examIndex === -1) return [...steps, period2];
+  return [...steps.slice(0, examIndex), period2, ...steps.slice(examIndex)];
+}
+
 export function getAssessmentsForCourse(course, classConfig) {
   if (course?.assessments?.length) {
     const steps = course.assessments
@@ -82,12 +113,12 @@ export function getAssessmentsForCourse(course, classConfig) {
       });
     }
 
-    return steps;
+    return withPeriod2(steps, course);
   }
   if (!courseUsesBulletinScale(course)) {
     return [{ key: 'SCORE', label: 'Note', maxField: 'totalMax', fallbackMax: 100 }];
   }
-  return classConfig?.assessments || [];
+  return withPeriod2(classConfig?.assessments || [], course);
 }
 
 export const DEFAULT_TERMS = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'];

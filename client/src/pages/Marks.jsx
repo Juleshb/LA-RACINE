@@ -832,7 +832,8 @@ export default function Marks() {
     }
     if (isBulletinCourse) {
       return [
-        { value: 'TEST:1', label: t('pages.marks.typePeriod') },
+        { value: 'TEST:1', label: t('pages.marks.periodN', { count: 1 }) },
+        { value: 'TEST:2', label: t('pages.marks.periodN', { count: 2 }) },
         { value: 'EX', label: t('pages.marks.typeExam') },
       ];
     }

@@ -230,7 +230,7 @@ router.put('/:id', async (req, res) => {
     await prisma.user.updateMany({
       where: { teacherId: teacher.id },
       data: {
-        ...(teacher.firstName ? { firstName: teacher.firstName } : {}),
+        ...(req.body.firstName !== undefined ? { firstName: teacher.firstName || '' } : {}),
         ...(teacher.lastName ? { lastName: teacher.lastName } : {}),
         postName: teacher.postName,
         phone: teacher.phone,

@@ -97,39 +97,62 @@ export default function TuitionLedger() {
     }
   };
 
+  const isPrimary = level === 'primary';
+
   const exportCsv = () => {
     if (!data?.rows?.length) return;
-    const headers = [
-      'S/N', 'Names', 'Classes', 'Paiement en Dollars', 'Inscription', 'Confirmation',
-      'Carry-over',
-      'T1 Amount', 'T1 Inst1', 'T1 Inst2', 'T1 Balance',
-      'T2 Amount', 'T2 Inst1', 'T2 Inst2', 'T2 Balance',
-      'T3 Amount', 'T3 Inst1', 'T3 Inst2', 'T3 Balance',
-    ];
+    const headers = isPrimary
+      ? [
+        'S/N', 'Names', 'Classes', 'Uniforms', 'Inscription', 'Paiement en Dollars',
+        'Activities First trim', 'Activities Second trim', 'Activities Third trim',
+        'Carry-over',
+        'T1 Amount', 'T1 Inst1', 'T1 Inst2', 'T1 Balance',
+        'T2 Amount', 'T2 Inst1', 'T2 Inst2', 'T2 Balance',
+        'T3 Amount', 'T3 Inst1', 'T3 Inst2', 'T3 Balance',
+      ]
+      : [
+        'S/N', 'Names', 'Classes', 'Paiement en Dollars', 'Inscription', 'Confirmation',
+        'Carry-over',
+        'T1 Amount', 'T1 Inst1', 'T1 Inst2', 'T1 Balance',
+        'T2 Amount', 'T2 Inst1', 'T2 Inst2', 'T2 Balance',
+        'T3 Amount', 'T3 Inst1', 'T3 Inst2', 'T3 Balance',
+      ];
     const lines = [headers.join(',')];
     for (const row of visibleRows) {
       const name = studentFullName(row.student);
-      const cells = [
-        row.sn,
-        `"${name}"`,
-        `"${row.branche || ''}"`,
-        row.dollar?.due || 0,
-        row.inscription?.due || 0,
-        row.confirmation?.due || 0,
-        row.carryOver?.due || 0,
-        row.trimesters.t1.due,
-        row.trimesters.t1.inst1.paid ? row.trimesters.t1.inst1.amount : '',
-        row.trimesters.t1.inst2.paid ? row.trimesters.t1.inst2.amount : '',
-        row.trimesters.t1.balance,
-        row.trimesters.t2.due,
-        row.trimesters.t2.inst1.paid ? row.trimesters.t2.inst1.amount : '',
-        row.trimesters.t2.inst2.paid ? row.trimesters.t2.inst2.amount : '',
-        row.trimesters.t2.balance,
-        row.trimesters.t3.due,
-        row.trimesters.t3.inst1.paid ? row.trimesters.t3.inst1.amount : '',
-        row.trimesters.t3.inst2.paid ? row.trimesters.t3.inst2.amount : '',
-        row.trimesters.t3.balance,
-      ];
+      const trimesterCells = ['t1', 't2', 't3'].flatMap((key) => {
+        const tri = row.trimesters[key];
+        return [
+          tri.due,
+          tri.inst1.paid ? tri.inst1.amount : '',
+          tri.inst2.paid ? tri.inst2.amount : '',
+          tri.balance,
+        ];
+      });
+      const cells = isPrimary
+        ? [
+          row.sn,
+          `"${name}"`,
+          `"${row.branche || ''}"`,
+          row.uniform?.due || 0,
+          row.inscription?.due || 0,
+          row.dollar?.due || 0,
+          row.activities?.t1?.due || 0,
+          row.activities?.t2?.due || 0,
+          row.activities?.t3?.due || 0,
+          row.carryOver?.due || 0,
+          ...trimesterCells,
+        ]
+        : [
+          row.sn,
+          `"${name}"`,
+          `"${row.branche || ''}"`,
+          row.dollar?.due || 0,
+          row.inscription?.due || 0,
+          row.confirmation?.due || 0,
+          row.carryOver?.due || 0,
+          ...trimesterCells,
+        ];
       lines.push(cells.join(','));
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -227,7 +250,7 @@ export default function TuitionLedger() {
         <Link to={`/campus/${campusId}/finance`} className="text-brand-700 underline font-medium">
           {t('pages.finance.title')}
         </Link>
-        {' '}{t('pageBody.tuition.hintAfter')}
+        {' '}{t(isPrimary ? 'pageBody.tuition.hintAfterPrimary' : 'pageBody.tuition.hintAfter')}
       </p>
 
       {message && (
@@ -252,15 +275,31 @@ export default function TuitionLedger() {
                   {t('pageBody.tuition.names')}
                 </th>
                 <th rowSpan={3} className="px-3 py-2 border-b border-r text-left">{t('pageBody.tuition.classes')}</th>
-                <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.dollar')}</th>
-                <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.inscription')}</th>
-                <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.confirmation')}</th>
+                {isPrimary ? (
+                  <>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.uniforms')}</th>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.inscription')}</th>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.dollar')}</th>
+                    <th colSpan={3} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.activities')}</th>
+                  </>
+                ) : (
+                  <>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.dollar')}</th>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.inscription')}</th>
+                    <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.confirmation')}</th>
+                  </>
+                )}
                 <th rowSpan={3} className="px-3 py-2 border-b border-r text-right">{t('pageBody.tuition.carryOver')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.firstTrimester')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b border-r text-center">{t('pageBody.tuition.secondTrimester')}</th>
                 <th colSpan={4} className="px-3 py-2 border-b text-center">{t('pageBody.tuition.thirdTrimester')}</th>
               </tr>
               <tr className="bg-gray-50 text-gray-500 text-xs">
+                {isPrimary && ['activity1', 'activity2', 'activity3'].map((key) => (
+                  <th key={key} rowSpan={2} className="px-2 py-1 border-b border-r text-center whitespace-nowrap">
+                    {t(`pageBody.tuition.${key}`)}
+                  </th>
+                ))}
                 {[1, 2, 3].map((n) => (
                   <th key={`sf-${n}`} colSpan={4} className="px-2 py-1 border-b border-r text-center">
                     {t('pageBody.tuition.schoolFees')}
@@ -278,7 +317,7 @@ export default function TuitionLedger() {
             <tbody>
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={19} className="text-center text-gray-500 py-12">
+                  <td colSpan={isPrimary ? 22 : 19} className="text-center text-gray-500 py-12">
                     {t('pageBody.tuition.empty')}
                   </td>
                 </tr>
@@ -292,9 +331,22 @@ export default function TuitionLedger() {
                     <p className="text-[10px] text-gray-400">{row.student.studentId}</p>
                   </td>
                   <td className="px-3 py-1.5 border-r text-xs">{row.branche || '—'}</td>
-                  <MoneyCell value={row.dollar?.due} currency="USD" />
-                  <MoneyCell value={row.inscription?.due} />
-                  <MoneyCell value={row.confirmation?.due} />
+                  {isPrimary ? (
+                    <>
+                      <MoneyCell value={row.uniform?.due} />
+                      <MoneyCell value={row.inscription?.due} />
+                      <MoneyCell value={row.dollar?.due} currency="USD" />
+                      <MoneyCell value={row.activities?.t1?.due} />
+                      <MoneyCell value={row.activities?.t2?.due} />
+                      <MoneyCell value={row.activities?.t3?.due} />
+                    </>
+                  ) : (
+                    <>
+                      <MoneyCell value={row.dollar?.due} currency="USD" />
+                      <MoneyCell value={row.inscription?.due} />
+                      <MoneyCell value={row.confirmation?.due} />
+                    </>
+                  )}
                   <MoneyCell value={row.carryOver?.due} />
                   {['t1', 't2', 't3'].map((key) => {
                     const tri = row.trimesters[key];

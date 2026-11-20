@@ -11,10 +11,11 @@ export const BULLETIN_PRESETS = {
   },
   TESTS_EXAM: {
     preset: 'TESTS_EXAM',
-    label: 'Periods + Exam — Period 1 + EX',
-    labelFr: 'Périodes + Examen',
+    label: 'Periods + Exam — Period 1 + Period 2 + EX',
+    labelFr: 'Périodes + Examen — Période 1 + Période 2 + EX',
     assessments: [
       { key: 'TEST1', label: 'Period 1', maxField: 'test1Max', fallbackMax: 20 },
+      { key: 'TEST2', label: 'Period 2', maxField: 'test2Max', fallbackMax: 20 },
       { key: 'EX', label: 'EX', maxField: 'examMax', fallbackMax: 40 },
     ],
   },

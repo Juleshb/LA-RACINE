@@ -34,6 +34,23 @@ export async function ensureSubjectAssessments(db, subject) {
         where: { subjectId: subject.id, label: { equals: 'Exam', mode: 'insensitive' } },
       });
     }
+    const missing = [];
+    if (subject.test1Max != null && subject.test1Max > 0 && !testsOnly.some((row) => row.sortOrder === 1)) {
+      missing.push({ label: 'Period 1', maxScore: subject.test1Max, sortOrder: 1, date: null });
+    }
+    if (subject.test2Max != null && subject.test2Max > 0 && !testsOnly.some((row) => row.sortOrder === 2)) {
+      missing.push({ label: 'Period 2', maxScore: subject.test2Max, sortOrder: 2, date: null });
+    }
+    if (missing.length) {
+      await db.subjectAssessment.createMany({
+        data: missing.map((row) => ({ subjectId: subject.id, ...row })),
+      });
+      return db.subjectAssessment.findMany({
+        where: { subjectId: subject.id, NOT: { label: { equals: 'Exam', mode: 'insensitive' } } },
+        orderBy: { sortOrder: 'asc' },
+      });
+    }
+
     for (const row of testsOnly) {
       const patch = {};
       const periodLabel = `Period ${row.sortOrder}`;
